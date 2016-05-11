@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
 	mysqlExec "github.com/percona/qan-agent/query/mysql"
-	"github.com/percona/pmm/proto"
 	. "gopkg.in/check.v1"
 )
 

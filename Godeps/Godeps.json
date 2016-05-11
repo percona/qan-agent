@@ -51,7 +51,11 @@
         },
         {
              "ImportPath": "github.com/nu7hatch/gouuid",
-            "Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+             "Rev": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
+        },
+        {
+             "ImportPath": "github.com/percona/pmm/proto",
+             "Rev": "8ca16f7fe3386593eedd11a2e640012af848e056"
         }
     ]
 }
