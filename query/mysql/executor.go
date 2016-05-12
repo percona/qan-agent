@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/pmm/proto"
+	"github.com/percona/qan-agent/mysql"
 )
 
 type QueryExecutor struct {
@@ -178,21 +178,20 @@ func (e *QueryExecutor) classicExplain(tx *sql.Tx, query string) (classicExplain
 	// Go rows.Scan() expects exact number of columns
 	// so when number of columns is undefined then the easiest way to
 	// overcome this problem is to count received number of columns
-	// With 'partitions' it is 11 columns
 	columns, err := rows.Columns()
 	if err != nil {
 		return nil, err
 	}
-	hasPartitions := len(columns) == 11
+	nCols := len(columns)
 
 	for rows.Next() {
 		explainRow := &proto.ExplainRow{}
-		if hasPartitions {
+		switch nCols {
+		case 10:
 			err = rows.Scan(
 				&explainRow.Id,
 				&explainRow.SelectType,
 				&explainRow.Table,
-				&explainRow.Partitions, // Since MySQL 5.1
 				&explainRow.Type,
 				&explainRow.PossibleKeys,
 				&explainRow.Key,
@@ -201,17 +200,33 @@ func (e *QueryExecutor) classicExplain(tx *sql.Tx, query string) (classicExplain
 				&explainRow.Rows,
 				&explainRow.Extra,
 			)
-		} else {
+		case 11: // MySQL 5.1 with "partitions"
 			err = rows.Scan(
 				&explainRow.Id,
 				&explainRow.SelectType,
 				&explainRow.Table,
+				&explainRow.Partitions, // here
 				&explainRow.Type,
 				&explainRow.PossibleKeys,
 				&explainRow.Key,
 				&explainRow.KeyLen,
 				&explainRow.Ref,
 				&explainRow.Rows,
+				&explainRow.Extra,
+			)
+		case 12: // MySQL 5.7 with "filtered"
+			err = rows.Scan(
+				&explainRow.Id,
+				&explainRow.SelectType,
+				&explainRow.Table,
+				&explainRow.Partitions,
+				&explainRow.Type,
+				&explainRow.PossibleKeys,
+				&explainRow.Key,
+				&explainRow.KeyLen,
+				&explainRow.Ref,
+				&explainRow.Rows,
+				&explainRow.Filtered, // here
 				&explainRow.Extra,
 			)
 		}
