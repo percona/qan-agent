@@ -147,7 +147,7 @@ install() {
            echo "Version currently installed: $currentVersion"
            cmpVer=0
            ver_cmp "$currentVersion" "$newVersion" || cmpVer=$?
-           if [ "$cmpVer" == "2" -o "$rev" ]; then
+           if [ "$cmpVer" == "2" -o "$newRev" ]; then
               echo "Upgrading to $newVersion"
               upgrade
               exit 0
@@ -156,7 +156,7 @@ install() {
                exit 1
            else
                echo "Same version already installed, exiting."
-               exit 1
+               exit 0
            fi
         fi
     fi
