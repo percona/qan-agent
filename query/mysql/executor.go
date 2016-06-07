@@ -38,6 +38,9 @@ func NewQueryExecutor(conn mysql.Connector) *QueryExecutor {
 }
 
 func (e *QueryExecutor) Explain(db, query string, convert bool) (*proto.ExplainResult, error) {
+	if !strings.HasPrefix(db, "`") {
+		db = "`" + db + "`"
+	}
 	explain, err := e.explain(db, query)
 	if err != nil {
 		// MySQL 5.5 returns syntax error because it doesn't support non-SELECT EXPLAIN.
