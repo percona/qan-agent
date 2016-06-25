@@ -19,6 +19,10 @@ package mock
 
 import (
 	"net/http"
+
+	"github.com/percona/pmm/proto"
+
+	"golang.org/x/net/websocket"
 )
 
 type APIResponse struct {
@@ -54,34 +58,52 @@ func PingAPI(hostname string) (bool, *http.Response) {
 	return true, nil
 }
 
-func (a *API) Init(hostname string, headers map[string]string) (code int, err error) {
-	return http.StatusOK, nil
-}
-
-func (a *API) Connect(hostname, agentUuid string) error {
-	a.hostname = hostname
-	a.agentUuid = agentUuid
-	return nil
-}
+/*
+   Implements all pct/api methods
+*/
 
 func (a *API) AgentLink(resource string) string {
 	return a.links[resource]
+}
+
+func (a *API) AgentUuid() string {
+	return a.agentUuid
+}
+
+func (a *API) Conn() *websocket.Conn {
+	return &websocket.Conn{}
+}
+
+func (a *API) Connect() {
+	return
+}
+
+func (a *API) ConnectOnce(timeout uint) error {
+	return nil
+}
+
+func (a *API) ConnectChan() chan bool {
+	return make(chan bool)
+}
+
+func (a *API) CreateInstance(url string, it interface{}) (bool, error) {
+	return true, nil
+}
+
+func (a *API) Disconnect() error {
+	return nil
+}
+
+func (a *API) DisconnectOnce() error {
+	return nil
 }
 
 func (a *API) EntryLink(resource string) string {
 	return a.links[resource]
 }
 
-func (a *API) Origin() string {
-	return a.origin
-}
-
-func (a *API) Hostname() string {
-	return a.hostname
-}
-
-func (a *API) AgentUuid() string {
-	return a.agentUuid
+func (a *API) ErrorChan() chan error {
+	return make(chan error)
 }
 
 func (a *API) Get(url string) (int, []byte, error) {
@@ -110,6 +132,18 @@ func (a *API) Get(url string) (int, []byte, error) {
 	return code, data, err
 }
 
+func (a *API) Hostname() string {
+	return a.hostname
+}
+
+func (a *API) Init(hostname string, headers map[string]string) (code int, err error) {
+	return http.StatusOK, nil
+}
+
+func (a *API) Origin() string {
+	return a.origin
+}
+
 func (a *API) Post(url string, data []byte) (*http.Response, []byte, error) {
 	return nil, nil, nil
 }
@@ -124,8 +158,36 @@ func (a *API) Put(url string, data []byte) (*http.Response, []byte, error) {
 	return nil, nil, nil
 }
 
-func (a *API) CreateInstance(url string, it interface{}) (bool, error) {
-	return true, nil
+func (a *API) Recv(data interface{}, timeout uint) error {
+	return nil
+}
+
+func (a *API) RecvChan() chan *proto.Cmd {
+	return make(chan *proto.Cmd)
+}
+
+func (a *API) SendBytes(data []byte, timeout uint) error {
+	return nil
+}
+
+func (a *API) SendChan() chan *proto.Reply {
+	return make(chan *proto.Reply)
+}
+
+func (a *API) Start() {
+	return
+}
+
+func (a *API) Status() map[string]string {
+	return make(map[string]string)
+}
+
+func (a *API) Send(data interface{}, timeout uint) error {
+	return nil
+}
+
+func (a *API) Stop() {
+	return
 }
 
 func (a *API) URL(paths ...string) string {
