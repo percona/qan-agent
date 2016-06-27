@@ -119,7 +119,8 @@ func main() {
 	}
 
 	agentConfig := &pc.Agent{
-		ApiHostname: qanAPIURL.String(),
+		ApiHostname: qanAPIURL.Host,
+		ApiPath:     qanAPIURL.Path,
 	}
 
 	if flagMySQLSocket != "" && flagMySQLHost != "" {

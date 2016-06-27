@@ -184,7 +184,7 @@ func run(agentConfig *pc.Agent) error {
 	go func() {
 		haveWarned := false
 		for {
-			if err := api.Connect(agentConfig.ApiHostname, agentConfig.UUID); err != nil {
+			if err := api.Connect(agentConfig.ApiHostname, agentConfig.ApiPath, agentConfig.UUID); err != nil {
 				if !haveWarned {
 					golog.Printf("Cannot connect to API: %s. Verify that the"+
 						" agent UUID and API hostname printed above are"+
