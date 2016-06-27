@@ -40,7 +40,7 @@ var requiredEntryLinks = []string{"agents", "instances"}
 var requiredAgentLinks = []string{"cmd", "log", "data", "self"}
 
 type APIConnector interface {
-	Connect(hostname, basePth, agentUuid string) error
+	Connect(hostname, basePath, agentUuid string) error
 	Init(hostname string, headers map[string]string) (code int, err error)
 	Get(url string) (int, []byte, error)
 	Post(url string, data []byte) (*http.Response, []byte, error)
