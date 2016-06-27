@@ -182,7 +182,7 @@ func (agent *Agent) Run() error {
 				output, err := self.Run()
 				agent.reply(cmd.Reply(output, err))
 				logger.Debug("Restart:done")
-				return ErrRestart
+				return nil
 			case "Stop":
 				logger.Debug("cmd:stop")
 				logger.Info("Stopping", cmd)

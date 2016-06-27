@@ -21,8 +21,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"regexp"
+	"strings"
 
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
@@ -80,7 +82,7 @@ func init() {
 
 }
 
-var portSuffix *regexp.Regexp = regexp.MustCompile(`:\d+$`)
+var portSuffix = regexp.MustCompile(`:\d+$`)
 
 func main() {
 	// It flag is unknown it exist with os.Exit(10),
@@ -91,9 +93,8 @@ func main() {
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		if err == flag.ErrHelp {
 			return
-		} else {
-			log.Fatal(err)
 		}
+		log.Fatal(err)
 	}
 
 	args := fs.Args()
@@ -104,12 +105,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !portSuffix.Match([]byte(args[0])) {
-		args[0] += ":" + DEFAULT_DATASTORE_PORT
+	qanAPIURL, err := url.Parse(args[0])
+	if err != nil {
+		log.Fatal("expected arg in the form [schema://]host[:port][path]")
+	}
+
+	if !portSuffix.MatchString(qanAPIURL.Host) {
+		qanAPIURL.Host += ":" + DEFAULT_DATASTORE_PORT
+	}
+
+	if !strings.HasPrefix(qanAPIURL.Scheme, "http") {
+		qanAPIURL.Scheme = "http://" + qanAPIURL.Scheme
 	}
 
 	agentConfig := &pc.Agent{
-		ApiHostname: args[0],
+		ApiHostname: qanAPIURL.Host,
+		ApiPath:     qanAPIURL.Path,
 	}
 
 	if flagMySQLSocket != "" && flagMySQLHost != "" {
