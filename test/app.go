@@ -48,7 +48,7 @@ func init() {
 	for i := 0; i < 3; i++ {
 		dir = dir + "/../"
 		if FileExists(dir + ".git") {
-			RootDir = filepath.Clean(dir + "agent/test")
+			RootDir = filepath.Clean(dir + "test")
 			break
 		}
 	}
@@ -96,7 +96,7 @@ func WriteData(data interface{}, filename string) {
 	ioutil.WriteFile(filename, bytes, os.ModePerm)
 }
 
-func DrainLogChan(c chan *proto.LogEntry) {
+func DrainLogChan(c chan proto.LogEntry) {
 	for {
 		select {
 		case <-c:

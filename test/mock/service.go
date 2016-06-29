@@ -20,8 +20,8 @@ package mock
 import (
 	"fmt"
 
-	"github.com/percona/qan-agent/pct"
 	"github.com/percona/pmm/proto"
+	"github.com/percona/qan-agent/pct"
 )
 
 type MockServiceManager struct {
@@ -93,4 +93,9 @@ func (m *MockServiceManager) Handle(cmd *proto.Cmd) *proto.Reply {
 
 func (m *MockServiceManager) Reset() {
 	m.status.Update(m.name, "")
+}
+
+func (m *MockServiceManager) GetDefaults() map[string]interface{} {
+
+	return make(map[string]interface{})
 }
