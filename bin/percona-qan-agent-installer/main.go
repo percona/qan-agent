@@ -25,10 +25,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/percona/percona-agent/bin/percona-agent-installer/installer"
-	"github.com/percona/percona-agent/bin/percona-agent-installer/term"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
+	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/installer"
+	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/term"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
 )
