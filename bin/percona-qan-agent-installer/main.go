@@ -23,18 +23,15 @@ import (
 	"log"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 
+	"github.com/percona/percona-agent/bin/percona-agent-installer/installer"
+	"github.com/percona/percona-agent/bin/percona-agent-installer/term"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/installer"
-	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/term"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
 )
-
-const DEFAULT_DATASTORE_PORT = "9001"
 
 var (
 	flagBasedir                 string
@@ -82,8 +79,6 @@ func init() {
 
 }
 
-var portSuffix = regexp.MustCompile(`:\d+$`)
-
 func main() {
 	// It flag is unknown it exist with os.Exit(10),
 	// so exit code=10 is strictly reserved for flags
@@ -105,13 +100,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if !strings.HasPrefix(args[0], "http://") && !strings.HasPrefix(args[0], "https://") {
+		args[0] = "http://" + args[0]
+	}
+
 	qanAPIURL, err := url.Parse(args[0])
 	if err != nil {
 		log.Fatal("expected arg in the form [schema://]host[:port][path]")
-	}
-
-	if !portSuffix.MatchString(qanAPIURL.Host) {
-		qanAPIURL.Host += ":" + DEFAULT_DATASTORE_PORT
 	}
 
 	if !strings.HasPrefix(qanAPIURL.Scheme, "http") {
