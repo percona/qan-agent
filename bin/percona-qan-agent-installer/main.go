@@ -158,11 +158,12 @@ func main() {
 	fmt.Println("CTRL-C at any time to quit")
 
 	api := pct.NewAPI()
-	if _, err := api.Init(agentConfig.ApiHostname, nil); err != nil {
-		fmt.Printf("Cannot connect to API %s: %s\n", agentConfig.ApiHostname, err)
+	requestURL := agentConfig.ApiHostname + agentConfig.ApiPath
+	fmt.Printf("API host: %s\n", pct.URL(requestURL))
+	if _, err := api.Init(requestURL, nil); err != nil {
+		fmt.Printf("Cannot connect to API %s: %s\n", requestURL, err)
 		os.Exit(1)
 	}
-	fmt.Printf("API host: %s\n", pct.URL(agentConfig.ApiHostname))
 
 	// Agent stores all its files in the basedir.  This must be called first
 	// because installer uses pct.Basedir and assumes it's already initialized.
