@@ -105,7 +105,7 @@ func main() {
 
 	bytes, err := agent.LoadConfig()
 	if err != nil {
-		fmt.Print("Error reading agent config file %s: %s", agentConfigFile, err)
+		fmt.Printf("Error reading agent config file %s: %s", agentConfigFile, err)
 		os.Exit(1)
 	}
 	agentConfig := &pc.Agent{}
@@ -114,17 +114,18 @@ func main() {
 		os.Exit(1)
 	}
 
+	apiURL := agentConfig.ApiHostname + agentConfig.ApiPath
 	fmt.Printf("# Version: %s\n", agentVersion)
 	fmt.Printf("# Basedir: %s\n", pct.Basedir.Path())
 	fmt.Printf("# Listen:  %s\n", flagListen)
 	fmt.Printf("# PID:     %d\n", os.Getpid())
-	fmt.Printf("# API:     %s\n", agentConfig.ApiHostname)
+	fmt.Printf("# API:     %s\n", apiURL)
 	fmt.Printf("# UUID:    %s\n", agentConfig.UUID)
 
 	// -ping and exit.
 	if flagPing {
 		t0 := time.Now()
-		code, err := pct.Ping(agentConfig.ApiHostname, nil)
+		code, err := pct.Ping(apiURL, nil)
 		d := time.Now().Sub(t0)
 		if err != nil || code != 200 {
 			fmt.Printf("Ping FAIL (%d %d %s)", d, code, err)

@@ -100,17 +100,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !strings.HasPrefix(args[0], "http://") && !strings.HasPrefix(args[0], "https://") {
-		args[0] = "http://" + args[0]
-	}
-
-	qanAPIURL, err := url.Parse(args[0])
+	qanAPIURL, err := parseURLParam(args[0])
 	if err != nil {
 		log.Fatal("expected arg in the form [schema://]host[:port][path]")
-	}
-
-	if !strings.HasPrefix(qanAPIURL.Scheme, "http") {
-		qanAPIURL.Scheme = "http://" + qanAPIURL.Scheme
 	}
 
 	agentConfig := &pc.Agent{
@@ -189,4 +181,16 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func parseURLParam(args0 string) (*url.URL, error) {
+	if !strings.HasPrefix(args0, "http://") && !strings.HasPrefix(args0, "https://") {
+		args0 = "http://" + args0
+	}
+
+	qanAPIURL, err := url.Parse(args0)
+	if err != nil {
+		return nil, fmt.Errorf("expected arg in the form [schema://]host[:port][path]")
+	}
+	return qanAPIURL, nil
 }
