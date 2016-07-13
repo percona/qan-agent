@@ -252,6 +252,9 @@ func (s *TestSuite) TestDMLToSelect(t *C) {
 
 	q = mysqlExec.DMLToSelect(`replace into tabla set f1="A1", f2="A2"`)
 	t.Check(q, Equals, `SELECT * FROM tabla WHERE f1="A1" AND  f2="A2"`)
+
+	q = mysqlExec.DMLToSelect("insert into `tabla-1` values(12)")
+	t.Check(q, Equals, "SELECT * FROM `tabla-1` LIMIT 1")
 }
 
 func (s *TestSuite) TestFullTableInfo(t *C) {
