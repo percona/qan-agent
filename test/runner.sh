@@ -5,7 +5,7 @@ export PATH="$PATH:/usr/local/go/bin"
 export GOROOT=${GOROOT:-"/usr/local/go"}
 export GOPATH=${GOPATH:-"/home/jenkinstools/go"}
 
-if [ ! -d "../.git" ]; then
+if [ ! -d ".git" ]; then
    echo "../.git directory not found.  Run this script from the root dir of the repo." >&2
    exit 1
 fi
