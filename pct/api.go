@@ -40,7 +40,7 @@ var requiredEntryLinks = []string{"agents", "instances"}
 var requiredAgentLinks = []string{"cmd", "log", "data", "self"}
 
 type APIConnector interface {
-	Connect(hostname, agentUuid string) error
+	Connect(hostname, basePath, agentUuid string) error
 	Init(hostname string, headers map[string]string) (code int, err error)
 	Get(url string) (int, []byte, error)
 	Post(url string, data []byte) (*http.Response, []byte, error)
@@ -154,11 +154,11 @@ func URL(hostname string, paths ...string) string {
 	return url
 }
 
-func (a *API) Connect(hostname, agentUuid string) error {
+func (a *API) Connect(hostname, basePath, agentUuid string) error {
 	schema := "http://" // todo: support internal/private HTTPS
 
 	// Get entry links: GET <API hostname>/
-	entryLinks, err := a.getLinks(schema + hostname)
+	entryLinks, err := a.getLinks(schema + hostname + basePath)
 	if err != nil {
 		return err
 	}
@@ -188,13 +188,17 @@ func (a *API) Connect(hostname, agentUuid string) error {
 
 func (a *API) Init(hostname string, headers map[string]string) (int, error) {
 	code, err := Ping(hostname, headers)
-	if code == 200 && err == nil {
-		a.mux.Lock()
-		defer a.mux.Unlock()
-		a.hostname = hostname
+	if err != nil {
+		return 0, err
 	}
 
-	return code, err
+	if code != http.StatusOK {
+		return code, fmt.Errorf("Got %d from the API", code)
+	}
+	a.mux.Lock()
+	defer a.mux.Unlock()
+	a.hostname = hostname
+	return code, nil
 }
 
 func (a *API) checkLinks(links map[string]string, req ...string) error {
