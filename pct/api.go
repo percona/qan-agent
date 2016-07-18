@@ -26,7 +26,9 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +40,7 @@ import (
 
 var requiredEntryLinks = []string{"agents", "instances"}
 var requiredAgentLinks = []string{"cmd", "log", "data", "self"}
+var reHostPort = regexp.MustCompile("(.*):(\\d+)$")
 
 type APIConnector interface {
 	Connect(hostname, basePath, agentUuid string) error
@@ -176,6 +179,8 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 		return err
 	}
 
+	cleanAgentLinks(agentLinks)
+
 	// Success: API responds with the links we need.
 	a.mux.Lock()
 	defer a.mux.Unlock()
@@ -209,6 +214,39 @@ func (a *API) checkLinks(links map[string]string, req ...string) error {
 		}
 	}
 	return nil
+}
+
+/*
+API sends a list of links with the form http://host:port/path or ws://host[:port]/path
+For websockets, we need to have a port number in the URL because there is no default
+port for websocket connections.
+This functions checks all links received from the API and fixes ws URLs.
+*/
+func cleanAgentLinks(agentLinks map[string]string) {
+	for key, link := range agentLinks {
+		if strings.HasPrefix(link, "ws://") {
+			newLink, err := addPortToURL(link, 80)
+			if err != nil {
+				continue
+			}
+			agentLinks[key] = newLink
+		}
+	}
+}
+
+// Add a port to an URL if it doesn't have a port
+func addPortToURL(uri string, port int) (string, error) {
+	u, err := url.Parse(uri)
+	if err != nil {
+		return "", err
+	}
+
+	m := reHostPort.FindStringSubmatch(u.Host)
+	if len(m) == 0 {
+		u.Host = fmt.Sprintf("%s:%d", u.Host, port)
+	}
+
+	return u.String(), nil
 }
 
 func (a *API) getLinks(url string) (map[string]string, error) {
