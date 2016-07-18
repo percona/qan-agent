@@ -21,8 +21,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
-	"regexp"
+	"strings"
 
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
@@ -31,8 +32,6 @@ import (
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
 )
-
-const DEFAULT_DATASTORE_PORT = "9001"
 
 var (
 	flagBasedir                 string
@@ -80,8 +79,6 @@ func init() {
 
 }
 
-var portSuffix *regexp.Regexp = regexp.MustCompile(`:\d+$`)
-
 func main() {
 	// It flag is unknown it exist with os.Exit(10),
 	// so exit code=10 is strictly reserved for flags
@@ -91,9 +88,8 @@ func main() {
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		if err == flag.ErrHelp {
 			return
-		} else {
-			log.Fatal(err)
 		}
+		log.Fatal(err)
 	}
 
 	args := fs.Args()
@@ -104,12 +100,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if !portSuffix.Match([]byte(args[0])) {
-		args[0] += ":" + DEFAULT_DATASTORE_PORT
+	qanAPIURL, err := parseURLParam(args[0])
+	if err != nil {
+		log.Fatal("expected arg in the form [schema://]host[:port][path]")
 	}
 
 	agentConfig := &pc.Agent{
-		ApiHostname: args[0],
+		ApiHostname: qanAPIURL.Host,
+		ApiPath:     qanAPIURL.Path,
 	}
 
 	if flagMySQLSocket != "" && flagMySQLHost != "" {
@@ -152,11 +150,12 @@ func main() {
 	fmt.Println("CTRL-C at any time to quit")
 
 	api := pct.NewAPI()
-	if _, err := api.Init(agentConfig.ApiHostname, nil); err != nil {
-		fmt.Printf("Cannot connect to API %s: %s\n", agentConfig.ApiHostname, err)
+	requestURL := agentConfig.ApiHostname + agentConfig.ApiPath
+	fmt.Printf("API host: %s\n", pct.URL(requestURL))
+	if _, err := api.Init(requestURL, nil); err != nil {
+		fmt.Printf("Cannot connect to API %s: %s\n", requestURL, err)
 		os.Exit(1)
 	}
-	fmt.Printf("API host: %s\n", pct.URL(agentConfig.ApiHostname))
 
 	// Agent stores all its files in the basedir.  This must be called first
 	// because installer uses pct.Basedir and assumes it's already initialized.
@@ -182,4 +181,16 @@ func main() {
 	}
 
 	os.Exit(0)
+}
+
+func parseURLParam(args0 string) (*url.URL, error) {
+	if !strings.HasPrefix(args0, "http://") && !strings.HasPrefix(args0, "https://") {
+		args0 = "http://" + args0
+	}
+
+	qanAPIURL, err := url.Parse(args0)
+	if err != nil {
+		return nil, fmt.Errorf("expected arg in the form [schema://]host[:port][path]")
+	}
+	return qanAPIURL, nil
 }
