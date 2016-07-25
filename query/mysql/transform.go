@@ -24,11 +24,12 @@ import (
 )
 
 var (
-	dmlVerbs    = []string{"insert", "update", "delete", "replace"}
-	updateRe    = regexp.MustCompile(`(?i)^update\s+(?:low_priority|ignore)?\s*(.*?)\s+set\s+(.*?)(?:\s+where\s+(.*?))?(?:\s+limit\s*[0-9]+(?:\s*,\s*[0-9]+)?)?$`)
-	deleteRe    = regexp.MustCompile(`(?i)^delete\s+(.*?)\bfrom\s+(.*?)$`)
-	insertRe    = regexp.MustCompile(`(?i)^(?:insert(?:\s+ignore)?|replace)\s+.*?\binto\s+(.*?)\(([^\)]+)\)\s*values?\s*\((.*?)\)\s*(?:\slimit\s|on\s+duplicate\s+key.*)?\s*$`)
-	insertSetRe = regexp.MustCompile(`(?i)(?:insert(?:\s+ignore)?|replace)\s+(?:.*?\binto)\s+(.*?)\s*set\s+(.*?)\s*(?:\blimit\b|on\s+duplicate\s+key.*)?\s*$`)
+	dmlVerbs         = []string{"insert", "update", "delete", "replace"}
+	updateRe         = regexp.MustCompile(`(?i)^update\s+(?:low_priority|ignore)?\s*(.*?)\s+set\s+(.*?)(?:\s+where\s+(.*?))?(?:\s+limit\s*[0-9]+(?:\s*,\s*[0-9]+)?)?$`)
+	deleteRe         = regexp.MustCompile(`(?i)^delete\s+(.*?)\bfrom\s+(.*?)$`)
+	insertRe         = regexp.MustCompile(`(?i)^(?:insert(?:\s+ignore)?|replace)\s+.*?\binto\s+(.*?)\(([^\)]+)\)\s*values?\s*\((.*?)\)\s*(?:\slimit\s|on\s+duplicate\s+key.*)?\s*$`)
+	insertReNoFields = regexp.MustCompile(`(?i)^(?:insert(?:\s+ignore)?|replace)\s+.*?\binto\s+(.*?)\s*values?\s*\((.*?)\)\s*(?:\slimit\s|on\s+duplicate\s+key.*)?\s*$`)
+	insertSetRe      = regexp.MustCompile(`(?i)(?:insert(?:\s+ignore)?|replace)\s+(?:.*?\binto)\s+(.*?)\s*set\s+(.*?)\s*(?:\blimit\b|on\s+duplicate\s+key.*)?\s*$`)
 )
 
 func IsDMLQuery(query string) bool {
@@ -73,6 +74,11 @@ func DMLToSelect(query string) string {
 		return insertWithSetToSelect(m)
 	}
 
+	m = insertReNoFields.FindStringSubmatch(query)
+	if len(m) > 2 {
+		return insertToSelectNoFields(m)
+	}
+
 	return ""
 }
 
@@ -108,6 +114,10 @@ func insertToSelect(matches []string) string {
 		}
 		return query
 	}
+	return fmt.Sprintf("SELECT * FROM %s LIMIT 1", matches[1])
+}
+
+func insertToSelectNoFields(matches []string) string {
 	return fmt.Sprintf("SELECT * FROM %s LIMIT 1", matches[1])
 }
 
