@@ -48,11 +48,11 @@ type AgentTestSuite struct {
 	configFile string
 	// Log
 	logger  *pct.Logger
-	logChan chan *proto.LogEntry
+	logChan chan proto.LogEntry
 	// Agent
 	agent        *agent.Agent
 	config       *pc.Agent
-	services     map[string]*mock.MockServiceManager
+	services     map[string]pct.ServiceManager
 	servicesMap  map[string]pct.ServiceManager
 	client       *mock.WebsocketClient
 	sendDataChan chan interface{}
@@ -83,13 +83,13 @@ func (s *AgentTestSuite) SetUpSuite(t *C) {
 
 	// Log
 	// todo: use log.Manager instead
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "agent-test")
 
 	// Agent
 	s.config = &pc.Agent{
 		UUID:        "abc-123-def",
-		ApiHostname: "localhost",
+		ApiHostname: "http://localhost",
 		Keepalive:   1, // don't send while testing
 	}
 
@@ -108,7 +108,7 @@ func (s *AgentTestSuite) SetUpSuite(t *C) {
 func (s *AgentTestSuite) SetUpTest(t *C) {
 	// Before each test, create an agent.  Tests make change the agent,
 	// so this ensures each test starts with an agent with known values.
-	s.services = make(map[string]*mock.MockServiceManager)
+	s.services = make(map[string]pct.ServiceManager)
 	s.services["qan"] = mock.NewMockServiceManager("qan", s.readyChan, s.traceChan)
 	s.services["mm"] = mock.NewMockServiceManager("mm", s.readyChan, s.traceChan)
 
@@ -122,10 +122,11 @@ func (s *AgentTestSuite) SetUpTest(t *C) {
 		"mm":  s.services["mm"],
 		"qan": s.services["qan"],
 	}
-	s.agent = agent.NewAgent(s.config, s.logger, s.api, s.client, s.servicesMap)
 
 	// Run the agent.
+	s.agent = agent.NewAgent(s.config, s.logger, s.client, "http://localhost", s.servicesMap)
 	s.agentRunning = true
+
 	go func() {
 		s.agent.Run()
 		s.doneChan <- true
@@ -133,7 +134,6 @@ func (s *AgentTestSuite) SetUpTest(t *C) {
 }
 
 func (s *AgentTestSuite) TearDownTest(t *C) {
-
 	if s.agentRunning {
 		select {
 		case s.readyChan <- true: // qan.Stop() immediately
@@ -164,9 +164,9 @@ func (s *AgentTestSuite) TearDownTest(t *C) {
 }
 
 func (s *AgentTestSuite) TearDownSuite(t *C) {
-	if err := os.RemoveAll(s.tmpDir); err != nil {
-		t.Error(err)
-	}
+	//if err := os.RemoveAll(s.tmpDir); err != nil {
+	//	t.Error(err)
+	//}
 }
 
 type ByService []proto.AgentConfig
@@ -280,8 +280,8 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 	qanConfig := &pc.QAN{
 		Interval:          60,         // seconds
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     120, // seconds
 	}
 
@@ -386,8 +386,8 @@ func (s *AgentTestSuite) TestStartServiceSlow(t *C) {
 	qanConfig := &pc.QAN{
 		Interval:          60,         // seconds
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     120, // seconds
 	}
 	qanConfigData, _ := json.Marshal(qanConfig)
@@ -478,7 +478,12 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 	// Load a partial config to make sure LoadConfig() works in general but also
 	// when the config has missing options (which is normal).
 	os.Remove(s.configFile)
-	test.CopyFile(sample+"/config001.json", s.configFile)
+	sampleConfig := sample + "/config001.json"
+	err := test.CopyFile(sampleConfig, s.configFile)
+	if err != nil {
+		t.Fatalf("cannot copy config file %s to %s : %s", sampleConfig, s.configFile, err.Error())
+	}
+
 	bytes, err := agent.LoadConfig()
 	t.Assert(err, IsNil)
 	got := &pc.Agent{}
@@ -499,7 +504,10 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 
 	// Load a config with all options to make sure LoadConfig() hasn't missed any.
 	os.Remove(s.configFile)
-	test.CopyFile(sample+"/full_config.json", s.configFile)
+	err = test.CopyFile(sample+"/full_config.json", s.configFile)
+	if err != nil {
+		t.Fatalf("cannot copy config file %s to %s : %s", sampleConfig, s.configFile, err.Error())
+	}
 	bytes, err = agent.LoadConfig()
 	t.Assert(err, IsNil)
 	got = &pc.Agent{}
@@ -540,7 +548,7 @@ func (s *AgentTestSuite) TestGetConfig(t *C) {
 	expect := []proto.AgentConfig{
 		{
 			Service: "agent",
-			Config:  string(bytes),
+			Running: string(bytes),
 		},
 	}
 
@@ -575,19 +583,20 @@ func (s *AgentTestSuite) TestGetAllConfigs(t *C) {
 	expectConfigs := []proto.AgentConfig{
 		{
 			Service: "agent",
-			Config:  string(bytes),
+			Running: string(bytes),
 		},
 		{
 			Service: "mm",
-			Config:  `{"Foo":"bar"}`,
+			Set:     `{"Foo":"bar"}`,
 		},
 		{
 			Service: "qan",
-			Config:  `{"Foo":"bar"}`,
+			Set:     `{"Foo":"bar"}`,
 		},
 	}
 	if ok, diff := IsDeeply(gotConfigs, expectConfigs); !ok {
 		Dump(gotConfigs)
+		Dump(expectConfigs)
 		t.Error(diff)
 	}
 }
@@ -727,7 +736,7 @@ func (s *AgentTestSuite) TestKeepalive(t *C) {
 }
 
 func (s *AgentTestSuite) TestRestart(t *C) {
-	// Stop the default agnet.  We need our own to check its return value.
+	// Stop the default agent.  We need our own to check its return value.
 	s.TearDownTest(t)
 
 	cmdFactory := &mock.CmdFactory{}
@@ -738,7 +747,7 @@ func (s *AgentTestSuite) TestRestart(t *C) {
 		os.Remove(pct.Basedir.File("start-script"))
 	}()
 
-	newAgent := agent.NewAgent(s.config, s.logger, s.api, s.client, s.servicesMap)
+	newAgent := agent.NewAgent(s.config, s.logger, s.client, "localhost", s.servicesMap)
 	doneChan := make(chan error, 1)
 	go func() {
 		doneChan <- newAgent.Run()
@@ -786,6 +795,6 @@ func (s *AgentTestSuite) TestCmdToService(t *C) {
 	t.Check(reply[0].Error, Equals, "")
 	t.Check(reply[0].Cmd, Equals, "Hello")
 
-	t.Assert(s.services["mm"].Cmds, HasLen, 1)
-	t.Check(s.services["mm"].Cmds[0].Cmd, Equals, "Hello")
+	t.Assert(s.services["mm"].(*mock.MockServiceManager).Cmds, HasLen, 1)
+	t.Check(s.services["mm"].(*mock.MockServiceManager).Cmds[0].Cmd, Equals, "Hello")
 }
