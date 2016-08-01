@@ -77,14 +77,12 @@ func (s *MysqlTestSuite) TestMissingSocketError(t *C) {
 
 func (s *MysqlTestSuite) TestiGetGlobalNumber(t *C) {
 	// https://jira.percona.com/browse/PCT-791
-	conn := mysql.NewConnection("percona:percona@unix(/foo/bar/my.sock)/")
+	conn := mysql.NewConnection(s.dsn)
 	err := conn.Connect()
-	t.Check(
-		fmt.Sprintf("%s", err),
-		Equals,
-		"Cannot connect to MySQL percona:***@unix(/foo/bar/my.sock)/: connect: no such file or directory: /foo/bar/my.sock",
-	)
-	t.Check(conn.GetGlobalVarNumber("slow_query_log_always_write_time"), Equals, 10)
+	t.Assert(err, IsNil)
+	slowQueryLogAlwaysWriteTime, err := conn.GetGlobalVarNumber("slow_query_log_always_write_time")
+	t.Check(err, IsNil)
+	t.Check(slowQueryLogAlwaysWriteTime, Equals, float64(10))
 
 }
 

@@ -58,11 +58,11 @@ func (s *SlowMySQL) Set(queries []mysql.Query) error {
 	return s.realConnection.Set(queries)
 }
 
-func (s *SlowMySQL) GetGlobalVarString(varName string) string {
+func (s *SlowMySQL) GetGlobalVarString(varName string) (string, error) {
 	return s.realConnection.GetGlobalVarString(varName)
 }
 
-func (s *SlowMySQL) GetGlobalVarNumber(varName string) float64 {
+func (s *SlowMySQL) GetGlobalVarNumber(varName string) (float64, error) {
 	return s.realConnection.GetGlobalVarNumber(varName)
 }
 

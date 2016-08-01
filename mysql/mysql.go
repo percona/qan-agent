@@ -45,8 +45,8 @@ type Connector interface {
 	Close()
 	Set([]Query) error
 	Exec([]string) error
-	GetGlobalVarString(varName string) string
-	GetGlobalVarNumber(varName string) float64
+	GetGlobalVarString(varName string) (string, error)
+	GetGlobalVarNumber(varName string) (float64, error)
 	Uptime() (uptime int64, err error)
 	AtLeastVersion(string) (bool, error)
 	UTCOffset() (time.Duration, time.Duration, error)
@@ -125,7 +125,10 @@ func (c *Connection) Set(queries []Query) error {
 			}
 		}
 		if query.Verify != "" {
-			got := c.GetGlobalVarString(query.Verify)
+			got, err := c.GetGlobalVarString(query.Verify)
+			if err != nil {
+				return err
+			}
 			if got != query.Expect {
 				return fmt.Errorf(
 					"Global variable '%s' is set to '%s' but needs to be '%s'. "+
@@ -150,22 +153,22 @@ func (c *Connection) Exec(queries []string) error {
 	return nil
 }
 
-func (c *Connection) GetGlobalVarString(varName string) string {
+func (c *Connection) GetGlobalVarString(varName string) (string, error) {
 	if !c.connected {
-		return ""
+		return "", fmt.Errorf("error while getting global string var %s from MySQL. Connection is closed", varName)
 	}
 	var varValue string
 	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
-	return varValue
+	return varValue, nil
 }
 
-func (c *Connection) GetGlobalVarNumber(varName string) float64 {
+func (c *Connection) GetGlobalVarNumber(varName string) (float64, error) {
 	if !c.connected {
-		return 0
+		return 0, fmt.Errorf("error while getting global number var %s from MySQL. Connection is closed", varName)
 	}
 	var varValue float64
 	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
-	return varValue
+	return varValue, nil
 }
 
 func (c *Connection) Uptime() (uptime int64, err error) {
@@ -182,7 +185,11 @@ func (c *Connection) Uptime() (uptime int64, err error) {
 // Check if version v2 is equal or higher than v1 (v2 >= v1)
 // v2 can be in form m.n.o-ubuntu
 func (c *Connection) AtLeastVersion(minVersion string) (bool, error) {
-	return pct.AtLeastVersion(c.GetGlobalVarString("version"), minVersion)
+	version, err := c.GetGlobalVarString("version")
+	if err != nil {
+		return false, err
+	}
+	return pct.AtLeastVersion(version, minVersion)
 }
 
 func (c *Connection) UTCOffset() (time.Duration, time.Duration, error) {
