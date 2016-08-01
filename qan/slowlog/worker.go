@@ -102,6 +102,11 @@ func NewWorker(logger *pct.Logger, config pc.QAN, mysqlConn mysql.Connector) *Wo
 
 	name := logger.Service()
 
+	if err = mysqlConn.Connect(); err != nil {
+		logger.Error(err.Error())
+	}
+	defer mysqlConn.Close()
+
 	w := &Worker{
 		logger:    logger,
 		config:    config,
