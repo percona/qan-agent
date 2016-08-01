@@ -115,14 +115,14 @@ func (r *Relay) Run() {
 				} else {
 					r.stdout.Println(msg)
 				}
-			}
 
-			// Send to API if we have a websocket client, and not in offline mode.
-			if !r.offline && !entry.Offline && entry.Level != proto.LOG_DEBUG && r.client != nil {
-				r.send(&entry, true) // buffer on err
-			}
+				// Send to API if we have a websocket client, and not in offline mode.
+				if !r.offline && !entry.Offline && entry.Level != proto.LOG_DEBUG && r.client != nil {
+					r.send(&entry, true) // buffer on err
+				}
 
-			r.status.Update("log-chan", fmt.Sprintf("%d", len(r.logChan)))
+				r.status.Update("log-chan", fmt.Sprintf("%d", len(r.logChan)))
+			}
 		case connected := <-r.client.ConnectChan():
 			r.connected = connected
 			if connected {
