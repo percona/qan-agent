@@ -56,7 +56,7 @@ func debug(logChan chan *proto.LogEntry) {
 /////////////////////////////////////////////////////////////////////////////
 
 type DiskvSpoolerTestSuite struct {
-	logChan  chan *proto.LogEntry
+	logChan  chan proto.LogEntry
 	logger   *pct.Logger
 	basedir  string
 	dataDir  string
@@ -67,7 +67,7 @@ type DiskvSpoolerTestSuite struct {
 var _ = Suite(&DiskvSpoolerTestSuite{})
 
 func (s *DiskvSpoolerTestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "data_test")
 
 	s.basedir, _ = ioutil.TempDir("/tmp", "percona-agent-data-spooler-test")
@@ -501,7 +501,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolLimits(t *C) {
 /////////////////////////////////////////////////////////////////////////////
 
 type SenderTestSuite struct {
-	logChan    chan *proto.LogEntry
+	logChan    chan proto.LogEntry
 	logger     *pct.Logger
 	tickerChan chan time.Time
 	// --
@@ -513,7 +513,7 @@ type SenderTestSuite struct {
 var _ = Suite(&SenderTestSuite{})
 
 func (s *SenderTestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "data_test")
 	s.tickerChan = make(chan time.Time, 1)
 
@@ -871,7 +871,7 @@ func (s *SenderTestSuite) TestBadFiles(t *C) {
 /////////////////////////////////////////////////////////////////////////////
 
 type ManagerTestSuite struct {
-	logChan  chan *proto.LogEntry
+	logChan  chan proto.LogEntry
 	logger   *pct.Logger
 	basedir  string
 	trashDir string
@@ -894,7 +894,7 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 	s.dataDir = pct.Basedir.Dir("data")
 	s.trashDir = path.Join(s.basedir, "trash")
 
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "data_test")
 
 	s.dataChan = make(chan []byte, 5)
@@ -918,7 +918,7 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 		Encoding:     "none",
 		SendInterval: 1,
 	}
-	bytes, _ := json.Marshal(config)
+	bytes, _ := json.MarshalIndent(config, "", "    ")
 	// Write config to disk because manager reads it on start,
 	// else it uses default config.
 	pct.Basedir.WriteConfig("data", config)
@@ -949,7 +949,8 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	expectConfig := []proto.AgentConfig{
 		{
 			Service: "data",
-			Config:  string(bytes),
+			Set:     string(bytes),
+			Running: `{"Encoding":"none","SendInterval":1,"Limits":{"MaxAge":86400,"MaxSize":104857600,"MaxFiles":1000}}`,
 		},
 	}
 	if same, diff := IsDeeply(gotConfig, expectConfig); !same {
@@ -999,6 +1000,9 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	 * Change SendInterval
 	 */
 	config.SendInterval = 5
+	config.Limits.MaxAge = 86400
+	config.Limits.MaxSize = 104857600
+	config.Limits.MaxFiles = 1000
 	configData, err := json.Marshal(config)
 	t.Assert(err, IsNil)
 	cmd := &proto.Cmd{
@@ -1026,7 +1030,8 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	expectConfigRes := []proto.AgentConfig{
 		{
 			Service: "data",
-			Config:  string(configData),
+			Set:     string(configData),
+			Running: `{"Encoding":"none","SendInterval":5,"Limits":{"MaxAge":86400,"MaxSize":104857600,"MaxFiles":1000}}`, //TODO Write a better test for this
 		},
 	}
 	if same, diff := IsDeeply(gotConfigRes, expectConfigRes); !same {
@@ -1076,7 +1081,8 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	expectConfigRes = []proto.AgentConfig{
 		{
 			Service: "data",
-			Config:  string(configData),
+			Set:     string(configData),
+			Running: `{"Encoding":"gzip","SendInterval":5,"Limits":{"MaxAge":86400,"MaxSize":104857600,"MaxFiles":1000}}`, //TODO improve this test
 		},
 	}
 	if same, diff := IsDeeply(gotConfigRes, expectConfigRes); !same {

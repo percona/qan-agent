@@ -19,10 +19,11 @@ package mock
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/pmm/proto"
+	"github.com/percona/qan-agent/mysql"
 )
 
 type NullMySQL struct {
@@ -116,20 +117,20 @@ func (n *NullMySQL) Reset() {
 	n.numberVars = make(map[string]float64)
 }
 
-func (n *NullMySQL) GetGlobalVarString(varName string) string {
+func (n *NullMySQL) GetGlobalVarString(varName string) (string, error) {
 	value, ok := n.stringVars[varName]
 	if ok {
-		return value
+		return value, nil
 	}
-	return ""
+	return "", fmt.Errorf("cannot get stringvar %s", varName)
 }
 
-func (n *NullMySQL) GetGlobalVarNumber(varName string) float64 {
+func (n *NullMySQL) GetGlobalVarNumber(varName string) (float64, error) {
 	value, ok := n.numberVars[varName]
 	if ok {
-		return value
+		return value, nil
 	}
-	return 0
+	return 0, fmt.Errorf("cannot get %s value", varName)
 }
 
 func (n *NullMySQL) SetGlobalVarNumber(name string, value float64) {

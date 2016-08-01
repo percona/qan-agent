@@ -21,13 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"os"
+
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mrms"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	. "gopkg.in/check.v1"
-	"os"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -36,7 +37,7 @@ var dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
 
 type TestSuite struct {
 	nullmysql     *mock.NullMySQL
-	logChan       chan *proto.LogEntry
+	logChan       chan proto.LogEntry
 	logger        *pct.Logger
 	instance      proto.Instance
 	emptyInstance proto.Instance
@@ -46,7 +47,7 @@ var _ = Suite(&TestSuite{})
 
 func (s *TestSuite) SetUpSuite(t *C) {
 	s.nullmysql = mock.NewNullMySQL()
-	s.logChan = make(chan *proto.LogEntry, 1000)
+	s.logChan = make(chan proto.LogEntry, 1000)
 	s.logger = pct.NewLogger(s.logChan, "mrms-monitor-test")
 	s.instance = proto.Instance{
 		Subsystem: "mysql",

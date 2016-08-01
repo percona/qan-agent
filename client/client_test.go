@@ -35,7 +35,7 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 type TestSuite struct {
-	logChan   chan *proto.LogEntry
+	logChan   chan proto.LogEntry
 	logger    *pct.Logger
 	server    *mock.WebsocketServer
 	api       *mock.API
@@ -55,7 +55,7 @@ const (
 )
 
 func (s *TestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "ws")
 
 	mock.SendChan = make(chan interface{}, 5)

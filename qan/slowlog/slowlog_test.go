@@ -57,7 +57,7 @@ func (a ByQueryId) Less(i, j int) bool {
 }
 
 type WorkerTestSuite struct {
-	logChan       chan *proto.LogEntry
+	logChan       chan proto.LogEntry
 	logger        *pct.Logger
 	now           time.Time
 	mysqlInstance proto.Instance
@@ -72,7 +72,7 @@ var _ = Suite(&WorkerTestSuite{})
 
 func (s *WorkerTestSuite) SetUpSuite(t *C) {
 	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	s.logChan = make(chan *proto.LogEntry, 100)
+	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 	s.now = time.Now()
 	s.mysqlInstance = proto.Instance{UUID: "1", Name: "mysql1"}
@@ -89,8 +89,8 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 		},
 		Interval:          60,         // 1 min
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     60, // 1 min
 		CollectFrom:       "slowlog",
 	}
@@ -173,7 +173,7 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 		EndOffset:   524,
 	}
 	config := s.config
-	config.ExampleQueries = "false"
+	config.ExampleQueries = false
 	got, err := s.RunWorker(config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &qan.Result{}
@@ -290,9 +290,9 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	config := pc.QAN{
 		UUID:              s.mysqlInstance.UUID,
 		Interval:          300,
-		MaxSlowLogSize:    1000,   // <-- HERE
-		RemoveOldSlowLogs: "true", // <-- HERE too
-		ExampleQueries:    "false",
+		MaxSlowLogSize:    1000, // <-- HERE
+		RemoveOldSlowLogs: true, // <-- HERE too
+		ExampleQueries:    false,
 		WorkerRunTime:     600,
 		Start: []string{
 			"-- start",
@@ -403,8 +403,8 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 		UUID:              s.mysqlInstance.UUID,
 		Interval:          300,
 		MaxSlowLogSize:    1000,
-		RemoveOldSlowLogs: "false", // <-- HERE
-		ExampleQueries:    "false",
+		RemoveOldSlowLogs: false, // <-- HERE
+		ExampleQueries:    false,
 		WorkerRunTime:     600,
 		Start: []string{
 			"-- start",
@@ -503,7 +503,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 		UUID:              s.mysqlInstance.UUID,
 		Interval:          300,
 		MaxSlowLogSize:    1024 * 1024 * 1024,
-		RemoveOldSlowLogs: "true",
+		RemoveOldSlowLogs: true,
 		WorkerRunTime:     60,
 		Start:             []string{},
 		Stop:              []string{},
@@ -590,14 +590,14 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 /////////////////////////////////////////////////////////////////////////////
 
 type IterTestSuite struct {
-	logChan chan *proto.LogEntry
+	logChan chan proto.LogEntry
 	logger  *pct.Logger
 }
 
 var _ = Suite(&IterTestSuite{})
 
 func (s *IterTestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 100)
+	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 }
 

@@ -172,7 +172,7 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
 	t.Assert(m, NotNil)
-	configs := make([]pc.QAN, 0)
+	var configs []pc.QAN
 	for i, analyzerType := range []string{"slowlog", "perfschema"} {
 		// We have two analyzerTypes and two MySQL instances in fixture, lets re-use the index
 		// as we only need one of each analizer type and they need to be different instances.
@@ -183,10 +183,10 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 			CollectFrom:       analyzerType,
 			Interval:          300,
 			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,   // specify optional args
-			RemoveOldSlowLogs: "yes", // specify optional args
-			ExampleQueries:    "yes", // specify optional args
-			ReportLimit:       200,   // specify optional args
+			MaxSlowLogSize:    100,  // specify optional args
+			RemoveOldSlowLogs: true, // specify optional args
+			ExampleQueries:    true, // specify optional args
+			ReportLimit:       200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -275,7 +275,7 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
 	t.Assert(m, NotNil)
-	configs := make([]pc.QAN, 0)
+	var configs []pc.QAN
 	for _, mysqlInstance := range mysqlInstances {
 		// Write a realistic qan.conf config to disk.
 		config := pc.QAN{
@@ -283,10 +283,10 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 			CollectFrom:       "perfschema",
 			Interval:          300,
 			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,   // specify optional args
-			RemoveOldSlowLogs: "yes", // specify optional args
-			ExampleQueries:    "yes", // specify optional args
-			ReportLimit:       200,   // specify optional args
+			MaxSlowLogSize:    100,  // specify optional args
+			RemoveOldSlowLogs: true, // specify optional args
+			ExampleQueries:    true, // specify optional args
+			ReportLimit:       200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -429,25 +429,16 @@ func (s *ManagerTestSuite) TestValidateConfig(t *C) {
 	t.Assert(len(mysqlInstances), Equals, 1)
 	mysqlUUID := mysqlInstances[0].UUID
 
-	config := pc.QAN{
-		UUID: mysqlUUID,
-		Start: []string{
-			"SET GLOBAL slow_query_log=OFF",
-			"SET GLOBAL long_query_time=0.123",
-			"SET GLOBAL slow_query_log=ON",
-		},
-		Stop: []string{
-			"SET GLOBAL slow_query_log=OFF",
-			"SET GLOBAL long_query_time=10",
-		},
-		Interval:          300,        // 5 min
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
-		WorkerRunTime:     600, // 10 min
-		CollectFrom:       "slowlog",
+	config := map[string]string{
+		"UUID":              mysqlUUID,
+		"Interval":          "300",        // 5 min
+		"MaxSlowLogSize":    "1073741824", // 1 GiB
+		"RemoveOldSlowLogs": "true",
+		"ExampleQueries":    "true",
+		"WorkerRunTime":     "600", // 10 min
+		"CollectFrom":       "slowlog",
 	}
-	err := qan.ValidateConfig(&config)
+	_, err := qan.ValidateConfig(config)
 	t.Check(err, IsNil)
 }
 
@@ -480,8 +471,8 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 		},
 		Interval:          300,        // 5 min
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     600, // 10 min
 		CollectFrom:       "slowlog",
 	}

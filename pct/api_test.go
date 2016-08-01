@@ -115,15 +115,15 @@ func (s *SysTestSuite) TestConnect(t *C) {
 		fmt.Fprintln(w, string(buf))
 	}
 
-	r.HandleFunc("/", f)
-	r.HandleFunc("/agents/1234", g)
+	r.HandleFunc("/path", f)
+	r.HandleFunc("/agents/", g)
 	defer ts.Close()
 
 	// Connect method receives a host without http://, just the hostname
 	u, _ := url.Parse(ts.URL)
 
 	a := NewAPI()
-	err := a.Connect(u.Host, "1234")
+	err := a.Connect(u.Host, "/path", "")
 	t.Check(err, IsNil)
 
 }
