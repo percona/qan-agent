@@ -37,7 +37,7 @@ func Test(t *testing.T) { TestingT(t) }
 
 type ManagerTestSuite struct {
 	tmpDir      string
-	logChan     chan *proto.LogEntry
+	logChan     chan proto.LogEntry
 	logger      *pct.Logger
 	configDir   string
 	instanceDir string
@@ -56,7 +56,7 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 
 	s.configDir = pct.Basedir.Dir("config")
 	s.instanceDir = pct.Basedir.Dir("instance")
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "pct-it-test")
 
 	links := map[string]string{

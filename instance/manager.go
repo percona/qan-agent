@@ -191,6 +191,7 @@ func (m *Manager) updateInstance(in proto.Instance) error {
 
 	m.status.Update("instance-mrms", "Updating info "+in.UUID)
 
+	in.DSN = dsn.HidePassword(in.DSN) // We don't want to store passwords in the API
 	data, err := json.Marshal(&in)
 	if err != nil {
 		return err

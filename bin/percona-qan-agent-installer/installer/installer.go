@@ -25,7 +25,7 @@ import (
 	"regexp"
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/nu7hatch/gouuid"
 	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/pmm/proto"
@@ -184,7 +184,7 @@ func (i *Installer) CreateMySQLInstance() error {
 	// Get MySQL DSN for agent to use. It is new MySQL user created just for
 	// agent, or user is asked for existing one. DSN is verified prior returning
 	// by connecting to MySQL.
-	dsn, err := i.getAgentDSN()
+	instanceDSN, err := i.getAgentDSN()
 	if err != nil {
 		return err
 	}
@@ -194,13 +194,17 @@ func (i *Installer) CreateMySQLInstance() error {
 		ParentUUID: i.os.UUID,
 		UUID:       NewUUID(),
 		Name:       i.mysqlHostname,
-		DSN:        dsn.String(),
+		DSN:        dsn.HidePassword(instanceDSN.String()),
 	}
 
 	created, err := i.api.CreateInstance("/instances", i.mysql)
 	if err != nil {
 		return err
 	}
+
+	// In the previous step we sent a masked password to the API.
+	// Now we need the password to be unmasked to store it into the config file.
+	i.mysql.DSN = instanceDSN.String()
 
 	if err := i.instanceRepo.Add(*i.mysql, true); err != nil {
 		return err
