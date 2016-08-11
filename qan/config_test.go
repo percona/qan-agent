@@ -18,6 +18,7 @@
 package qan_test
 
 import (
+	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/qan"
 	. "gopkg.in/check.v1"
 )
@@ -27,11 +28,7 @@ type ConfigTestSuite struct{}
 var _ = Suite(&ConfigTestSuite{})
 
 func (s *ConfigTestSuite) TestSlowLogMySQLBasic(t *C) {
-	on, off, err := qan.MakeConfig(
-		"MySQL",
-		"5.6.24",
-		"slowlog",
-	)
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "MySQL", "5.6.24")
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -45,11 +42,7 @@ func (s *ConfigTestSuite) TestSlowLogMySQLBasic(t *C) {
 }
 
 func (s *ConfigTestSuite) TestSlowLogPerconaBasic5625(t *C) {
-	on, off, err := qan.MakeConfig(
-		"Percona Server",
-		"5.6.25",
-		"slowlog",
-	)
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.6.25")
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -72,11 +65,7 @@ func (s *ConfigTestSuite) TestSlowLogPerconaBasic5625(t *C) {
 }
 
 func (s *ConfigTestSuite) TestSlowLogPerconaBasic5534(t *C) {
-	on, off, err := qan.MakeConfig(
-		"Percona Server",
-		"5.5.34",
-		"slowlog",
-	)
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.5.34")
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -99,11 +88,7 @@ func (s *ConfigTestSuite) TestSlowLogPerconaBasic5534(t *C) {
 }
 
 func (s *ConfigTestSuite) TestSlowLogPerconaBasic5510(t *C) {
-	on, off, err := qan.MakeConfig(
-		"Percona Server",
-		"5.5.10",
-		"slowlog",
-	)
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.5.10")
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -122,11 +107,7 @@ func (s *ConfigTestSuite) TestSlowLogPerconaBasic5510(t *C) {
 }
 
 func (s *ConfigTestSuite) TestSlowLogPerconaBasic5147(t *C) {
-	on, off, err := qan.MakeConfig(
-		"Percona Server",
-		"5.1.47",
-		"slowlog",
-	)
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.1.47")
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -145,11 +126,7 @@ func (s *ConfigTestSuite) TestSlowLogPerconaBasic5147(t *C) {
 }
 
 func (s *ConfigTestSuite) TestSlowLogPerconaBasic5612(t *C) {
-	on, off, err := qan.MakeConfig(
-		"Percona Server",
-		"5.6.12",
-		"slowlog",
-	)
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "Percona Server", "5.6.12")
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",

@@ -183,6 +183,36 @@ func (r *Repo) Get(uuid string, cache bool) (proto.Instance, error) {
 	return in, nil
 }
 
+// Update updates an existing instance in the repo and optionally writes its config
+// to into a json config file
+func (r *Repo) Update(in proto.Instance, writeToDisk bool) error {
+	r.logger.Debug("Add:call")
+	defer r.logger.Debug("Add:return")
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	return r.update(in, writeToDisk)
+}
+
+func (r *Repo) update(in proto.Instance, writeToDisk bool) error {
+	r.logger.Debug("add:call")
+	defer r.logger.Debug("add:return")
+
+	if _, ok := r.instances[in.UUID]; !ok {
+		return ErrDuplicateInstance
+	}
+
+	if writeToDisk {
+		if err := pct.Basedir.WriteInstance(in.UUID, in); err != nil {
+			return err
+		}
+		r.logger.Info("Added " + in.Subsystem + " " + in.UUID)
+	}
+
+	r.instances[in.UUID] = in
+
+	return nil
+}
+
 func (r *Repo) Remove(uuid string) error {
 	r.logger.Debug("Remove:call")
 	defer r.logger.Debug("Remove:return")
