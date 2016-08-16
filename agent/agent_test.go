@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package agent_test
+package agent
 
 import (
 	"encoding/json"
@@ -29,7 +29,6 @@ import (
 	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-agent/agent"
 	"github.com/percona/qan-agent/agent/release"
 	"github.com/percona/qan-agent/pct"
 	pctCmd "github.com/percona/qan-agent/pct/cmd"
@@ -50,7 +49,7 @@ type AgentTestSuite struct {
 	logger  *pct.Logger
 	logChan chan proto.LogEntry
 	// Agent
-	agent        *agent.Agent
+	agent        *Agent
 	config       *pc.Agent
 	services     map[string]pct.ServiceManager
 	servicesMap  map[string]pct.ServiceManager
@@ -124,7 +123,7 @@ func (s *AgentTestSuite) SetUpTest(t *C) {
 	}
 
 	// Run the agent.
-	s.agent = agent.NewAgent(s.config, s.logger, s.client, "http://localhost", s.servicesMap)
+	s.agent = NewAgent(s.config, s.logger, s.client, "http://localhost", s.servicesMap)
 	s.agentRunning = true
 
 	go func() {
@@ -484,7 +483,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		t.Fatalf("cannot copy config file %s to %s : %s", sampleConfig, s.configFile, err.Error())
 	}
 
-	bytes, err := agent.LoadConfig()
+	bytes, err := LoadConfig()
 	t.Assert(err, IsNil)
 	got := &pc.Agent{}
 	if err := json.Unmarshal(bytes, got); err != nil {
@@ -493,8 +492,8 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 	expect := &pc.Agent{
 		UUID:        "abc-123-def",
 		ApiHostname: "localhost",
-		Keepalive:   agent.DEFAULT_KEEPALIVE,
-		PidFile:     agent.DEFAULT_PIDFILE,
+		Keepalive:   DEFAULT_KEEPALIVE,
+		PidFile:     DEFAULT_PIDFILE,
 	}
 	if same, diff := IsDeeply(got, expect); !same {
 		// @todo: if expect is not ptr, IsDeeply dies with "got ptr, expected struct"
@@ -508,7 +507,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 	if err != nil {
 		t.Fatalf("cannot copy config file %s to %s : %s", sampleConfig, s.configFile, err.Error())
 	}
-	bytes, err = agent.LoadConfig()
+	bytes, err = LoadConfig()
 	t.Assert(err, IsNil)
 	got = &pc.Agent{}
 	if err := json.Unmarshal(bytes, got); err != nil {
@@ -517,7 +516,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 	expect = &pc.Agent{
 		ApiHostname: "agent hostname",
 		UUID:        "agent uuid",
-		Keepalive:   agent.DEFAULT_KEEPALIVE,
+		Keepalive:   DEFAULT_KEEPALIVE,
 		PidFile:     "pid file",
 	}
 	if same, diff := IsDeeply(got, expect); !same {
@@ -747,7 +746,7 @@ func (s *AgentTestSuite) TestRestart(t *C) {
 		os.Remove(pct.Basedir.File("start-script"))
 	}()
 
-	newAgent := agent.NewAgent(s.config, s.logger, s.client, "localhost", s.servicesMap)
+	newAgent := NewAgent(s.config, s.logger, s.client, "localhost", s.servicesMap)
 	doneChan := make(chan error, 1)
 	go func() {
 		doneChan <- newAgent.Run()
@@ -797,4 +796,51 @@ func (s *AgentTestSuite) TestCmdToService(t *C) {
 
 	t.Assert(s.services["mm"].(*mock.MockServiceManager).Cmds, HasLen, 1)
 	t.Check(s.services["mm"].(*mock.MockServiceManager).Cmds[0].Cmd, Equals, "Hello")
+}
+
+func (s *AgentTestSuite) TestSanitizeConfig(t *C) {
+
+	in := [][]proto.AgentConfig{
+		[]proto.AgentConfig{
+			proto.AgentConfig{
+				Service: "data",
+				UUID:    "",
+				Set:     "",
+				Running: "{\"Encoding\":\"gzip\",\"SendInterval\":63,\"Limits\":{\"MaxAge\":86400,\"MaxSize\":104857600,\"MaxFiles\":1000}}",
+			},
+		},
+		[]proto.AgentConfig{
+			proto.AgentConfig{
+				Service: "qan",
+				UUID:    "33d8815c23c84f2d48550b90572b83c4",
+				Set: "{\"CollectFrom\":\"slowlog\",\"DSN\":\"root:root@unix(/var/run/mysqld/mysqld.sock)/?parseTime=true\"" +
+					",\"UUID\":\"33d8815c23c84f2d48550b90572b83c4\"}",
+				Running: "{\"UUID\":\"33d8815c23c84f2d48550b90572b83c4\"}",
+			},
+		},
+	}
+
+	expect := [][]proto.AgentConfig{
+		[]proto.AgentConfig{
+			proto.AgentConfig{
+				Service: "data",
+				UUID:    "", Set: "",
+				Running: "{\"Encoding\":\"gzip\",\"SendInterval\":63,\"Limits\":{\"MaxAge\":86400,\"MaxSize\":104857600,\"MaxFiles\":1000}}",
+			},
+		},
+		[]proto.AgentConfig{
+			proto.AgentConfig{
+				Service: "qan",
+				UUID:    "33d8815c23c84f2d48550b90572b83c4",
+				Set: "{\"CollectFrom\":\"slowlog\",\"DSN\":\"root:****@unix(/var/run/mysqld/mysqld.sock)/?parseTime=true\"" +
+					",\"UUID\":\"33d8815c23c84f2d48550b90572b83c4\"}",
+				Running: "{\"UUID\":\"33d8815c23c84f2d48550b90572b83c4\"}",
+			},
+		},
+	}
+
+	for i, config := range in {
+		got := sanitizeConfig(config)
+		t.Assert(got, DeepEquals, expect[i])
+	}
 }
