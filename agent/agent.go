@@ -544,7 +544,7 @@ func (agent *Agent) GetAllConfigs() (interface{}, []error) {
 		}
 		if config != nil {
 			// Not all services have a config.
-			configs = append(configs, sanitizeConfig(config)...)
+			configs = append(configs, SanitizeConfig(config)...)
 		}
 	}
 	return configs, errs
@@ -684,7 +684,7 @@ func (agent *Agent) AllStatus() map[string]string {
 	return status
 }
 
-func sanitizeConfig(config []proto.AgentConfig) []proto.AgentConfig {
+func SanitizeConfig(config []proto.AgentConfig) []proto.AgentConfig {
 	for i, c := range config {
 		configSet := map[string]string{}
 		err := json.Unmarshal([]byte(c.Set), &configSet)

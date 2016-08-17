@@ -840,7 +840,7 @@ func (s *AgentTestSuite) TestSanitizeConfig(t *C) {
 	}
 
 	for i, config := range in {
-		got := sanitizeConfig(config)
+		got := SanitizeConfig(config)
 		t.Assert(got, DeepEquals, expect[i])
 	}
 }
