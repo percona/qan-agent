@@ -1,0 +1,127 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "3xVanMXn/lblhNfZYORorpd8N6E=",
+			"path": "github.com/go-sql-driver/mysql",
+			"revision": "0b58b37b664c21f3010e836f1b931e1d0b0b0685",
+			"revisionTime": "2016-08-02T11:38:42Z"
+		},
+		{
+			"checksumSHA1": "ZACslY42W+iP/UG/5l/BizNFBsg=",
+			"path": "github.com/go-test/test",
+			"revision": "d8206cdc307a7a343b78a42cac235e0a002744a7",
+			"revisionTime": "2015-05-19T17:35:15Z"
+		},
+		{
+			"checksumSHA1": "oawxSepRPEQDEJ0ylM2pC/9pFJQ=",
+			"path": "github.com/gorilla/context",
+			"revision": "215affda49addc4c8ef7e2534915df2c8c35c6cd",
+			"revisionTime": "2014-12-17T16:02:51Z"
+		},
+		{
+			"checksumSHA1": "CPNyGCsDYViud8Dt0+ymjLuQF6Q=",
+			"path": "github.com/gorilla/mux",
+			"revision": "ba336c9cfb43552c90de6cb2ceedd3271c747558",
+			"revisionTime": "2015-07-17T15:03:03Z"
+		},
+		{
+			"checksumSHA1": "GIgiyQzZ4whM7DW8QhLt3wkL3yU=",
+			"path": "github.com/hashicorp/go-version",
+			"revision": "deeb027c13a95d56c7585df3fe29207208c6706e",
+			"revisionTime": "2016-07-25T21:20:58Z"
+		},
+		{
+			"checksumSHA1": "XC6s8JOUHX9AIr23WWeuu9VoH+8=",
+			"path": "github.com/nu7hatch/gouuid",
+			"revision": "179d4d0c4d8d407a32af483c2354df1d2c91e6c3",
+			"revisionTime": "2013-12-21T20:05:32Z"
+		},
+		{
+			"checksumSHA1": "059gprtgiBVVpa/X6gPgTnNva2w=",
+			"path": "github.com/percona/go-mysql/dsn",
+			"revision": "60ad788a64b0551305882f64fb5b789b51d3476a",
+			"revisionTime": "2016-08-04T17:45:23Z"
+		},
+		{
+			"checksumSHA1": "zZJd4jlrwbTgskRStMWG7NI8nbE=",
+			"path": "github.com/percona/go-mysql/event",
+			"revision": "60ad788a64b0551305882f64fb5b789b51d3476a",
+			"revisionTime": "2016-08-04T17:45:23Z"
+		},
+		{
+			"checksumSHA1": "hm9/98cy48uqG+KoVpEp8xgZM+Y=",
+			"path": "github.com/percona/go-mysql/log",
+			"revision": "60ad788a64b0551305882f64fb5b789b51d3476a",
+			"revisionTime": "2016-08-04T17:45:23Z"
+		},
+		{
+			"checksumSHA1": "rAEyfJpGNbFDm7yLiV41r8YzHPA=",
+			"path": "github.com/percona/go-mysql/log/slow",
+			"revision": "60ad788a64b0551305882f64fb5b789b51d3476a",
+			"revisionTime": "2016-08-04T17:45:23Z"
+		},
+		{
+			"checksumSHA1": "M9cjnCHsbStk+uea/RRSeKzga8Q=",
+			"path": "github.com/percona/go-mysql/query",
+			"revision": "60ad788a64b0551305882f64fb5b789b51d3476a",
+			"revisionTime": "2016-08-04T17:45:23Z"
+		},
+		{
+			"checksumSHA1": "77jNwmeWSRb4ohYnXMoF6sXXR64=",
+			"path": "github.com/percona/pmm/proto",
+			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
+			"revisionTime": "2016-08-08T11:24:14Z"
+		},
+		{
+			"checksumSHA1": "4PZPiCVqMIRH+S2V2PSQ/8IybO0=",
+			"path": "github.com/percona/pmm/proto/config",
+			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
+			"revisionTime": "2016-08-08T11:24:14Z"
+		},
+		{
+			"checksumSHA1": "CpfFqa/7s6PXhzhLtM6U9GrjVC8=",
+			"path": "github.com/percona/pmm/proto/metrics",
+			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
+			"revisionTime": "2016-08-08T11:24:14Z"
+		},
+		{
+			"checksumSHA1": "XQB2gJjtiIgiW3ZmwKU2n4/a9NQ=",
+			"path": "github.com/percona/pmm/proto/qan",
+			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
+			"revisionTime": "2016-08-08T11:24:14Z"
+		},
+		{
+			"checksumSHA1": "NYT5k+COkroAVjbNidTIN1hntJc=",
+			"path": "github.com/percona/pmm/proto/query",
+			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
+			"revisionTime": "2016-08-08T11:24:14Z"
+		},
+		{
+			"checksumSHA1": "o+cYxbFj21tlbJHuB1cyHQcaSKo=",
+			"path": "github.com/petar/GoLLRB/llrb",
+			"revision": "53be0d36a84c2a886ca057d34b6aa4468df9ccb4",
+			"revisionTime": "2013-04-27T21:51:48Z"
+		},
+		{
+			"checksumSHA1": "ojCwSVvGKCT4PhePretUJE9lqJI=",
+			"path": "github.com/peterbourgon/diskv",
+			"revision": "f2c8925fb5e0e9614e23499efa68df1924ba6add",
+			"revisionTime": "2015-11-13T11:50:06Z"
+		},
+		{
+			"checksumSHA1": "VZJjjUxfQrqpAkuGkmn8f2mgPGQ=",
+			"path": "golang.org/x/net/websocket",
+			"revision": "075e191f18186a8ff2becaf64478e30f4545cdad",
+			"revisionTime": "2016-08-05T06:12:51Z"
+		},
+		{
+			"checksumSHA1": "YzHkxW3fGe5Oc5AVatDNn1g5Ung=",
+			"path": "gopkg.in/check.v1",
+			"revision": "4f90aeace3a26ad7021961c297b22c42160c7b25",
+			"revisionTime": "2016-01-05T16:49:36Z"
+		}
+	],
+	"rootPath": "github.com/percona/qan-agent"
+}
