@@ -6,6 +6,8 @@ revel-build.log
 todo/
 tmp/
 vendor/
+!vendor/vendor.json
+update_dependencies.sh
 distro/
 build/percona-qan-agent*
 bin/percona-qan-agent/percona-qan-agent

@@ -120,7 +120,7 @@ func (s *DiskvSpooler) Start(sz proto.Serializer) error {
 		BasePath:     s.dataDir,
 		Transform:    func(s string) []string { return []string{} },
 		CacheSizeMax: CACHE_SIZE,
-		Index:        &diskv.LLRBIndex{},
+		Index:        &diskv.BTreeIndex{},
 		IndexLess:    func(a, b string) bool { return a < b },
 	})
 
