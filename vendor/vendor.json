@@ -15,6 +15,12 @@
 			"revisionTime": "2015-05-19T17:35:15Z"
 		},
 		{
+			"checksumSHA1": "i/LIWi9lm6JVINdLOdrZ9DGGXxc=",
+			"path": "github.com/google/btree",
+			"revision": "7d79101e329e5a3adf994758c578dab82b90c017",
+			"revisionTime": "2016-05-24T15:18:35Z"
+		},
+		{
 			"checksumSHA1": "oawxSepRPEQDEJ0ylM2pC/9pFJQ=",
 			"path": "github.com/gorilla/context",
 			"revision": "215affda49addc4c8ef7e2534915df2c8c35c6cd",
@@ -71,50 +77,44 @@
 		{
 			"checksumSHA1": "77jNwmeWSRb4ohYnXMoF6sXXR64=",
 			"path": "github.com/percona/pmm/proto",
-			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
-			"revisionTime": "2016-08-08T11:24:14Z"
+			"revision": "45931336321c35ad59634ee9e3211311e4fb7daa",
+			"revisionTime": "2016-08-17T15:08:17Z"
 		},
 		{
 			"checksumSHA1": "4PZPiCVqMIRH+S2V2PSQ/8IybO0=",
 			"path": "github.com/percona/pmm/proto/config",
-			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
-			"revisionTime": "2016-08-08T11:24:14Z"
+			"revision": "45931336321c35ad59634ee9e3211311e4fb7daa",
+			"revisionTime": "2016-08-17T15:08:17Z"
 		},
 		{
 			"checksumSHA1": "CpfFqa/7s6PXhzhLtM6U9GrjVC8=",
 			"path": "github.com/percona/pmm/proto/metrics",
-			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
-			"revisionTime": "2016-08-08T11:24:14Z"
+			"revision": "45931336321c35ad59634ee9e3211311e4fb7daa",
+			"revisionTime": "2016-08-17T15:08:17Z"
 		},
 		{
-			"checksumSHA1": "XQB2gJjtiIgiW3ZmwKU2n4/a9NQ=",
+			"checksumSHA1": "kH8WXcn4xuiD5wPbs+nZ75k2kcE=",
 			"path": "github.com/percona/pmm/proto/qan",
-			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
-			"revisionTime": "2016-08-08T11:24:14Z"
+			"revision": "45931336321c35ad59634ee9e3211311e4fb7daa",
+			"revisionTime": "2016-08-17T15:08:17Z"
 		},
 		{
 			"checksumSHA1": "NYT5k+COkroAVjbNidTIN1hntJc=",
 			"path": "github.com/percona/pmm/proto/query",
-			"revision": "afa5fe65e95e8065890e377d1dfc5fbfbc4678d6",
-			"revisionTime": "2016-08-08T11:24:14Z"
+			"revision": "45931336321c35ad59634ee9e3211311e4fb7daa",
+			"revisionTime": "2016-08-17T15:08:17Z"
 		},
 		{
-			"checksumSHA1": "o+cYxbFj21tlbJHuB1cyHQcaSKo=",
-			"path": "github.com/petar/GoLLRB/llrb",
-			"revision": "53be0d36a84c2a886ca057d34b6aa4468df9ccb4",
-			"revisionTime": "2013-04-27T21:51:48Z"
-		},
-		{
-			"checksumSHA1": "ojCwSVvGKCT4PhePretUJE9lqJI=",
+			"checksumSHA1": "h8Pad0BkBED0RM9EB+6A4nhGa/A=",
 			"path": "github.com/peterbourgon/diskv",
-			"revision": "f2c8925fb5e0e9614e23499efa68df1924ba6add",
-			"revisionTime": "2015-11-13T11:50:06Z"
+			"revision": "5dfcb07a075adbaaa4094cddfd160b1e1c77a043",
+			"revisionTime": "2016-04-04T09:36:48Z"
 		},
 		{
 			"checksumSHA1": "VZJjjUxfQrqpAkuGkmn8f2mgPGQ=",
 			"path": "golang.org/x/net/websocket",
-			"revision": "075e191f18186a8ff2becaf64478e30f4545cdad",
-			"revisionTime": "2016-08-05T06:12:51Z"
+			"revision": "07b51741c1d6423d4a6abab1c49940ec09cb1aaf",
+			"revisionTime": "2016-08-11T10:50:59Z"
 		},
 		{
 			"checksumSHA1": "YzHkxW3fGe5Oc5AVatDNn1g5Ung=",
