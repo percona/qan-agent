@@ -74,8 +74,8 @@ func (a *API) Conn() *websocket.Conn {
 	return &websocket.Conn{}
 }
 
-func (a *API) Connect() {
-	return
+func (a *API) Connect(hostname, basePath, agentUuid string) error {
+	return nil
 }
 
 func (a *API) ConnectOnce(timeout uint) error {

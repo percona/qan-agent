@@ -183,10 +183,10 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 			CollectFrom:       analyzerType,
 			Interval:          300,
 			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,   // specify optional args
-			RemoveOldSlowLogs: "yes", // specify optional args
-			ExampleQueries:    "yes", // specify optional args
-			ReportLimit:       200,   // specify optional args
+			MaxSlowLogSize:    100,  // specify optional args
+			RemoveOldSlowLogs: true, // specify optional args
+			ExampleQueries:    true, // specify optional args
+			ReportLimit:       200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -283,10 +283,10 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 			CollectFrom:       "perfschema",
 			Interval:          300,
 			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,   // specify optional args
-			RemoveOldSlowLogs: "yes", // specify optional args
-			ExampleQueries:    "yes", // specify optional args
-			ReportLimit:       200,   // specify optional args
+			MaxSlowLogSize:    100,  // specify optional args
+			RemoveOldSlowLogs: true, // specify optional args
+			ExampleQueries:    true, // specify optional args
+			ReportLimit:       200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -429,7 +429,47 @@ func (s *ManagerTestSuite) TestValidateConfig(t *C) {
 	t.Assert(len(mysqlInstances), Equals, 1)
 	mysqlUUID := mysqlInstances[0].UUID
 
-	config := pc.QAN{
+	config := map[string]string{
+		"UUID": mysqlUUID,
+		//Start: []string{
+		//	"SET GLOBAL slow_query_log=OFF",
+		//	"SET GLOBAL long_query_time=0.123",
+		//	"SET GLOBAL slow_query_log=ON",
+		//},
+		//Stop: []string{
+		//	"SET GLOBAL slow_query_log=OFF",
+		//	"SET GLOBAL long_query_time=10",
+		//},
+		"Interval":          "300",        // 5 min
+		"MaxSlowLogSize":    "1073741824", // 1 GiB
+		"RemoveOldSlowLogs": "true",
+		"ExampleQueries":    "true",
+		"WorkerRunTime":     "600", // 10 min
+		"CollectFrom":       "slowlog",
+	}
+	_, err := qan.ValidateConfig(config)
+	t.Check(err, IsNil)
+}
+
+func (s *ManagerTestSuite) TestAddInstance(t *C) {
+	// Make and start a qan.Manager with mock factories, no analyzer yet.
+	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
+	a := mock.NewQanAnalyzer("qan-analizer-1")
+	f := mock.NewQanAnalyzerFactory(a)
+	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	t.Assert(m, NotNil)
+	err := m.Start()
+	t.Check(err, IsNil)
+	test.WaitStatus(1, m, "qan", "Running")
+
+	mysqlInstances := s.im.List("mysql")
+	t.Assert(len(mysqlInstances), Equals, 1)
+	// This is a 'new' instance ID to force Handle to call the API because it doesn't
+	// know this instance so it will call the API to get it's information.
+	mysqlUUID := "3130000000009999"
+
+	// Create the qan config.
+	config := &pc.QAN{
 		UUID: mysqlUUID,
 		Start: []string{
 			"SET GLOBAL slow_query_log=OFF",
@@ -442,13 +482,75 @@ func (s *ManagerTestSuite) TestValidateConfig(t *C) {
 		},
 		Interval:          300,        // 5 min
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     600, // 10 min
 		CollectFrom:       "slowlog",
 	}
-	err := qan.ValidateConfig(&config)
+
+	// Send a StartTool cmd with the qan config to start an analyzer.
+	now := time.Now()
+	qanConfig, _ := json.Marshal(config)
+	cmd := &proto.Cmd{
+		User:      "daniel",
+		Ts:        now,
+		AgentUUID: "123",
+		Service:   "qan",
+		Cmd:       "StartTool",
+		Data:      qanConfig,
+	}
+	reply := m.Handle(cmd)
+	t.Assert(reply.Error, Equals, "")
+
+	// The manager writes the qan config to disk.
+	data, err := ioutil.ReadFile(pct.Basedir.ConfigFile("qan-" + mysqlUUID))
 	t.Check(err, IsNil)
+	gotConfig := &pc.QAN{}
+	err = json.Unmarshal(data, gotConfig)
+	t.Check(err, IsNil)
+	if same, diff := IsDeeply(gotConfig, config); !same {
+		Dump(gotConfig)
+		t.Error(diff)
+	}
+
+	// Now the manager and analyzer should be running.
+	status := m.Status()
+	t.Check(status["qan"], Equals, "Running")
+	t.Check(status["qan-analyzer"], Equals, "ok")
+
+	// Try to start the same analyzer again. It results in an error because
+	// double tooling is not allowed.
+	reply = m.Handle(cmd)
+	t.Check(reply.Error, Equals, a.String()+" service is running")
+
+	// Send a StopTool cmd to stop the analyzer.
+	now = time.Now()
+	cmd = &proto.Cmd{
+		User:      "daniel",
+		Ts:        now,
+		AgentUUID: "123",
+		Service:   "qan",
+		Cmd:       "StopTool",
+		Data:      []byte(mysqlUUID),
+	}
+	reply = m.Handle(cmd)
+	t.Assert(reply.Error, Equals, "")
+
+	// Now the manager is still running, but the analyzer is not.
+	status = m.Status()
+	t.Check(status["qan"], Equals, "Running")
+
+	// And the manager has removed the qan config from disk so next time
+	// the agent starts the analyzer is not started.
+	t.Check(test.FileExists(pct.Basedir.ConfigFile("qan-"+mysqlUUID)), Equals, false)
+
+	// StopTool should be idempotent, so send it again and expect no error.
+	reply = m.Handle(cmd)
+	t.Assert(reply.Error, Equals, "")
+
+	// Stop the manager.
+	err = m.Stop()
+	t.Assert(err, IsNil)
 }
 
 func (s *ManagerTestSuite) TestStartTool(t *C) {
@@ -480,8 +582,8 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 		},
 		Interval:          300,        // 5 min
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     600, // 10 min
 		CollectFrom:       "slowlog",
 	}

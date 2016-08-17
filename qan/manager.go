@@ -215,6 +215,25 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 		runningConfig := a.analyzer.Config()
 
 		return cmd.Reply(runningConfig) // success
+	case "RestartTool":
+		setConfig := map[string]string{}
+		if err := json.Unmarshal(cmd.Data, &setConfig); err != nil {
+			return cmd.Reply(nil, err)
+		}
+		uuid := setConfig["UUID"]
+		if err := m.restartAnalyzer(setConfig); err != nil {
+			return cmd.Reply(nil, err)
+		}
+
+		// Write instance qan config to disk so agent runs qan on restart.
+		if err := pct.Basedir.WriteConfig("qan-"+uuid, setConfig); err != nil {
+			return cmd.Reply(nil, err)
+		}
+
+		a := m.analyzers[uuid]
+		runningConfig := a.analyzer.Config()
+
+		return cmd.Reply(runningConfig) // success
 	case "StopTool":
 		errs := []error{}
 		uuid := string(cmd.Data)
@@ -293,6 +312,39 @@ func (m *Manager) GetDefaults() map[string]interface{} {
 /////////////////////////////////////////////////////////////////////////////
 // Implementation
 /////////////////////////////////////////////////////////////////////////////
+func (m *Manager) restartAnalyzer(setConfig map[string]string) error {
+	// XXX Assume caller has locked m.mux.
+
+	m.logger.Debug("startAnalyzer:call")
+	defer m.logger.Debug("startAnalyzer:return")
+
+	// Validate and transform the set config and into a running config.
+	config, err := ValidateConfig(setConfig)
+	if err != nil {
+		return fmt.Errorf("invalid QAN config: %s", err)
+	}
+
+	if err := m.stopAnalyzer(config.UUID); err != nil {
+		return err
+	}
+
+	// Get the MySQL instance from repo. It should be cached in a json config file
+	localMySQLInstance, err := m.instanceRepo.Get(config.UUID, false) // true = cache (write to disk)
+
+	// Remove the instance from repo to force calling the api to get
+	// the new config on the next call to Get
+	m.instanceRepo.Remove(config.UUID)
+
+	// Get the instance again and since it was removed, Get will call the API
+	mysqlInstance, err := m.instanceRepo.Get(config.UUID, false) // true = cache (write to disk)
+
+	// Update the DSN with the value we saved because API doesn't have the password
+	mysqlInstance.DSN = localMySQLInstance.DSN
+	m.instanceRepo.Update(mysqlInstance, true)
+
+	return m.startAnalyzer(setConfig)
+
+}
 
 func (m *Manager) startAnalyzer(setConfig map[string]string) error {
 	/*
@@ -317,6 +369,15 @@ func (m *Manager) startAnalyzer(setConfig map[string]string) error {
 	mysqlInstance, err := m.instanceRepo.Get(config.UUID, true) // true = cache (write to disk)
 	if err != nil {
 		return fmt.Errorf("cannot get MySQL instance %s: %s", config.UUID, err)
+	}
+
+	// instanceRepo.Get tries to read the info from the json file and if it doesn't exixts
+	// it tries to retrieve the instance from the API, but API only has a sanitized DSN without
+	// password so, we need to override the dsn with the one that comes from pmm-admin via
+	// setConfig["dsn"]
+	if setConfig["DSN"] != "" {
+		mysqlInstance.DSN = setConfig["DSN"]
+		m.instanceRepo.Update(mysqlInstance, true)
 	}
 
 	// Create a MySQL connection.
