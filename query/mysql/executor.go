@@ -72,7 +72,9 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			def, err := e.showCreate(Ident(t.Db, t.Table))
+			db := escapeTableAndDBNames(t.Db)
+			table := escapeTableAndDBNames(t.Table)
+			def, err := e.showCreate(Ident(db, table))
 			if err != nil {
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
@@ -93,7 +95,9 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			indexes, err := e.showIndex(Ident(t.Db, t.Table))
+			db := escapeTableAndDBNames(t.Db)
+			table := escapeTableAndDBNames(t.Table)
+			indexes, err := e.showIndex(Ident(db, table))
 			if err != nil {
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
@@ -116,7 +120,9 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 
 			// SHOW TABLE STATUS does not accept db.tbl so pass them separately,
 			// and tbl is used in LIKE so it's not an ident.
-			status, err := e.showStatus(Ident(t.Db, ""), t.Table)
+			db := escapeTableAndDBNames(t.Db)
+			table := escapeTableAndDBNames(t.Table)
+			status, err := e.showStatus(Ident(db, ""), table)
 			if err != nil {
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
@@ -268,15 +274,21 @@ func (e *QueryExecutor) showCreate(dbTable string) (string, error) {
 	var tableName string
 	var tableDef string
 	err := e.conn.DB().QueryRow("SHOW CREATE TABLE "+dbTable).Scan(&tableName, &tableDef)
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("table %s doesn't exist ", dbTable)
+	}
 	return tableDef, err
 }
 
 func (e *QueryExecutor) showIndex(dbTable string) (map[string][]proto.ShowIndexRow, error) {
 	rows, err := e.conn.DB().Query("SHOW INDEX FROM " + dbTable)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 	defer rows.Close()
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("table %s doesn't exist", dbTable)
+	}
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -361,5 +373,52 @@ func (e *QueryExecutor) showStatus(db, table string) (*proto.ShowTableStatus, er
 		&status.CreateOptions,
 		&status.Comment,
 	)
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("table %s.%s doesn't exist", db, table)
+	}
 	return status, err
+}
+
+func escapeTableAndDBNames(v string) string {
+	buf := make([]byte, len(v), 2*len(v))
+	pos := 0
+
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		switch c {
+		case '\x00':
+			buf[pos] = '\\'
+			buf[pos+1] = '0'
+			pos += 2
+		case '\n':
+			buf[pos] = '\\'
+			buf[pos+1] = 'n'
+			pos += 2
+		case '\r':
+			buf[pos] = '\\'
+			buf[pos+1] = 'r'
+			pos += 2
+		case '\x1a':
+			buf[pos] = '\\'
+			buf[pos+1] = 'Z'
+			pos += 2
+		case '\'':
+			buf[pos] = '\\'
+			buf[pos+1] = '\''
+			pos += 2
+		case '"':
+			buf[pos] = '\\'
+			buf[pos+1] = '"'
+			pos += 2
+		case '\\':
+			buf[pos] = '\\'
+			buf[pos+1] = '\\'
+			pos += 2
+		default:
+			buf[pos] = c
+			pos++
+		}
+	}
+
+	return string(buf[:pos])
 }
