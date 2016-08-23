@@ -38,7 +38,7 @@ func NewQueryExecutor(conn mysql.Connector) *QueryExecutor {
 }
 
 func (e *QueryExecutor) Explain(db, query string, convert bool) (*proto.ExplainResult, error) {
-	if !strings.HasPrefix(db, "`") {
+	if db != "" && !strings.HasPrefix(db, "`") {
 		db = "`" + db + "`"
 	}
 	explain, err := e.explain(db, query)
@@ -72,8 +72,8 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			db := escapeTableAndDBNames(t.Db)
-			table := escapeTableAndDBNames(t.Table)
+			db := escapeString(t.Db)
+			table := escapeString(t.Table)
 			def, err := e.showCreate(Ident(db, table))
 			if err != nil {
 				if tableInfo.Errors == nil {
@@ -95,8 +95,8 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			db := escapeTableAndDBNames(t.Db)
-			table := escapeTableAndDBNames(t.Table)
+			db := escapeString(t.Db)
+			table := escapeString(t.Table)
 			indexes, err := e.showIndex(Ident(db, table))
 			if err != nil {
 				if tableInfo.Errors == nil {
@@ -120,8 +120,8 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 
 			// SHOW TABLE STATUS does not accept db.tbl so pass them separately,
 			// and tbl is used in LIKE so it's not an ident.
-			db := escapeTableAndDBNames(t.Db)
-			table := escapeTableAndDBNames(t.Table)
+			db := escapeString(t.Db)
+			table := escapeString(t.Table)
 			status, err := e.showStatus(Ident(db, ""), table)
 			if err != nil {
 				if tableInfo.Errors == nil {
@@ -379,8 +379,8 @@ func (e *QueryExecutor) showStatus(db, table string) (*proto.ShowTableStatus, er
 	return status, err
 }
 
-func escapeTableAndDBNames(v string) string {
-	buf := make([]byte, len(v), 2*len(v))
+func escapeString(v string) string {
+	buf := make([]byte, 2*len(v))
 	pos := 0
 
 	for i := 0; i < len(v); i++ {
