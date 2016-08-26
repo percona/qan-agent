@@ -38,7 +38,7 @@ func NewQueryExecutor(conn mysql.Connector) *QueryExecutor {
 }
 
 func (e *QueryExecutor) Explain(db, query string, convert bool) (*proto.ExplainResult, error) {
-	if !strings.HasPrefix(db, "`") {
+	if db != "" && !strings.HasPrefix(db, "`") {
 		db = "`" + db + "`"
 	}
 	explain, err := e.explain(db, query)
@@ -72,7 +72,9 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			def, err := e.showCreate(Ident(t.Db, t.Table))
+			db := escapeString(t.Db)
+			table := escapeString(t.Table)
+			def, err := e.showCreate(Ident(db, table))
 			if err != nil {
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
@@ -93,7 +95,9 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			indexes, err := e.showIndex(Ident(t.Db, t.Table))
+			db := escapeString(t.Db)
+			table := escapeString(t.Table)
+			indexes, err := e.showIndex(Ident(db, table))
 			if err != nil {
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
@@ -116,7 +120,9 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 
 			// SHOW TABLE STATUS does not accept db.tbl so pass them separately,
 			// and tbl is used in LIKE so it's not an ident.
-			status, err := e.showStatus(Ident(t.Db, ""), t.Table)
+			db := escapeString(t.Db)
+			table := escapeString(t.Table)
+			status, err := e.showStatus(Ident(db, ""), table)
 			if err != nil {
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
@@ -268,15 +274,22 @@ func (e *QueryExecutor) showCreate(dbTable string) (string, error) {
 	var tableName string
 	var tableDef string
 	err := e.conn.DB().QueryRow("SHOW CREATE TABLE "+dbTable).Scan(&tableName, &tableDef)
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("table %s doesn't exist ", dbTable)
+	}
 	return tableDef, err
 }
 
 func (e *QueryExecutor) showIndex(dbTable string) (map[string][]proto.ShowIndexRow, error) {
 	rows, err := e.conn.DB().Query("SHOW INDEX FROM " + dbTable)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
 	defer rows.Close()
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("table %s doesn't exist", dbTable)
+		return nil, err
+	}
 
 	columns, err := rows.Columns()
 	if err != nil {
@@ -361,5 +374,20 @@ func (e *QueryExecutor) showStatus(db, table string) (*proto.ShowTableStatus, er
 		&status.CreateOptions,
 		&status.Comment,
 	)
+	if err == sql.ErrNoRows {
+		err = fmt.Errorf("table %s.%s doesn't exist", db, table)
+	}
 	return status, err
+}
+
+func escapeString(v string) string {
+	return strings.NewReplacer(
+		"\x00", "\\0",
+		"\n", "\\n",
+		"\r", "\\r",
+		"\x1a", "\\Z",
+		"'", "\\'",
+		"\"", "\\\"",
+		"\\", "\\\\",
+	).Replace(v)
 }

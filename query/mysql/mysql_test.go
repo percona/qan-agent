@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package mysql_test
+package mysql
 
 import (
 	"database/sql"
@@ -26,7 +26,6 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
-	mysqlExec "github.com/percona/qan-agent/query/mysql"
 	. "gopkg.in/check.v1"
 )
 
@@ -35,7 +34,7 @@ func Test(t *testing.T) { TestingT(t) }
 type TestSuite struct {
 	dsn  string
 	conn *mysql.Connection
-	e    *mysqlExec.QueryExecutor
+	e    *QueryExecutor
 }
 
 var _ = Suite(&TestSuite{})
@@ -53,7 +52,7 @@ func (s *TestSuite) SetUpSuite(t *C) {
 }
 
 func (s *TestSuite) SetUpTest(t *C) {
-	s.e = mysqlExec.NewQueryExecutor(s.conn)
+	s.e = NewQueryExecutor(s.conn)
 }
 
 func (s *TestSuite) TearDownSuite(t *C) {
@@ -217,43 +216,43 @@ func (s *TestSuite) TestExplainWithDb(t *C) {
 }
 
 func (s *TestSuite) TestDMLToSelect(t *C) {
-	q := mysqlExec.DMLToSelect(`update ignore tabla set nombre = "carlos" where id = 0 limit 2`)
+	q := DMLToSelect(`update ignore tabla set nombre = "carlos" where id = 0 limit 2`)
 	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
 
-	q = mysqlExec.DMLToSelect(`update ignore tabla set nombre = "carlos" where id = 0`)
+	q = DMLToSelect(`update ignore tabla set nombre = "carlos" where id = 0`)
 	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
 
-	q = mysqlExec.DMLToSelect(`update ignore tabla set nombre = "carlos" limit 1`)
+	q = DMLToSelect(`update ignore tabla set nombre = "carlos" limit 1`)
 	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla`)
 
-	q = mysqlExec.DMLToSelect(`update tabla set nombre = "carlos" where id = 0 limit 2`)
+	q = DMLToSelect(`update tabla set nombre = "carlos" where id = 0 limit 2`)
 	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
 
-	q = mysqlExec.DMLToSelect(`update tabla set nombre = "carlos" where id = 0`)
+	q = DMLToSelect(`update tabla set nombre = "carlos" where id = 0`)
 	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
 
-	q = mysqlExec.DMLToSelect(`update tabla set nombre = "carlos" limit 1`)
+	q = DMLToSelect(`update tabla set nombre = "carlos" limit 1`)
 	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla`)
 
-	q = mysqlExec.DMLToSelect(`delete from tabla`)
+	q = DMLToSelect(`delete from tabla`)
 	t.Check(q, Equals, `SELECT * FROM tabla`)
 
-	q = mysqlExec.DMLToSelect(`delete from tabla join tabla2 on tabla.id = tabla2.tabla2_id`)
+	q = DMLToSelect(`delete from tabla join tabla2 on tabla.id = tabla2.tabla2_id`)
 	t.Check(q, Equals, `SELECT 1 FROM tabla join tabla2 on tabla.id = tabla2.tabla2_id`)
 
-	q = mysqlExec.DMLToSelect(`insert into tabla (f1, f2, f3) values (1,2,3)`)
+	q = DMLToSelect(`insert into tabla (f1, f2, f3) values (1,2,3)`)
 	t.Check(q, Equals, `SELECT * FROM tabla  WHERE f1=1 and f2=2 and f3=3`)
 
-	q = mysqlExec.DMLToSelect(`insert into tabla (f1, f2, f3) values (1,2)`)
+	q = DMLToSelect(`insert into tabla (f1, f2, f3) values (1,2)`)
 	t.Check(q, Equals, `SELECT * FROM tabla  LIMIT 1`)
 
-	q = mysqlExec.DMLToSelect(`insert into tabla set f1="A1", f2="A2"`)
+	q = DMLToSelect(`insert into tabla set f1="A1", f2="A2"`)
 	t.Check(q, Equals, `SELECT * FROM tabla WHERE f1="A1" AND  f2="A2"`)
 
-	q = mysqlExec.DMLToSelect(`replace into tabla set f1="A1", f2="A2"`)
+	q = DMLToSelect(`replace into tabla set f1="A1", f2="A2"`)
 	t.Check(q, Equals, `SELECT * FROM tabla WHERE f1="A1" AND  f2="A2"`)
 
-	q = mysqlExec.DMLToSelect("insert into `tabla-1` values(12)")
+	q = DMLToSelect("insert into `tabla-1` values(12)")
 	t.Check(q, Equals, "SELECT * FROM `tabla-1` LIMIT 1")
 }
 
@@ -321,4 +320,20 @@ func (s *TestSuite) TestStatusTimes(t *C) {
 	t.Check(tableInfo.Status.CreateTime.Time, Equals, zeroTime)
 	t.Check(tableInfo.Status.UpdateTime.Time, Equals, zeroTime)
 	t.Check(tableInfo.Status.CheckTime.Time, Equals, zeroTime)
+}
+
+func (s *TestSuite) TestEscapeString(t *C) {
+	in := []struct {
+		in  string
+		out string
+	}{
+		{`"dbname"`, `\"dbname\"`},
+		{"`dbname`", "`dbname`"},
+		{`\"dbname\"`, `\\\"dbname\\\"`},
+	}
+
+	for _, i := range in {
+		got := escapeString(i.in)
+		t.Check(got, Equals, i.out)
+	}
 }
