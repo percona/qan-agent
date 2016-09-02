@@ -161,7 +161,7 @@ func (c *WebsocketClient) ConnectOnce(timeout uint) error {
 	}
 
 	c.status.Update(c.name, "Connecting "+link)
-	conn, err := c.dialTimeout(config, timeout)
+	conn, err := c.dialTimeout(config, timeout, c.api.GetConnectionConfig())
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func (c *WebsocketClient) ConnectOnce(timeout uint) error {
 	return nil
 }
 
-func (c *WebsocketClient) dialTimeout(config *websocket.Config, timeout uint) (ws *websocket.Conn, err error) {
+func (c *WebsocketClient) dialTimeout(config *websocket.Config, timeout uint, connConfig pct.ConnectionConfig) (ws *websocket.Conn, err error) {
 	c.logger.Debug("ConnectOnce:websocket.DialConfig:call")
 	defer c.logger.Debug("ConnectOnce:websocket.DialConfig:return")
 
@@ -195,7 +195,7 @@ func (c *WebsocketClient) dialTimeout(config *websocket.Config, timeout uint) (w
 		dialer := &net.Dialer{
 			Timeout: time.Duration(timeout) * time.Second,
 		}
-		if config.Location.Host == "localhost:8443" {
+		if config.Location.Host == "localhost:8443" || connConfig.UseInsecureSSL {
 			// Test uses mock ws server which uses self-signed cert which causes Go to throw
 			// an error like "x509: certificate signed by unknown authority".  This disables
 			// the cert verification for testing.

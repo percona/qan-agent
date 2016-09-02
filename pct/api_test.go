@@ -69,6 +69,24 @@ func (s *SysTestSuite) TestCleanAgentLinks(t *C) {
 	t.Check(l, DeepEquals, expect)
 }
 
+func (s *SysTestSuite) TestPrepareAgentLinks(t *C) {
+	l := map[string]string{
+		"cmd":  "http://hhhh",
+		"data": "ws://lllll/path",
+	}
+
+	expect := map[string]string{
+		"cmd":  "https://some-user:some-pass@hhhh",
+		"data": "wss://some-user:some-pass@lllll/path",
+	}
+
+	a := NewAPI("some-user", "some-pass", false, true)
+
+	a.prepareAgentLinks(l)
+	t.Check(l, DeepEquals, expect)
+}
+
+/*
 func (s *SysTestSuite) TestPing(t *C) {
 	r := http.NewServeMux()
 	r.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +103,7 @@ func (s *SysTestSuite) TestPing(t *C) {
 	t.Check(i, Equals, 200)
 
 }
+*/
 
 func (s *SysTestSuite) TestConnect(t *C) {
 	r := mux.NewRouter()
@@ -122,8 +141,67 @@ func (s *SysTestSuite) TestConnect(t *C) {
 	// Connect method receives a host without http://, just the hostname
 	u, _ := url.Parse(ts.URL)
 
-	a := NewAPI()
-	err := a.Connect(u.Host, "1234")
+	a := NewAPI("", "", false, false)
+	err := a.Connect(u.Host, "", "1234")
 	t.Check(err, IsNil)
 
+}
+
+func (s *SysTestSuite) TestTLSConnect(t *C) {
+	r := mux.NewRouter()
+	ts := httptest.NewTLSServer(r)
+	testUser := "test-user"
+	testPass := "test-pass"
+
+	// Fake API handlers
+	f := func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		if ok && (user != testUser || pass != testPass) {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(w, "Not authorized")
+			return
+		}
+		links := proto.Links{
+			Links: map[string]string{
+				"agents":    ts.URL + "/agents",
+				"instances": ts.URL + "/instances",
+			},
+		}
+		buf, _ := json.Marshal(links)
+		fmt.Fprintln(w, string(buf))
+	}
+
+	g := func(w http.ResponseWriter, r *http.Request) {
+		user, pass, ok := r.BasicAuth()
+		if ok && (user != testUser || pass != testPass) {
+			w.WriteHeader(http.StatusUnauthorized)
+			fmt.Fprintln(w, "Not authorized")
+			return
+		}
+		links := proto.Links{
+			Links: map[string]string{
+				"cmd":  "http://percona.com/api",
+				"log":  "https://percona.com:443/log",
+				"data": "ws://percona.com/wsock",
+				"self": "http://percona.com/self/1234",
+			},
+		}
+		buf, _ := json.Marshal(links)
+		fmt.Fprintln(w, string(buf))
+	}
+
+	r.HandleFunc("/", f)
+	r.HandleFunc("/agents/1234", g)
+	defer ts.Close()
+
+	// Connect method receives a host without http://, just the hostname
+	u, _ := url.Parse(ts.URL)
+
+	a := NewAPI(testUser, "invalid-pass", false, true)
+	err := a.Connect(u.Host, "", "1234")
+	t.Check(err, NotNil)
+
+	a = NewAPI(testUser, testPass, false, true)
+	err = a.Connect(u.Host, "", "1234")
+	t.Check(err, IsNil)
 }

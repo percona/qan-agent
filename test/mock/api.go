@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/percona/pmm/proto"
+	"github.com/percona/qan-agent/pct"
 
 	"golang.org/x/net/websocket"
 )
@@ -80,6 +81,15 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 
 func (a *API) ConnectOnce(timeout uint) error {
 	return nil
+}
+
+func (a *API) GetConnectionConfig() pct.ConnectionConfig {
+	return pct.ConnectionConfig{
+		User:           "",
+		Password:       "",
+		UseSSL:         false,
+		UseInsecureSSL: true,
+	}
 }
 
 func (a *API) ConnectChan() chan bool {
