@@ -59,8 +59,8 @@
 		{
 			"checksumSHA1": "hm9/98cy48uqG+KoVpEp8xgZM+Y=",
 			"path": "github.com/percona/go-mysql/log",
-			"revision": "60ad788a64b0551305882f64fb5b789b51d3476a",
-			"revisionTime": "2016-08-04T17:45:23Z"
+			"revision": "16e981552983c618a26b509a13571d21d91ddb30",
+			"revisionTime": "2016-09-02T12:50:28Z"
 		},
 		{
 			"checksumSHA1": "rAEyfJpGNbFDm7yLiV41r8YzHPA=",
