@@ -616,6 +616,35 @@ func (s *AgentTestSuite) TestGetVersion(t *C) {
 	t.Check(version.Running, Equals, release.VERSION)
 }
 
+func (s *AgentTestSuite) TestGetSystemSummary(t *C) {
+	cmd := &proto.Cmd{
+		Ts:      time.Now(),
+		User:    "zapp brannigan",
+		Cmd:     "GetServerSummary",
+		Service: "agent",
+	}
+	s.sendChan <- cmd
+
+	got := test.WaitReplyCmd(s.recvChan, "GetServerSummary")
+	t.Assert(len(got), Equals, 1)
+	t.Assert(string(got[0].Data), Matches, ".*# Percona Toolkit System Summary Report.*")
+}
+
+func (s *AgentTestSuite) TestGetMySQLSummary(t *C) {
+	cmd := &proto.Cmd{
+		Ts:      time.Now(),
+		User:    "zapp brannigan",
+		Cmd:     "GetMySQLSummary",
+		Service: "agent",
+	}
+	s.sendChan <- cmd
+
+	got := test.WaitReplyCmd(s.recvChan, "GetMySQLSummary")
+	t.Assert(len(got), Equals, 1)
+	t.Assert(string(got[0].Data), Matches, ".*# Percona Toolkit MySQL Summary Report.*")
+
+}
+
 func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
 	newConfig := *s.config
 	newConfig.ApiHostname = "http://localhost"

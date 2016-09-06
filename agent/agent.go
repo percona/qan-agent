@@ -460,6 +460,10 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 		*/
 		agent.client.Disconnect()
 		return nil // no reply
+	case "GetServerSummary":
+		data, errs = agent.handleGetServerSummary()
+	case "GetMySQLSummary":
+		data, errs = agent.handleGetMySQLSummary()
 	default:
 		errs = append(errs, pct.UnknownCmdError{Cmd: cmd.Cmd})
 	}
@@ -626,6 +630,26 @@ func (agent *Agent) handleVersion(cmd *proto.Cmd) (interface{}, []error) {
 	}
 	v.Installed = strings.TrimSpace(string(out))
 	return v, nil
+}
+
+func (agent *Agent) handleGetServerSummary() (interface{}, []error) {
+	ptSummary := pctCmd.NewRealCmd("pt-summary")
+	output, err := ptSummary.Run()
+
+	if err != nil {
+		return nil, []error{err}
+	}
+	return output, nil
+}
+
+func (agent *Agent) handleGetMySQLSummary() (interface{}, []error) {
+	ptMySQLSummary := pctCmd.NewRealCmd("pt-mysql-summary", "--sleep", "1")
+	output, err := ptMySQLSummary.Run()
+
+	if err != nil {
+		return nil, []error{err}
+	}
+	return output, nil
 }
 
 //---------------------------------------------------------------------------
