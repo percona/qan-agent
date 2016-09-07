@@ -59,6 +59,23 @@ func WaitReply(replyChan chan *proto.Reply) []proto.Reply {
 	return buf
 }
 
+func WaitReplyCmd(replyChan chan *proto.Reply, replyCmd string) []proto.Reply {
+	var buf []proto.Reply
+	var haveData bool = true
+	for haveData {
+		select {
+		case reply := <-replyChan:
+			if reply.Cmd == replyCmd {
+				buf = append(buf, *reply)
+				haveData = false
+			}
+		case <-time.After(3000 * time.Millisecond):
+			haveData = false
+		}
+	}
+	return buf
+}
+
 func WaitStatusReply(replyChan chan *proto.Reply) map[string]string {
 	select {
 	case reply := <-replyChan:
