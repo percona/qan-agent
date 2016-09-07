@@ -172,7 +172,19 @@ func Ping(hostname string, headers map[string]string) (int, error) {
 
 func URL(hostname string, paths ...string) string {
 	paths = append(paths, "")
+	if len(paths) > 0 {
+		if strings.HasPrefix(paths[0], "/") {
+			paths[0] = "." + paths[0]
+		} else {
+			paths[0] = "./" + paths[0]
+		}
+	}
 	u, _ := url.Parse(hostname)
+	relativePath := []string{u.Path}
+	relativePath = append(relativePath, paths...)
+	if !strings.HasSuffix(u.Path, "/") {
+		u.Path += "/"
+	}
 	p, _ := url.Parse(strings.Join(paths, "/"))
 	if u.Scheme == "" {
 		u.Scheme = "http"
