@@ -194,7 +194,7 @@ func AtLeastVersion(v1, v2 string) (bool, error) {
 func ToBool(s string) bool {
 	s = strings.ToLower(s)
 	switch s {
-	case "yes", "true", "on":
+	case "yes", "true", "on", "1":
 		return true
 	default:
 		return false

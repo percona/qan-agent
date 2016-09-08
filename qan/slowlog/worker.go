@@ -107,6 +107,8 @@ func NewWorker(logger *pct.Logger, config pc.QAN, mysqlConn mysql.Connector) *Wo
 	}
 	defer mysqlConn.Close()
 
+	slowQueryLogAlwaysWriteTime, _ := mysqlConn.GetGlobalVarNumber("slow_query_log_always_write_time")
+
 	w := &Worker{
 		logger:    logger,
 		config:    config,
@@ -121,7 +123,7 @@ func NewWorker(logger *pct.Logger, config pc.QAN, mysqlConn mysql.Connector) *Wo
 		oldSlowLogs:     make(map[int]string),
 		sync:            pct.NewSyncChan(),
 		utcOffset:       utcOffset,
-		outlierTime:     mysqlConn.GetGlobalVarNumber("slow_query_log_always_write_time"),
+		outlierTime:     slowQueryLogAlwaysWriteTime,
 	}
 	return w
 }
