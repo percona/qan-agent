@@ -19,6 +19,7 @@ package client
 
 import (
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -209,6 +210,12 @@ func (c *WebsocketClient) dialTimeout(config *websocket.Config, timeout uint, co
 	}
 	if err != nil {
 		return nil, &websocket.DialError{Config: config, Err: err}
+	}
+
+	// Add HTTP basic auth header.
+	if connConfig.Password != "" {
+		enc := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", connConfig.User, connConfig.Password)))
+		config.Header.Add("Authorization", fmt.Sprintf("Basic %s", enc))
 	}
 
 	ws, err = websocket.NewClient(config, conn)

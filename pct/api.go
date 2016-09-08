@@ -29,7 +29,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +40,6 @@ import (
 
 var requiredEntryLinks = []string{"agents", "instances"}
 var requiredAgentLinks = []string{"cmd", "log", "data", "self"}
-var reHostPort = regexp.MustCompile("(.*):(\\d+)$")
 
 type ConnectionConfig struct {
 	User           string
@@ -202,7 +200,7 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 		Host:   hostname,
 		Path:   basePath,
 	}
-	if a.user != "" {
+	if a.pass != "" {
 		u.User = url.UserPassword(a.user, a.pass)
 	}
 
@@ -214,6 +212,7 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 	if err := a.checkLinks(entryLinks, requiredEntryLinks...); err != nil {
 		return err
 	}
+	a.prepareAgentLinks(entryLinks)
 
 	// Get agent links: <API hostname>/<instances_endpoint>/:uuid
 	agentLinks, err := a.getLinks(entryLinks["agents"] + "/" + agentUuid)
@@ -224,9 +223,7 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 	if err := a.checkLinks(agentLinks, requiredAgentLinks...); err != nil {
 		return err
 	}
-
 	a.prepareAgentLinks(agentLinks)
-	cleanAgentLinks(agentLinks)
 
 	// Success: API responds with the links we need.
 	a.mux.Lock()
@@ -263,49 +260,26 @@ func (a *API) checkLinks(links map[string]string, req ...string) error {
 	return nil
 }
 
-/*
-API sends a list of links with the form http://host:port/path or ws://host[:port]/path
-For websockets, we need to have a port number in the URL because there is no default
-port for websocket connections.
-This functions checks all links received from the API and fixes ws URLs.
-*/
-func cleanAgentLinks(agentLinks map[string]string) {
-	for key, link := range agentLinks {
-		if strings.HasPrefix(link, "ws://") {
-			newLink, err := addPortToURL(link, 80)
-			if err != nil {
-				continue
-			}
-			agentLinks[key] = newLink
-		}
-		if strings.HasPrefix(link, "wss://") {
-			newLink, err := addPortToURL(link, 443)
-			if err != nil {
-				continue
-			}
-			agentLinks[key] = newLink
-		}
-	}
-}
-
 func (a *API) prepareAgentLinks(agentLinks map[string]string) {
-	if !a.useInsecureSSL && !a.useSSL {
-		return
-	}
 	for key, link := range agentLinks {
 		u, err := url.Parse(link)
 		if err != nil {
 			continue
 		}
-		if a.useSSL || a.useInsecureSSL {
-			if u.Scheme == "http" || u.Scheme == "ws" {
-				u.Scheme += "s"
-			}
-			if a.user != "" {
-				u.User = url.UserPassword(a.user, a.pass)
-			}
-			agentLinks[key] = u.String()
+		if (a.useSSL || a.useInsecureSSL) && (u.Scheme == "http" || u.Scheme == "ws") {
+			u.Scheme += "s"
 		}
+		if u.Scheme == "ws" && !strings.Contains(u.Host, ":") {
+			u.Host = fmt.Sprintf("%s:%d", u.Host, 80)
+		}
+		if u.Scheme == "wss" && !strings.Contains(u.Host, ":") {
+			u.Host = fmt.Sprintf("%s:%d", u.Host, 443)
+		}
+		// Do not add user:password to websocket URL as it does not work.
+		if a.pass != "" && !strings.HasPrefix(u.Scheme, "ws") {
+			u.User = url.UserPassword(a.user, a.pass)
+		}
+		agentLinks[key] = u.String()
 	}
 }
 
@@ -323,21 +297,6 @@ func (a *API) setURLSchema(uri string) string {
 		}
 	}
 	return u.String()
-}
-
-// Add a port to an URL if it doesn't have a port
-func addPortToURL(uri string, port int) (string, error) {
-	u, err := url.Parse(uri)
-	if err != nil {
-		return "", err
-	}
-
-	m := reHostPort.FindStringSubmatch(u.Host)
-	if len(m) == 0 {
-		u.Host = fmt.Sprintf("%s:%d", u.Host, port)
-	}
-
-	return u.String(), nil
 }
 
 func (a *API) getLinks(url string) (map[string]string, error) {
@@ -500,6 +459,9 @@ func (a *API) CreateInstance(url string, in interface{}) (bool, error) {
 	if uri == "" {
 		return created, fmt.Errorf("API did not return Location header value for new instance")
 	}
+	// Get instance id from the returned URL and create a new one as QAN API does not return the correct one.
+	t := strings.Split(uri, "/")
+	uri = a.URL("/instances", t[len(t)-1])
 
 	// GET <api>/instances/:uuid
 	code, data, err := a.Get(uri)

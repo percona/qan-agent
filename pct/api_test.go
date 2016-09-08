@@ -39,36 +39,6 @@ type SysTestSuite struct {
 
 var _ = Suite(&SysTestSuite{})
 
-func (s *SysTestSuite) TestAddPortToURL(t *C) {
-
-	newURL, err := addPortToURL("ws://some-api-url.com:80/path", 81)
-	t.Check(err, IsNil)
-	t.Check(newURL, Equals, "ws://some-api-url.com:80/path")
-
-	newURL, err = addPortToURL("ws://some-api-url.com/path", 82)
-	t.Check(err, IsNil)
-	t.Check(newURL, Equals, "ws://some-api-url.com:82/path")
-
-	newURL, err = addPortToURL("ws://some-api-url.com", 80)
-	t.Check(err, IsNil)
-	t.Check(newURL, Equals, "ws://some-api-url.com:80")
-}
-
-func (s *SysTestSuite) TestCleanAgentLinks(t *C) {
-	l := map[string]string{
-		"cmd":  "http://hhhh",
-		"data": "ws://lllll/path",
-	}
-
-	expect := map[string]string{
-		"cmd":  "http://hhhh",
-		"data": "ws://lllll:80/path",
-	}
-
-	cleanAgentLinks(l)
-	t.Check(l, DeepEquals, expect)
-}
-
 func (s *SysTestSuite) TestPrepareAgentLinks(t *C) {
 	l := map[string]string{
 		"cmd":  "http://hhhh",
@@ -77,7 +47,7 @@ func (s *SysTestSuite) TestPrepareAgentLinks(t *C) {
 
 	expect := map[string]string{
 		"cmd":  "https://some-user:some-pass@hhhh",
-		"data": "wss://some-user:some-pass@lllll/path",
+		"data": "wss://lllll:443/path",
 	}
 
 	a := NewAPI("some-user", "some-pass", false, true)
