@@ -20,6 +20,7 @@ package pct
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,7 +29,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -40,7 +40,13 @@ import (
 
 var requiredEntryLinks = []string{"agents", "instances"}
 var requiredAgentLinks = []string{"cmd", "log", "data", "self"}
-var reHostPort = regexp.MustCompile("(.*):(\\d+)$")
+
+type ConnectionConfig struct {
+	User           string
+	Password       string
+	UseSSL         bool
+	UseInsecureSSL bool
+}
 
 type APIConnector interface {
 	Connect(hostname, basePath, agentUuid string) error
@@ -55,6 +61,7 @@ type APIConnector interface {
 	Hostname() string
 	AgentUuid() string
 	URL(paths ...string) string
+	GetConnectionConfig() ConnectionConfig
 }
 
 // --------------------------------------------------------------------------
@@ -90,13 +97,19 @@ type API struct {
 	agentLinks map[string]string
 	mux        *sync.RWMutex
 	client     *http.Client
+	//
+	user           string
+	pass           string
+	useSSL         bool
+	useInsecureSSL bool
 }
 
-func NewAPI() *API {
+func NewAPI(user string, pass string, useSSL bool, useInsecureSSL bool) *API {
 	hostname, _ := os.Hostname()
 	client := &http.Client{
 		Transport: &http.Transport{
-			Dial: TimeoutDialer(timeoutClientConfig),
+			Dial:            TimeoutDialer(timeoutClientConfig),
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: useInsecureSSL},
 		},
 	}
 	a := &API{
@@ -104,12 +117,26 @@ func NewAPI() *API {
 		agentLinks: make(map[string]string),
 		mux:        new(sync.RWMutex),
 		client:     client,
+		//
+		user:           user,
+		pass:           pass,
+		useSSL:         useSSL,
+		useInsecureSSL: useInsecureSSL,
 	}
 	return a
 }
 
+func (a *API) GetConnectionConfig() ConnectionConfig {
+	return ConnectionConfig{
+		User:           a.user,
+		Password:       a.pass,
+		UseSSL:         a.useSSL,
+		UseInsecureSSL: a.useInsecureSSL,
+	}
+}
+
 func Ping(hostname string, headers map[string]string) (int, error) {
-	url := URL(hostname, "ping")
+	url := hostname + "/ping"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0, fmt.Errorf("Ping %s error: http.NewRequest: %s", url, err)
@@ -125,7 +152,8 @@ func Ping(hostname string, headers map[string]string) (int, error) {
 
 	client := &http.Client{
 		Transport: &http.Transport{
-			Dial: TimeoutDialer(timeoutClientConfig),
+			Dial:            TimeoutDialer(timeoutClientConfig),
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		},
 	}
 	resp, err := client.Do(req)
@@ -141,33 +169,50 @@ func Ping(hostname string, headers map[string]string) (int, error) {
 }
 
 func URL(hostname string, paths ...string) string {
-	schema := "http://"
-	httpPrefix := "http://"
-	if strings.HasPrefix(hostname, httpPrefix) {
-		hostname = strings.TrimPrefix(hostname, httpPrefix)
+	paths = append(paths, "")
+	if len(paths) > 0 {
+		if strings.HasPrefix(paths[0], "/") {
+			paths[0] = "." + paths[0]
+		} else {
+			paths[0] = "./" + paths[0]
+		}
 	}
-	if strings.HasPrefix(hostname, "localhost") || strings.HasPrefix(hostname, "127.0.0.1") {
-		schema = httpPrefix
+	u, _ := url.Parse(hostname)
+	relativePath := []string{u.Path}
+	relativePath = append(relativePath, paths...)
+	if !strings.HasSuffix(u.Path, "/") {
+		u.Path += "/"
 	}
-	slash := "/"
-	if len(paths) > 0 && paths[0][0] == 0x2F {
-		slash = ""
+	p, _ := url.Parse(strings.Join(paths, "/"))
+	if u.Scheme == "" {
+		u.Scheme = "http"
 	}
-	url := schema + hostname + slash + strings.Join(paths, "/")
-	return url
+	return u.ResolveReference(p).String()
 }
 
 func (a *API) Connect(hostname, basePath, agentUuid string) error {
-	schema := "http://" // todo: support internal/private HTTPS
+	schema := "http"
+	if a.useSSL || a.useInsecureSSL {
+		schema = "https"
+	}
+	u := url.URL{
+		Scheme: schema,
+		Host:   hostname,
+		Path:   basePath,
+	}
+	if a.pass != "" {
+		u.User = url.UserPassword(a.user, a.pass)
+	}
 
 	// Get entry links: GET <API hostname>/
-	entryLinks, err := a.getLinks(schema + hostname + basePath)
+	entryLinks, err := a.getLinks(u.String())
 	if err != nil {
 		return err
 	}
 	if err := a.checkLinks(entryLinks, requiredEntryLinks...); err != nil {
 		return err
 	}
+	a.prepareAgentLinks(entryLinks)
 
 	// Get agent links: <API hostname>/<instances_endpoint>/:uuid
 	agentLinks, err := a.getLinks(entryLinks["agents"] + "/" + agentUuid)
@@ -178,8 +223,7 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 	if err := a.checkLinks(agentLinks, requiredAgentLinks...); err != nil {
 		return err
 	}
-
-	cleanAgentLinks(agentLinks)
+	a.prepareAgentLinks(agentLinks)
 
 	// Success: API responds with the links we need.
 	a.mux.Lock()
@@ -216,37 +260,43 @@ func (a *API) checkLinks(links map[string]string, req ...string) error {
 	return nil
 }
 
-/*
-API sends a list of links with the form http://host:port/path or ws://host[:port]/path
-For websockets, we need to have a port number in the URL because there is no default
-port for websocket connections.
-This functions checks all links received from the API and fixes ws URLs.
-*/
-func cleanAgentLinks(agentLinks map[string]string) {
+func (a *API) prepareAgentLinks(agentLinks map[string]string) {
 	for key, link := range agentLinks {
-		if strings.HasPrefix(link, "ws://") {
-			newLink, err := addPortToURL(link, 80)
-			if err != nil {
-				continue
-			}
-			agentLinks[key] = newLink
+		u, err := url.Parse(link)
+		if err != nil {
+			continue
 		}
+		if (a.useSSL || a.useInsecureSSL) && (u.Scheme == "http" || u.Scheme == "ws") {
+			u.Scheme += "s"
+		}
+		if u.Scheme == "ws" && !strings.Contains(u.Host, ":") {
+			u.Host = fmt.Sprintf("%s:%d", u.Host, 80)
+		}
+		if u.Scheme == "wss" && !strings.Contains(u.Host, ":") {
+			u.Host = fmt.Sprintf("%s:%d", u.Host, 443)
+		}
+		// Do not add user:password to websocket URL as it does not work.
+		if a.pass != "" && !strings.HasPrefix(u.Scheme, "ws") {
+			u.User = url.UserPassword(a.user, a.pass)
+		}
+		agentLinks[key] = u.String()
 	}
 }
 
-// Add a port to an URL if it doesn't have a port
-func addPortToURL(uri string, port int) (string, error) {
+func (a *API) setURLSchema(uri string) string {
+	if !a.useInsecureSSL && !a.useSSL {
+		return uri
+	}
 	u, err := url.Parse(uri)
 	if err != nil {
-		return "", err
+		return uri
 	}
-
-	m := reHostPort.FindStringSubmatch(u.Host)
-	if len(m) == 0 {
-		u.Host = fmt.Sprintf("%s:%d", u.Host, port)
+	if a.useSSL || a.useInsecureSSL {
+		if u.Scheme == "http" || u.Scheme == "ws" {
+			u.Scheme += "s"
+		}
 	}
-
-	return u.String(), nil
+	return u.String()
 }
 
 func (a *API) getLinks(url string) (map[string]string, error) {
@@ -270,6 +320,7 @@ func (a *API) getLinks(url string) (map[string]string, error) {
 }
 
 func (a *API) Get(url string) (int, []byte, error) {
+	url = a.setURLSchema(url)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0, nil, err
@@ -346,6 +397,7 @@ func (a *API) Put(url string, data []byte) (*http.Response, []byte, error) {
 }
 
 func (a *API) send(method, url string, data []byte) (*http.Response, []byte, error) {
+	url = a.setURLSchema(url)
 	req, err := http.NewRequest(method, url, bytes.NewReader(data))
 	header := http.Header{}
 	header.Set("X-Percona-Agent-Version", release.VERSION)
@@ -407,6 +459,9 @@ func (a *API) CreateInstance(url string, in interface{}) (bool, error) {
 	if uri == "" {
 		return created, fmt.Errorf("API did not return Location header value for new instance")
 	}
+	// Get instance id from the returned URL and create a new one as QAN API does not return the correct one.
+	t := strings.Split(uri, "/")
+	uri = a.URL("/instances", t[len(t)-1])
 
 	// GET <api>/instances/:uuid
 	code, data, err := a.Get(uri)

@@ -50,6 +50,11 @@ var (
 	flagQuerySource             string
 	flagAgentMySQLUser          string
 	flagAgentMySQLPass          string
+
+	flagServerUser     string
+	flagServerPass     string
+	flagUseSSL         bool
+	flagUseInsecureSSL bool
 )
 
 var fs *flag.FlagSet
@@ -76,6 +81,11 @@ func init() {
 
 	fs.Int64Var(&flagMySQLMaxUserConnections, "max-user-connections", 5, "Max number of MySQL connections")
 	fs.BoolVar(&flagOldPasswords, "old-passwords", false, "Old passwords")
+
+	fs.StringVar(&flagServerUser, "server-user", "pmm", "Username to use for API auth")
+	fs.StringVar(&flagServerPass, "server-pass", "", "Password to use for API auth")
+	fs.BoolVar(&flagUseSSL, "use-ssl", false, "Use ssl to connect to the API")
+	fs.BoolVar(&flagUseInsecureSSL, "use-insecure-ssl", false, "Use self signed certs when connecting to the API")
 
 }
 
@@ -105,9 +115,16 @@ func main() {
 		log.Fatal("expected arg in the form [schema://]host[:port][path]")
 	}
 
+	if qanAPIURL.Scheme == "https" {
+		flagUseSSL = true
+	}
 	agentConfig := &pc.Agent{
-		ApiHostname: qanAPIURL.Host,
-		ApiPath:     qanAPIURL.Path,
+		ApiHostname:       qanAPIURL.Host,
+		ApiPath:           qanAPIURL.Path,
+		ServerUser:        flagServerUser,
+		ServerPassword:    flagServerPass,
+		ServerSSL:         flagUseSSL,
+		ServerInsecureSSL: flagUseInsecureSSL,
 	}
 
 	if flagMySQLSocket != "" && flagMySQLHost != "" {
@@ -149,9 +166,10 @@ func main() {
 
 	fmt.Println("CTRL-C at any time to quit")
 
-	api := pct.NewAPI()
-	requestURL := agentConfig.ApiHostname + agentConfig.ApiPath
-	fmt.Printf("API host: %s\n", pct.URL(requestURL))
+	api := pct.NewAPI(flagServerUser, flagServerPass, flagUseSSL, flagUseInsecureSSL)
+	requestURL := qanAPIURL.String()
+	fmt.Printf("API host: %s\n", requestURL)
+
 	if _, err := api.Init(requestURL, nil); err != nil {
 		fmt.Printf("Cannot connect to API %s: %s\n", requestURL, err)
 		os.Exit(1)

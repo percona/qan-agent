@@ -181,7 +181,7 @@ func run(agentConfig *pc.Agent) error {
 	// To be useful, it must connect once to get resource links. Do this async
 	// so in case we're offline the agent still starts and collects data. We
 	// can spool and send data later when API is online.
-	api := pct.NewAPI()
+	api := pct.NewAPI(agentConfig.ServerUser, agentConfig.ServerPassword, agentConfig.ServerSSL, agentConfig.ServerInsecureSSL)
 	go func() {
 		haveWarned := false
 		for {
