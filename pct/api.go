@@ -225,8 +225,8 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 		return err
 	}
 
-	cleanAgentLinks(agentLinks)
 	a.prepareAgentLinks(agentLinks)
+	cleanAgentLinks(agentLinks)
 
 	// Success: API responds with the links we need.
 	a.mux.Lock()
@@ -273,6 +273,13 @@ func cleanAgentLinks(agentLinks map[string]string) {
 	for key, link := range agentLinks {
 		if strings.HasPrefix(link, "ws://") {
 			newLink, err := addPortToURL(link, 80)
+			if err != nil {
+				continue
+			}
+			agentLinks[key] = newLink
+		}
+		if strings.HasPrefix(link, "wss://") {
+			newLink, err := addPortToURL(link, 443)
 			if err != nil {
 				continue
 			}
