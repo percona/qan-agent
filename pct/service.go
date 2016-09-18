@@ -17,7 +17,9 @@
 
 package pct
 
-import "github.com/percona/pmm/proto"
+import (
+	"github.com/percona/pmm/proto"
+)
 
 type ServiceManager interface {
 	Start() error

@@ -53,16 +53,8 @@ func (f *RealIntervalIterFactory) Make(analyzerType string, mysqlConn mysql.Conn
 			defer mysqlConn.Close()
 			// Slow log file can be absolute or relative. If it's relative,
 			// then prepend the datadir.
-			dataDir, err := mysqlConn.GetGlobalVarString("datadir")
-			if err != nil {
-				return "", err
-			}
-			slowQueryLogFile, err := mysqlConn.GetGlobalVarString("slow_query_log_file")
-			if err != nil {
-				return "", err
-			}
-
-			filename := AbsDataFile(dataDir, slowQueryLogFile)
+			dataDir := mysqlConn.GetGlobalVarString("datadir")
+			filename := AbsDataFile(dataDir, mysqlConn.GetGlobalVarString("slow_query_log_file"))
 			return filename, nil
 		}
 		return slowlog.NewIter(pct.NewLogger(f.logChan, "qan-interval"), getSlowLogFunc, tickChan)

@@ -170,11 +170,7 @@ func (a *RealAnalyzer) TakeOverPerconaServerRotation() error {
 	a.logger.Debug("TakeOverPerconaServerRotation:call")
 	defer a.logger.Debug("TakeOverPerconaServerRotation:return")
 
-	maxSlowLogSizef, err := a.mysqlConn.GetGlobalVarNumber("max_slowlog_size")
-	if err != nil {
-		return err
-	}
-	maxSlowLogSize := int64(maxSlowLogSizef)
+	maxSlowLogSize := int64(a.mysqlConn.GetGlobalVarNumber("max_slowlog_size"))
 	if maxSlowLogSize == 0 {
 		return nil
 	}
@@ -192,6 +188,27 @@ func (a *RealAnalyzer) TakeOverPerconaServerRotation() error {
 			return err
 		}
 	}
+
+	return nil
+}
+
+func (a *RealAnalyzer) setMySQLConfig() error {
+	a.logger.Debug("setMySQLConfig:call")
+	defer a.logger.Debug("setMySQLConfig:return")
+
+	// Get the current MySQL distro and version.
+	distro := mysql.Distro(a.mysqlConn.GetGlobalVarString("version_comment"))
+	version := a.mysqlConn.GetGlobalVarString("version")
+	a.logger.Debug(fmt.Sprintf("MySQL distro '%s' version '%s'", distro, version))
+
+	// Based on MySQL distro and version, generate the default/best sequence of
+	// start and stop queries to configure MySQL.
+	start, stop, err := GetMySQLConfig(a.config, distro, version)
+	if err != nil {
+		return err
+	}
+	a.config.Start = start
+	a.config.Stop = stop
 
 	return nil
 }
@@ -238,6 +255,28 @@ func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 
 		if err := a.TakeOverPerconaServerRotation(); err != nil {
 			lastErr = fmt.Errorf("Cannot takeover slow log rotation: %s", err)
+			continue
+		}
+
+		if err := a.setMySQLConfig(); err != nil {
+			lastErr = fmt.Errorf("Cannot detect how to configure MySQL: %s", err)
+			continue
+		}
+		a.worker.SetConfig(a.config)
+
+		a.logger.Debug("configureMySQL:" + action + ":exec " + action + " queries")
+
+		var queries []string
+		switch action {
+		case "start":
+			queries = a.config.Start
+		case "stop":
+			queries = a.config.Stop
+		default:
+			panic("Invalid action in call to qan.Analyzer.configureMySQL: " + action)
+		}
+		if err := a.mysqlConn.Exec(queries); err != nil {
+			lastErr = fmt.Errorf("Error configuring MySQL: %s", err)
 			continue
 		}
 
