@@ -178,8 +178,8 @@ func makeSlowLogConfig(config pc.QAN, distro string, v *vcmp.Version) ([]string,
 	// were added mid-series, e.g. slow_query_log_always_write_time as of 5.5.34
 	// but only as of 5.6.13 in the 5.6 series. So if we have 5.6.12, we can't
 	// just check that v >= 5.5.34, we have to know we're 5.6 then check >= 5.6.13.
-	mmp := v.Segments()
-	series := fmt.Sprintf("%d.%d", mmp[0], mmp[1])
+	//mmp := v.Segments()
+	//series := fmt.Sprintf("%d.%d", mmp[0], mmp[1])
 
 	on := []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -187,85 +187,6 @@ func makeSlowLogConfig(config pc.QAN, distro string, v *vcmp.Version) ([]string,
 	}
 	off := []string{
 		"SET GLOBAL slow_query_log=OFF",
-	}
-
-	// If not running Percona Server, it's Oracle MySQL, MariaDB, or something
-	// else like Homebrew (for Mac), so our only option is the simplest config.
-	if distro != "percona server" {
-		on = append(on,
-			fmt.Sprintf("SET GLOBAL long_query_time=%f", config.LongQueryTime),
-			"SET GLOBAL slow_query_log=ON",
-		)
-		return on, off, nil
-	}
-
-	// //////////////////////////////////////////////////////////////////////
-	// Running Percona Server, enable all its features. See
-	// https://docs.google.com/a/percona.com/document/d/1izDKRASJHtoEjTndWBy_lztUe_98SuAfHN1JUGEE6E4/edit?usp=sharing
-	// //////////////////////////////////////////////////////////////////////
-
-	// log_slow_rate_limit was introduced earlier, but it's not until 5.5.34
-	// that the slow log contains "Log_slow_rate_limit: 1000", required for
-	// agent to know data is sampled.
-	if v.LessThan(v5534) {
-		// version < 5.5.34
-		on = append(on, fmt.Sprintf("SET GLOBAL long_query_time=%f", config.LongQueryTime))
-	} else {
-		// version >= 5.5.34
-		on = append(on,
-			"SET GLOBAL log_slow_rate_type='query'",
-			fmt.Sprintf("SET GLOBAL log_slow_rate_limit=%d", config.RateLimit),
-			"SET GLOBAL long_query_time=0",
-		)
-	}
-
-	// Slow log verbosity controls exist as of 5.1.47.
-	if !v.LessThan(v5147) {
-		// version >= 5.1.47
-		on = append(on, fmt.Sprintf("SET GLOBAL log_slow_verbosity='%s'", config.SlowLogVerbosity))
-
-		if config.LogSlowAdminStatements {
-			on = append(on, "SET GLOBAL log_slow_admin_statements=ON")
-		} else {
-			on = append(on, "SET GLOBAL log_slow_admin_statements=OFF")
-		}
-
-		if config.LogSlowSlaveStatemtents {
-			on = append(on, "SET GLOBAL log_slow_slave_statements=ON")
-		} else {
-			on = append(on, "SET GLOBAL log_slow_slave_statements=OFF")
-		}
-
-		// This var changed in 5.5.10:
-		if v.LessThan(v5510) {
-			// version < 5.5.10
-			on = append(on,
-				"SET GLOBAL use_global_log_slow_control='all'",
-			)
-			off = append(off,
-				"SET GLOBAL use_global_log_slow_control=''",
-			)
-		} else {
-			// version >= 5.5.10
-			on = append(on,
-				"SET GLOBAL slow_query_log_use_global_control='all'",
-			)
-			off = append(off,
-				"SET GLOBAL slow_query_log_use_global_control=''",
-			)
-		}
-	}
-
-	// slow_query_log_always_write_time as of 5.5.34 and 5.6.13, causes queries
-	// to be logged regardless of all other settings/filters if the exec time is
-	// greater than this value (in seconds).
-	if (series == "5.5" && !v.LessThan(v5534)) || (series == "5.6" && !v.LessThan(v5613)) {
-		on = append(on,
-			"SET GLOBAL slow_query_log_always_write_time=1",
-		)
-		off = append(off,
-			"SET GLOBAL slow_query_log_always_write_time=10", // effectively off
-		)
 	}
 
 	on = append(on,
