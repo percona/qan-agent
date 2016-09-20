@@ -19,11 +19,14 @@ package mock
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/pmm/proto"
+	"github.com/percona/qan-agent/mysql"
 )
+
+var ERR_NOT_FOUND = errors.New("not found")
 
 type NullMySQL struct {
 	set                  []mysql.Query
@@ -116,20 +119,20 @@ func (n *NullMySQL) Reset() {
 	n.numberVars = make(map[string]float64)
 }
 
-func (n *NullMySQL) GetGlobalVarString(varName string) string {
+func (n *NullMySQL) GetGlobalVarString(varName string) (string, error) {
 	value, ok := n.stringVars[varName]
 	if ok {
-		return value
+		return value, nil
 	}
-	return ""
+	return "", ERR_NOT_FOUND
 }
 
-func (n *NullMySQL) GetGlobalVarNumber(varName string) float64 {
+func (n *NullMySQL) GetGlobalVarNumber(varName string) (float64, error) {
 	value, ok := n.numberVars[varName]
 	if ok {
-		return value
+		return value, nil
 	}
-	return 0
+	return 0, ERR_NOT_FOUND
 }
 
 func (n *NullMySQL) SetGlobalVarNumber(name string, value float64) {

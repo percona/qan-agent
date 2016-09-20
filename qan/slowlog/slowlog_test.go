@@ -45,8 +45,8 @@ import (
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
 
-var inputDir = RootDir() + "/agent/test/slow-logs/"
-var outputDir = RootDir() + "/agent/test/qan/"
+var inputDir = RootDir() + "/test/slow-logs/"
+var outputDir = RootDir() + "/test/qan/"
 
 type ByQueryId []*event.Class
 
@@ -57,7 +57,7 @@ func (a ByQueryId) Less(i, j int) bool {
 }
 
 type WorkerTestSuite struct {
-	logChan       chan *proto.LogEntry
+	logChan       chan proto.LogEntry
 	logger        *pct.Logger
 	now           time.Time
 	mysqlInstance proto.Instance
@@ -72,7 +72,7 @@ var _ = Suite(&WorkerTestSuite{})
 
 func (s *WorkerTestSuite) SetUpSuite(t *C) {
 	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	s.logChan = make(chan *proto.LogEntry, 100)
+	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 	s.now = time.Now()
 	s.mysqlInstance = proto.Instance{UUID: "1", Name: "mysql1"}
@@ -89,8 +89,8 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 		},
 		Interval:          60,         // 1 min
 		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: "true",
-		ExampleQueries:    "true",
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
 		WorkerRunTime:     60, // 1 min
 		CollectFrom:       "slowlog",
 	}
@@ -173,7 +173,7 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 		EndOffset:   524,
 	}
 	config := s.config
-	config.ExampleQueries = "false"
+	config.ExampleQueries = false
 	got, err := s.RunWorker(config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &qan.Result{}
@@ -290,9 +290,9 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	config := pc.QAN{
 		UUID:              s.mysqlInstance.UUID,
 		Interval:          300,
-		MaxSlowLogSize:    1000,   // <-- HERE
-		RemoveOldSlowLogs: "true", // <-- HERE too
-		ExampleQueries:    "false",
+		MaxSlowLogSize:    1000, // <-- HERE
+		RemoveOldSlowLogs: true, // <-- HERE too
+		ExampleQueries:    false,
 		WorkerRunTime:     600,
 		Start: []string{
 			"-- start",
@@ -340,6 +340,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	w.Setup(i2)
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
+	expectSet = append(expectSet, "FLUSH SLOW LOGS")
 	if same, diff := IsDeeply(gotSet, expectSet); !same {
 		Dump(gotSet)
 		t.Error(diff)
@@ -403,8 +404,8 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 		UUID:              s.mysqlInstance.UUID,
 		Interval:          300,
 		MaxSlowLogSize:    1000,
-		RemoveOldSlowLogs: "false", // <-- HERE
-		ExampleQueries:    "false",
+		RemoveOldSlowLogs: false, // <-- HERE
+		ExampleQueries:    false,
 		WorkerRunTime:     600,
 		Start: []string{
 			"-- start",
@@ -452,6 +453,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	w.Setup(i2)
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
+	expectSet = append(expectSet, "FLUSH SLOW LOGS")
 	if same, diff := IsDeeply(gotSet, expectSet); !same {
 		Dump(gotSet)
 		t.Error(diff)
@@ -498,12 +500,130 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	}
 }
 
+/*
+  This test uses a real MySQL connection because we need to test if the slow log
+is being created we it is rotated.
+*/
+func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
+
+	slowlogFileName := "slow006.log"
+
+	tmpfile, err := ioutil.TempFile("/tmp/", slowlogFileName)
+	t.Assert(err, IsNil)
+	slowlogFile := tmpfile.Name()
+
+	// Make copy of slow log because test will mv/rename it.
+	cp := exec.Command("cp", inputDir+slowlogFileName, slowlogFile)
+	cp.Run()
+
+	conn := mysql.NewConnection(s.dsn)
+	conn.Connect()
+	conn.Set([]mysql.Query{
+		mysql.Query{
+			Set: "SET GLOBAL slow_query_log=0",
+		},
+		mysql.Query{
+			Set: "FLUSH SLOW LOGS",
+		},
+		mysql.Query{
+			Set:    fmt.Sprintf("SET GLOBAL slow_query_log_file='%s'", slowlogFile),
+			Verify: "slow_query_log_file",
+			Expect: slowlogFile,
+		},
+		mysql.Query{
+			Set: "SET GLOBAL slow_query_log=1",
+		},
+	})
+
+	files, _ := filepath.Glob(slowlogFile + "-[0-9]*")
+	for _, file := range files {
+		os.Remove(file)
+	}
+
+	// See TestStartService() for description of these startup tasks.
+	config := pc.QAN{
+		UUID:              s.mysqlInstance.UUID,
+		Interval:          300,
+		MaxSlowLogSize:    1000,
+		RemoveOldSlowLogs: false, // <-- HERE
+		ExampleQueries:    false,
+		WorkerRunTime:     600,
+		Start: []string{
+			"SET GLOBAL slow_query_log=1",
+		},
+		Stop: []string{
+			"SET GLOBAL slow_query_log=0",
+			"FLUSH SLOW LOGS",
+		},
+		CollectFrom: "slowlog",
+	}
+	w := slowlog.NewWorker(s.logger, config, conn)
+
+	// First interval: 0 - 736
+	now := time.Now()
+	i1 := &qan.Interval{
+		Filename:    slowlogFile,
+		StartOffset: 0,
+		EndOffset:   736,
+		StartTime:   now,
+		StopTime:    now,
+	}
+	// Rotation happens in Setup(), but the log isn't rotated yet.
+	w.Setup(i1)
+
+	res, err := w.Run()
+	t.Assert(err, IsNil)
+
+	w.Cleanup()
+	t.Check(res.Global.TotalQueries, Equals, uint(2))
+	t.Check(res.Global.UniqueQueries, Equals, uint(1))
+
+	// Second interval: 736 - 1833, but will actually go to end: 2200.
+	i2 := &qan.Interval{
+		Filename:    slowlogFile,
+		StartOffset: 736,
+		EndOffset:   1833,
+		StartTime:   now,
+		StopTime:    now,
+	}
+	w.Setup(i2)
+
+	// When rotated, the interval end offset is extended to end of file.
+	t.Check(i2.EndOffset, Equals, int64(2200))
+
+	res, err = w.Run()
+	t.Assert(err, IsNil)
+
+	// The old slow log is removed in Cleanup(), so it should still exist.
+	files, _ = filepath.Glob(slowlogFile + "-[0-9]*")
+	t.Check(files, HasLen, 1)
+
+	//w.Cleanup()
+	t.Check(res.Global.TotalQueries, Equals, uint(4))
+	t.Check(res.Global.UniqueQueries, Equals, uint(2))
+
+	// Original slow log should have been created again by MySQL
+	if _, err := os.Stat(slowlogFile); err != nil {
+		t.Error(fmt.Sprintf("%s %v", slowlogFile, err))
+	}
+
+	// The original slow log should NOT have been removed.
+	files, _ = filepath.Glob(slowlogFile + "-[0-9]*")
+	t.Check(files, HasLen, 1)
+	defer func() {
+		for _, file := range files {
+			os.Remove(file)
+		}
+	}()
+
+}
+
 func (s *WorkerTestSuite) TestStop(t *C) {
 	config := pc.QAN{
 		UUID:              s.mysqlInstance.UUID,
 		Interval:          300,
 		MaxSlowLogSize:    1024 * 1024 * 1024,
-		RemoveOldSlowLogs: "true",
+		RemoveOldSlowLogs: true,
 		WorkerRunTime:     60,
 		Start:             []string{},
 		Stop:              []string{},
@@ -590,14 +710,14 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 /////////////////////////////////////////////////////////////////////////////
 
 type IterTestSuite struct {
-	logChan chan *proto.LogEntry
+	logChan chan proto.LogEntry
 	logger  *pct.Logger
 }
 
 var _ = Suite(&IterTestSuite{})
 
 func (s *IterTestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 100)
+	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 }
 

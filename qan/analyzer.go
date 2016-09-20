@@ -170,7 +170,11 @@ func (a *RealAnalyzer) TakeOverPerconaServerRotation() error {
 	a.logger.Debug("TakeOverPerconaServerRotation:call")
 	defer a.logger.Debug("TakeOverPerconaServerRotation:return")
 
-	maxSlowLogSize := int64(a.mysqlConn.GetGlobalVarNumber("max_slowlog_size"))
+	maxSlowLogSizeFloat, err := a.mysqlConn.GetGlobalVarNumber("max_slowlog_size")
+	if err != nil {
+		return err
+	}
+	maxSlowLogSize := int64(maxSlowLogSizeFloat)
 	if maxSlowLogSize == 0 {
 		return nil
 	}
@@ -197,10 +201,16 @@ func (a *RealAnalyzer) setMySQLConfig() error {
 	defer a.logger.Debug("setMySQLConfig:return")
 
 	// Get the current MySQL distro and version.
-	distro := mysql.Distro(a.mysqlConn.GetGlobalVarString("version_comment"))
-	version := a.mysqlConn.GetGlobalVarString("version")
+	versionComment, err := a.mysqlConn.GetGlobalVarString("version_comment")
+	if err != nil {
+		return nil
+	}
+	distro := mysql.Distro(versionComment)
+	version, err := a.mysqlConn.GetGlobalVarString("version")
+	if err != nil {
+		return nil
+	}
 	a.logger.Debug(fmt.Sprintf("MySQL distro '%s' version '%s'", distro, version))
-
 	// Based on MySQL distro and version, generate the default/best sequence of
 	// start and stop queries to configure MySQL.
 	start, stop, err := GetMySQLConfig(a.config, distro, version)
