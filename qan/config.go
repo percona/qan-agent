@@ -213,10 +213,11 @@ func makeSlowLogConfig() ([]string, []string, error) {
 
 	on = append(on,
 		"SET GLOBAL slow_query_log=ON",
+		"SET time_zone='+0:00'",
 	)
 	return on, off, nil
 }
 
 func makePerfSchemaConfig() ([]string, []string, error) {
-	return []string{}, []string{}, nil
+	return []string{"SET time_zone='+0:00'"}, []string{}, nil
 }
