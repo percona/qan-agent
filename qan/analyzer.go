@@ -200,20 +200,7 @@ func (a *RealAnalyzer) setMySQLConfig() error {
 	a.logger.Debug("setMySQLConfig:call")
 	defer a.logger.Debug("setMySQLConfig:return")
 
-	// Get the current MySQL distro and version.
-	versionComment, err := a.mysqlConn.GetGlobalVarString("version_comment")
-	if err != nil {
-		return nil
-	}
-	distro := mysql.Distro(versionComment)
-	version, err := a.mysqlConn.GetGlobalVarString("version")
-	if err != nil {
-		return nil
-	}
-	a.logger.Debug(fmt.Sprintf("MySQL distro '%s' version '%s'", distro, version))
-	// Based on MySQL distro and version, generate the default/best sequence of
-	// start and stop queries to configure MySQL.
-	start, stop, err := GetMySQLConfig(a.config, distro, version)
+	start, stop, err := GetMySQLConfig(a.config)
 	if err != nil {
 		return err
 	}

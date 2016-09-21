@@ -191,7 +191,7 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	return runConfig, nil
 }
 
-func GetMySQLConfig(config pc.QAN, distro, version string) ([]string, []string, error) {
+func GetMySQLConfig(config pc.QAN) ([]string, []string, error) {
 	switch config.CollectFrom {
 	case "slowlog":
 		return makeSlowLogConfig()
