@@ -28,122 +28,14 @@ type ConfigTestSuite struct{}
 var _ = Suite(&ConfigTestSuite{})
 
 func (s *ConfigTestSuite) TestSlowLogMySQLBasic(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "MySQL", "5.6.24")
+	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"})
 	t.Assert(err, IsNil)
 	t.Check(on, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
 		"SET GLOBAL log_output='file'",
-		"SET GLOBAL long_query_time=0.001",
 		"SET GLOBAL slow_query_log=ON",
 	})
 	t.Check(off, DeepEquals, []string{
 		"SET GLOBAL slow_query_log=OFF",
-	})
-}
-
-func (s *ConfigTestSuite) TestSlowLogPerconaBasic5625(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.6.25")
-	t.Assert(err, IsNil)
-	t.Check(on, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL log_output='file'",
-		"SET GLOBAL log_slow_rate_type='query'",
-		"SET GLOBAL log_slow_rate_limit=100",
-		"SET GLOBAL long_query_time=0",
-		"SET GLOBAL log_slow_verbosity='full'",
-		"SET GLOBAL log_slow_admin_statements=ON",
-		"SET GLOBAL log_slow_slave_statements=ON",
-		"SET GLOBAL slow_query_log_use_global_control='all'",
-		"SET GLOBAL slow_query_log_always_write_time=1",
-		"SET GLOBAL slow_query_log=ON",
-	})
-	t.Check(off, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL slow_query_log_use_global_control=''",
-		"SET GLOBAL slow_query_log_always_write_time=10",
-	})
-}
-
-func (s *ConfigTestSuite) TestSlowLogPerconaBasic5534(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.5.34")
-	t.Assert(err, IsNil)
-	t.Check(on, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL log_output='file'",
-		"SET GLOBAL log_slow_rate_type='query'",
-		"SET GLOBAL log_slow_rate_limit=100",
-		"SET GLOBAL long_query_time=0",
-		"SET GLOBAL log_slow_verbosity='full'",
-		"SET GLOBAL log_slow_admin_statements=ON",
-		"SET GLOBAL log_slow_slave_statements=ON",
-		"SET GLOBAL slow_query_log_use_global_control='all'",
-		"SET GLOBAL slow_query_log_always_write_time=1",
-		"SET GLOBAL slow_query_log=ON",
-	})
-	t.Check(off, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL slow_query_log_use_global_control=''",
-		"SET GLOBAL slow_query_log_always_write_time=10",
-	})
-}
-
-func (s *ConfigTestSuite) TestSlowLogPerconaBasic5510(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.5.10")
-	t.Assert(err, IsNil)
-	t.Check(on, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL log_output='file'",
-		"SET GLOBAL long_query_time=0.001", // no rate limit, requires 5.5.34+
-		"SET GLOBAL log_slow_verbosity='full'",
-		"SET GLOBAL log_slow_admin_statements=ON",
-		"SET GLOBAL log_slow_slave_statements=ON",
-		"SET GLOBAL slow_query_log_use_global_control='all'", // new var
-		"SET GLOBAL slow_query_log=ON",
-	})
-	t.Check(off, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL slow_query_log_use_global_control=''", // new var
-	})
-}
-
-func (s *ConfigTestSuite) TestSlowLogPerconaBasic5147(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "percona server", "5.1.47")
-	t.Assert(err, IsNil)
-	t.Check(on, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL log_output='file'",
-		"SET GLOBAL long_query_time=0.001", // no rate limit, requires 5.5.34+
-		"SET GLOBAL log_slow_verbosity='full'",
-		"SET GLOBAL log_slow_admin_statements=ON",
-		"SET GLOBAL log_slow_slave_statements=ON",
-		"SET GLOBAL use_global_log_slow_control='all'", // old var
-		"SET GLOBAL slow_query_log=ON",
-	})
-	t.Check(off, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL use_global_log_slow_control=''", // old var
-	})
-}
-
-func (s *ConfigTestSuite) TestSlowLogPerconaBasic5612(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"}, "Percona Server", "5.6.12")
-	t.Assert(err, IsNil)
-	t.Check(on, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL log_output='file'",
-		"SET GLOBAL log_slow_rate_type='query'",
-		"SET GLOBAL log_slow_rate_limit=100",
-		"SET GLOBAL long_query_time=0",
-		"SET GLOBAL log_slow_verbosity='full'",
-		"SET GLOBAL log_slow_admin_statements=ON",
-		"SET GLOBAL log_slow_slave_statements=ON",
-		"SET GLOBAL slow_query_log_use_global_control='all'",
-		//"SET GLOBAL slow_query_log_always_write_time=1", // not until 5.6.13
-		"SET GLOBAL slow_query_log=ON",
-	})
-	t.Check(off, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL slow_query_log_use_global_control=''",
-		//"SET GLOBAL slow_query_log_always_write_time=10", // not until 5.6.13
 	})
 }
