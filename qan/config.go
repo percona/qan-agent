@@ -19,31 +19,75 @@ package qan
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
-	"strings"
 
-	vcmp "github.com/hashicorp/go-version"
 	pc "github.com/percona/pmm/proto/config"
+	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 )
 
-const (
-	DEFAULT_COLLECT_FROM              = "slowlog"
-	DEFAULT_INTERVAL                  = 60         // 1 minute
-	DEFAULT_LONG_QUERY_TIME           = 0.001      // 1ms
-	DEFAULT_MAX_SLOW_LOG_SIZE         = 1073741824 // 1G
-	DEFAULT_REMOVE_OLD_SLOW_LOGS      = true
-	DEFAULT_EXAMPLE_QUERIES           = true
-	DEFAULT_SLOW_LOG_VERBOSITY        = "full" // all metrics, Percona Server
-	DEFAULT_RATE_LIMIT                = 100    // 1%, Percona Server
-	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = true   // Percona Server
-	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = true   // Percona Server
+var (
+	DEFAULT_COLLECT_FROM                    = "slowlog"
+	DEFAULT_INTERVAL                  uint  = 60         // 1 minute
+	DEFAULT_LONG_QUERY_TIME                 = 0.001      // 1ms
+	DEFAULT_MAX_SLOW_LOG_SIZE         int64 = 1073741824 // 1G
+	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true
+	DEFAULT_EXAMPLE_QUERIES                 = true
+	DEFAULT_SLOW_LOG_VERBOSITY              = "full" // all metrics, Percona Server
+	DEFAULT_RATE_LIMIT                uint  = 100    // 1%, Percona Server
+	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS       = true   // Percona Server
+	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS       = true   // Percona Server
 	// internal
-	DEFAULT_WORKER_RUNTIME = 55
-	DEFAULT_REPORT_LIMIT   = 200
+	DEFAULT_WORKER_RUNTIME uint = 55
+	DEFAULT_REPORT_LIMIT   uint = 200
 )
 
+func ReadMySQLConfig(conn mysql.Connector) error {
+	err := conn.Connect()
+	if err != nil {
+		return err
+	}
+
+	perfschemaStatus, err := conn.GetGlobalVarString("performance_schema")
+	if pct.ToBool(perfschemaStatus) {
+		DEFAULT_COLLECT_FROM = "perfschema"
+	}
+
+	//
+	DEFAULT_LONG_QUERY_TIME, err = conn.GetGlobalVarNumber("long_query_time")
+	if err != nil {
+		return err
+	}
+
+	//
+	defaultLogSlowAdminStatements, err := conn.GetGlobalVarString("log_slow_admin_statements")
+	if err != nil {
+		return err
+	}
+	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = pct.ToBool(defaultLogSlowAdminStatements)
+
+	//
+	defaultRateLimit, err := conn.GetGlobalVarNumber("log_slow_rate_limit")
+	if err != nil {
+		return err
+	}
+	DEFAULT_RATE_LIMIT = uint(defaultRateLimit)
+
+	//
+	defaultLogSlowSlaveStatements, err := conn.GetGlobalVarString("log_slow_slave_statements")
+	if err != nil {
+		return err
+	}
+	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = pct.ToBool(defaultLogSlowSlaveStatements)
+
+	//
+	DEFAULT_SLOW_LOG_VERBOSITY, err = conn.GetGlobalVarString("log_slow_verbosity")
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:                    setConfig["UUID"],
@@ -147,40 +191,18 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	return runConfig, nil
 }
 
-var reCleanVersion = regexp.MustCompile("-.*$") // remove everything after first dash
-var v5147, _ = vcmp.NewVersion("5.1.47")
-var v5510, _ = vcmp.NewVersion("5.5.10")
-var v5534, _ = vcmp.NewVersion("5.5.34")
-var v5613, _ = vcmp.NewVersion("5.6.13")
-
 func GetMySQLConfig(config pc.QAN, distro, version string) ([]string, []string, error) {
-	distro = strings.TrimSpace(strings.ToLower(distro))
-
-	version = strings.TrimSpace(strings.ToLower(version))
-	version = reCleanVersion.ReplaceAllString(version, "")
-	v, err := vcmp.NewVersion(version)
-	if err != nil {
-		return nil, nil, fmt.Errorf("invalid version: '%s': %s", version, err)
-	}
-
 	switch config.CollectFrom {
 	case "slowlog":
-		return makeSlowLogConfig(config, distro, v)
+		return makeSlowLogConfig()
 	case "perfschema":
-		return makePerfSchemaConfig(config, distro, v)
+		return makePerfSchemaConfig()
 	default:
 		return nil, nil, fmt.Errorf("invalid CollectFrom: '%s'; expected 'slowlog' or 'perfschema'", config.CollectFrom)
 	}
 }
 
-func makeSlowLogConfig(config pc.QAN, distro string, v *vcmp.Version) ([]string, []string, error) {
-	// Break "5.6.13" into major, minor, and patch numbers because some vars
-	// were added mid-series, e.g. slow_query_log_always_write_time as of 5.5.34
-	// but only as of 5.6.13 in the 5.6 series. So if we have 5.6.12, we can't
-	// just check that v >= 5.5.34, we have to know we're 5.6 then check >= 5.6.13.
-	//mmp := v.Segments()
-	//series := fmt.Sprintf("%d.%d", mmp[0], mmp[1])
-
+func makeSlowLogConfig() ([]string, []string, error) {
 	on := []string{
 		"SET GLOBAL slow_query_log=OFF",
 		"SET GLOBAL log_output='file'", // as of MySQL 5.1.6
@@ -192,22 +214,9 @@ func makeSlowLogConfig(config pc.QAN, distro string, v *vcmp.Version) ([]string,
 	on = append(on,
 		"SET GLOBAL slow_query_log=ON",
 	)
-
 	return on, off, nil
 }
 
-func makePerfSchemaConfig(config pc.QAN, distro string, v *vcmp.Version) ([]string, []string, error) {
-	// From the docs:
-	// "[events_statements_summary_by_digest] was added in 5.6.5. Before MySQL 5.6.9,
-	//  there is no SCHEMA_NAME column and grouping is based on DIGEST values only."
-	on := []string{
-		"UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'",
-		"UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'",
-		//"TRUNCATE performance_schema.events_statements_summary_by_digest",
-	}
-	off := []string{
-		"UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'",
-		"UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'",
-	}
-	return on, off, nil
+func makePerfSchemaConfig() ([]string, []string, error) {
+	return []string{}, []string{}, nil
 }

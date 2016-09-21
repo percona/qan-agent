@@ -354,21 +354,14 @@ func (m *Manager) startAnalyzer(setConfig map[string]string) error {
 	m.logger.Debug("startAnalyzer:call")
 	defer m.logger.Debug("startAnalyzer:return")
 
-	// Validate and transform the set config and into a running config.
-	config, err := ValidateConfig(setConfig)
-	if err != nil {
-		return fmt.Errorf("invalid QAN config: %s", err)
+	uuid, ok := setConfig["UUID"]
+	if !ok {
+		return errors.New("invalid config. UUID key missing")
 	}
-
-	// Check if an analyzer for this MySQL instance already exists.
-	if _, ok := m.analyzers[config.UUID]; ok {
-		return ErrAlreadyRunning
-	}
-
 	// Get the MySQL instance from repo.
-	mysqlInstance, err := m.instanceRepo.Get(config.UUID, true) // true = cache (write to disk)
+	mysqlInstance, err := m.instanceRepo.Get(uuid, true) // true = cache (write to disk)
 	if err != nil {
-		return fmt.Errorf("cannot get MySQL instance %s: %s", config.UUID, err)
+		return fmt.Errorf("cannot get MySQL instance %s: %s", uuid, err)
 	}
 
 	// instanceRepo.Get tries to read the info from the json file and if it doesn't exixts
@@ -382,6 +375,18 @@ func (m *Manager) startAnalyzer(setConfig map[string]string) error {
 
 	// Create a MySQL connection.
 	mysqlConn := m.mysqlFactory.Make(mysqlInstance.DSN)
+	ReadMySQLConfig(mysqlConn) // Read current values
+
+	// Validate and transform the set config and into a running config.
+	config, err := ValidateConfig(setConfig)
+	if err != nil {
+		return fmt.Errorf("invalid QAN config: %s", err)
+	}
+
+	// Check if an analyzer for this MySQL instance already exists.
+	if _, ok := m.analyzers[uuid]; ok {
+		return ErrAlreadyRunning
+	}
 
 	// Add the MySQL DSN to the MySQL restart monitor. If MySQL restarts,
 	// the analyzer will stop its worker and re-configure MySQL.
