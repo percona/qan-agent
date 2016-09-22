@@ -292,7 +292,13 @@ func (m *Manager) GetConfig() ([]proto.AgentConfig, []error) {
 	return configs, nil
 }
 
-func (m *Manager) GetDefaults() map[string]interface{} {
+func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
+	mysqlInstance, err := m.instanceRepo.Get(uuid, false) // true = cache (write to disk)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+	mysqlConn := m.mysqlFactory.Make(mysqlInstance.DSN)
+	ReadMySQLConfig(mysqlConn) // Read current values
 	return map[string]interface{}{
 		"CollectFrom":             DEFAULT_COLLECT_FROM,
 		"Interval":                DEFAULT_INTERVAL,
@@ -350,19 +356,20 @@ func (m *Manager) startAnalyzer(setConfig map[string]string) error {
 	/*
 		XXX Assume caller has locked m.mux.
 	*/
-	uuid, ok := setConfig["UUID"]
-	if !ok {
-		return errors.New("invalid config. UUID key missing")
-	}
 
 	m.logger.Debug("startAnalyzer:call")
 	defer m.logger.Debug("startAnalyzer:return")
 
+	uuid, ok := setConfig["UUID"]
+	if !ok {
+		return errors.New("invalid config. UUID key missing")
+	}
 	// Get the MySQL instance from repo.
 	mysqlInstance, err := m.instanceRepo.Get(uuid, true) // true = cache (write to disk)
 	if err != nil {
 		return fmt.Errorf("cannot get MySQL instance %s: %s", uuid, err)
 	}
+
 	// instanceRepo.Get tries to read the info from the json file and if it doesn't exixts
 	// it tries to retrieve the instance from the API, but API only has a sanitized DSN without
 	// password so, we need to override the dsn with the one that comes from pmm-admin via

@@ -22,7 +22,6 @@ import (
 	"os"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	qp "github.com/percona/pmm/proto/qan"
@@ -250,16 +249,8 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	t.Assert(err, IsNil)
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 
-	// When analyzer starts, it configures MySQL using the Start set of queries.
-	got := s.nullmysql.GetExec()
-	expect := s.config.Start
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
-
 	// Analyzer starts its iter when MySQL is ready.
-	t.Check(s.iter.Calls(), DeepEquals, []string{"Start"})
+	t.Check(s.iter.Calls(), DeepEquals, []string{})
 	s.iter.Reset()
 
 	// Simulate a MySQL restart. This causes the analyzer to re-configure MySQL
@@ -270,14 +261,9 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
 	}
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
-	got = s.nullmysql.GetExec()
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
 
-	// Analyzer stops and re-starts its iter on MySQL restart.
-	t.Check(s.iter.Calls(), DeepEquals, []string{"Stop", "Start"})
+	// Analyzer stops and re-starts its iter on MySQL restart. We are not setting any config
+	t.Check(s.iter.Calls(), DeepEquals, []string{})
 
 	s.nullmysql.Reset()
 
@@ -291,7 +277,9 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 	expectedQueries := []string{
 		"SET GLOBAL max_slowlog_size = 0",
-		"-- start",
+		"SET GLOBAL slow_query_log=OFF",
+		"SET GLOBAL log_output='file'",
+		"SET GLOBAL slow_query_log=ON",
 	}
 
 	t.Check(s.nullmysql.GetExec(), DeepEquals, expectedQueries)

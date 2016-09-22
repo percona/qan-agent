@@ -81,7 +81,6 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 	}
 	s.configDir = pct.Basedir.Dir("config")
 	s.im = instance.NewRepo(pct.NewLogger(s.logChan, "manager-test"), s.configDir, s.api)
-
 	s.mysqlUUID = "3130000000000000"
 	s.mysqlInstance = proto.Instance{
 		Subsystem: "mysql",
@@ -92,6 +91,29 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 
 	err = s.im.Init()
 	t.Assert(err, IsNil)
+}
+
+func (s *ManagerTestSuite) TestGetDefaults(t *C) {
+	uuid := "12345ABCDE"
+	instance := proto.Instance{
+		Subsystem: "mysql",
+		UUID:      uuid,
+		Name:      "db01",
+		DSN:       "user:pass@tcp(localhost)/",
+	}
+	s.nullmysql.SetGlobalVarNumber("long_query_time", 998)
+	s.nullmysql.SetGlobalVarString("log_slow_verbosity", "minimal")
+	s.im.Add(instance, true)
+
+	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
+	a := mock.NewQanAnalyzer("qan-analizer-1")
+	f := mock.NewQanAnalyzerFactory(a)
+	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	t.Assert(m, NotNil)
+
+	d := m.GetDefaults(uuid)
+	t.Assert(d["LongQueryTime"].(float64), Equals, float64(998))
+	t.Assert(d["SlowLogVerbosity"].(string), Equals, "minimal")
 }
 
 func (s *ManagerTestSuite) SetUpTest(t *C) {

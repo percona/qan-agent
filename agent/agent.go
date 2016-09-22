@@ -445,7 +445,7 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 	case "SetConfig":
 		data, errs = agent.handleSetConfig(cmd)
 	case "GetDefaults":
-		data, errs = agent.GetDefaults()
+		data, errs = agent.GetDefaults(cmd)
 	case "Version":
 		data, errs = agent.handleVersion(cmd)
 	case "Reconnect":
@@ -554,7 +554,17 @@ func (agent *Agent) GetAllConfigs() (interface{}, []error) {
 	return configs, errs
 }
 
-func (agent *Agent) GetDefaults() (interface{}, []error) {
+func (agent *Agent) GetDefaults(cmd *proto.Cmd) (interface{}, []error) {
+	var data map[string]string
+	err := json.Unmarshal(cmd.Data, &data)
+	if err != nil {
+		return nil, []error{fmt.Errorf("agent.GetDefaults: cannot unmarshal cmd. %v", err)}
+	}
+	uuid, ok := data["UUID"]
+	if !ok {
+		return nil, []error{errors.New("missing uuid in GetDefaults call")}
+	}
+
 	defaults := map[string]map[string]interface{}{
 		"bin": map[string]interface{}{
 			"pid-file": DEFAULT_PIDFILE,
@@ -570,7 +580,7 @@ func (agent *Agent) GetDefaults() (interface{}, []error) {
 			agent.logger.Error("Nil manager:", service)
 			continue
 		}
-		def := manager.GetDefaults()
+		def := manager.GetDefaults(uuid)
 		if def == nil {
 			continue
 		}

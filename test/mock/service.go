@@ -95,7 +95,6 @@ func (m *MockServiceManager) Reset() {
 	m.status.Update(m.name, "")
 }
 
-func (m *MockServiceManager) GetDefaults() map[string]interface{} {
-
+func (m *MockServiceManager) GetDefaults(uuid string) map[string]interface{} {
 	return make(map[string]interface{})
 }

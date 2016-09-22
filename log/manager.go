@@ -163,7 +163,7 @@ func (m *Manager) GetConfig() ([]proto.AgentConfig, []error) {
 	return []proto.AgentConfig{config}, nil
 }
 
-func (m *Manager) GetDefaults() map[string]interface{} {
+func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
 	return map[string]interface{}{
 		"LogLevel": DEFAULT_LOG_LEVEL,
 	}

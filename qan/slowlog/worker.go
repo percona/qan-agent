@@ -107,7 +107,11 @@ func NewWorker(logger *pct.Logger, config pc.QAN, mysqlConn mysql.Connector) *Wo
 	}
 	defer mysqlConn.Close()
 
-	slowQueryLogAlwaysWriteTime, _ := mysqlConn.GetGlobalVarNumber("slow_query_log_always_write_time")
+	outlierTime, err := mysqlConn.GetGlobalVarNumber("slow_query_log_always_write_time")
+	if err != nil {
+		logger.Error(err.Error())
+		outlierTime = 0
+	}
 
 	w := &Worker{
 		logger:    logger,
@@ -123,7 +127,7 @@ func NewWorker(logger *pct.Logger, config pc.QAN, mysqlConn mysql.Connector) *Wo
 		oldSlowLogs:     make(map[int]string),
 		sync:            pct.NewSyncChan(),
 		utcOffset:       utcOffset,
-		outlierTime:     slowQueryLogAlwaysWriteTime,
+		outlierTime:     outlierTime,
 	}
 	return w
 }
@@ -415,6 +419,10 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 
 	// Re-enable slow log.
 	if err := w.mysqlConn.Exec(w.config.Start); err != nil {
+		return err
+	}
+
+	if err := w.mysqlConn.Exec([]string{"FLUSH SLOW LOGS"}); err != nil {
 		return err
 	}
 

@@ -120,7 +120,7 @@ func (m *Manager) GetConfig() ([]proto.AgentConfig, []error) {
 	return nil, nil
 }
 
-func (m *Manager) GetDefaults() map[string]interface{} {
+func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
 	return nil
 }
 

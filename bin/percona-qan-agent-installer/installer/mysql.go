@@ -60,7 +60,7 @@ func (i *Installer) getAgentDSN() (dsn.DSN, error) {
 	if err != nil && err != dsn.ErrNoSocket {
 		return agentDSN, err
 	}
-	userDSN.Params = []string{dsn.ParseTimeParam}
+	userDSN.Params = []string{dsn.ParseTimeParam, dsn.TimezoneParam, dsn.LocationParam}
 	if i.flags.Bool["old-passwords"] {
 		userDSN.Params = append(userDSN.Params, dsn.OldPasswordsParam)
 	}

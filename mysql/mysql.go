@@ -155,7 +155,7 @@ func (c *Connection) Exec(queries []string) error {
 
 func (c *Connection) GetGlobalVarString(varName string) (string, error) {
 	if !c.connected {
-		return "", fmt.Errorf("cannot read global var %s from MySQL: not connected", varName)
+		return "", ErrNotConnected
 	}
 	var varValue string
 	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
@@ -164,7 +164,7 @@ func (c *Connection) GetGlobalVarString(varName string) (string, error) {
 
 func (c *Connection) GetGlobalVarNumber(varName string) (float64, error) {
 	if !c.connected {
-		return 0, fmt.Errorf("cannot read global var %s from MySQL: not connected", varName)
+		return 0, ErrNotConnected
 	}
 	var varValue float64
 	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)

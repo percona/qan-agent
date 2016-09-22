@@ -54,41 +54,24 @@ func ReadMySQLConfig(conn mysql.Connector) error {
 	}
 
 	//
-	DEFAULT_LONG_QUERY_TIME, err = conn.GetGlobalVarNumber("long_query_time")
-	if err != nil {
-		return err
-	}
+	DEFAULT_LONG_QUERY_TIME, _ = conn.GetGlobalVarNumber("long_query_time")
 
 	//
-	defaultLogSlowAdminStatements, err := conn.GetGlobalVarString("log_slow_admin_statements")
-	if err != nil {
-		return err
-	}
+	defaultLogSlowAdminStatements, _ := conn.GetGlobalVarString("log_slow_admin_statements")
 	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = pct.ToBool(defaultLogSlowAdminStatements)
 
 	//
-	defaultRateLimit, err := conn.GetGlobalVarNumber("log_slow_rate_limit")
-	if err != nil {
-		return err
-	}
+	defaultRateLimit, _ := conn.GetGlobalVarNumber("log_slow_rate_limit")
 	DEFAULT_RATE_LIMIT = uint(defaultRateLimit)
 
 	//
-	defaultLogSlowSlaveStatements, err := conn.GetGlobalVarString("log_slow_slave_statements")
-	if err != nil {
-		return err
-	}
+	defaultLogSlowSlaveStatements, _ := conn.GetGlobalVarString("log_slow_slave_statements")
 	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = pct.ToBool(defaultLogSlowSlaveStatements)
 
 	//
-	DEFAULT_SLOW_LOG_VERBOSITY, err = conn.GetGlobalVarString("log_slow_verbosity")
-	if err != nil {
-		return err
-	}
-
+	DEFAULT_SLOW_LOG_VERBOSITY, _ = conn.GetGlobalVarString("log_slow_verbosity")
 	return nil
 }
-
 func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:                    setConfig["UUID"],
@@ -113,6 +96,13 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 			return runConfig, fmt.Errorf("CollectFrom must be 'slowlog' or 'perfschema'")
 		}
 		runConfig.CollectFrom = val
+	}
+
+	if val, set := setConfig["SlowLogVerbosity"]; set {
+		if val != "minimal" && val != "standard" && val != "full" {
+			return runConfig, fmt.Errorf("CollectFrom must be 'minimal', 'standard', or 'full'")
+		}
+		runConfig.SlowLogVerbosity = val
 	}
 
 	// Integers
@@ -140,9 +130,78 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 		runConfig.MaxSlowLogSize = n
 	}
 
+	if val, set := setConfig["RateLimit"]; set {
+		n, err := strconv.ParseUint(val, 10, 32)
+		if err != nil {
+			return runConfig, fmt.Errorf("invalid RateLimit: '%s': %s", val, err)
+		}
+		if n < 0 {
+			return runConfig, fmt.Errorf("RateLimit must be > 0")
+		}
+		runConfig.RateLimit = uint(n)
+	}
+
+	// Floats
+
+	if val, set := setConfig["LongQueryTime"]; set {
+		n, err := strconv.ParseFloat(val, 64)
+		if err != nil {
+			return runConfig, fmt.Errorf("invalid LongQueryTime: '%s': %s", val, err)
+		}
+		if n < 0 || n < 0.000001 {
+			return runConfig, fmt.Errorf("LongQueryTime must be > 0 and >= 0.000001")
+		}
+		runConfig.LongQueryTime = n
+	}
+
+	// Bools
+
+	if val, set := setConfig["RemoveOldSlowLogs"]; set {
+		runConfig.RemoveOldSlowLogs = pct.ToBool(val)
+	}
+
 	if val, set := setConfig["ExampleQueries"]; set {
 		runConfig.ExampleQueries = pct.ToBool(val)
 	}
 
+	if val, set := setConfig["LogSlowAdminStatements"]; set {
+		runConfig.LogSlowAdminStatements = pct.ToBool(val)
+	}
+
+	if val, set := setConfig["LogSlowSlaveStatemtents"]; set {
+		runConfig.LogSlowSlaveStatemtents = pct.ToBool(val)
+	}
+
 	return runConfig, nil
+}
+
+func GetMySQLConfig(config pc.QAN) ([]string, []string, error) {
+	switch config.CollectFrom {
+	case "slowlog":
+		return makeSlowLogConfig()
+	case "perfschema":
+		return makePerfSchemaConfig()
+	default:
+		return nil, nil, fmt.Errorf("invalid CollectFrom: '%s'; expected 'slowlog' or 'perfschema'", config.CollectFrom)
+	}
+}
+
+func makeSlowLogConfig() ([]string, []string, error) {
+	on := []string{
+		"SET GLOBAL slow_query_log=OFF",
+		"SET GLOBAL log_output='file'", // as of MySQL 5.1.6
+	}
+	off := []string{
+		"SET GLOBAL slow_query_log=OFF",
+	}
+
+	on = append(on,
+		"SET GLOBAL slow_query_log=ON",
+		"SET time_zone='+0:00'",
+	)
+	return on, off, nil
+}
+
+func makePerfSchemaConfig() ([]string, []string, error) {
+	return []string{"SET time_zone='+0:00'"}, []string{}, nil
 }
