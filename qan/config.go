@@ -54,38 +54,22 @@ func ReadMySQLConfig(conn mysql.Connector) error {
 	}
 
 	//
-	DEFAULT_LONG_QUERY_TIME, err = conn.GetGlobalVarNumber("long_query_time")
-	if err != nil {
-		return err
-	}
+	DEFAULT_LONG_QUERY_TIME, _ = conn.GetGlobalVarNumber("long_query_time")
 
 	//
-	defaultLogSlowAdminStatements, err := conn.GetGlobalVarString("log_slow_admin_statements")
-	if err != nil {
-		return err
-	}
+	defaultLogSlowAdminStatements, _ := conn.GetGlobalVarString("log_slow_admin_statements")
 	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = pct.ToBool(defaultLogSlowAdminStatements)
 
 	//
-	defaultRateLimit, err := conn.GetGlobalVarNumber("log_slow_rate_limit")
-	if err != nil {
-		return err
-	}
+	defaultRateLimit, _ := conn.GetGlobalVarNumber("log_slow_rate_limit")
 	DEFAULT_RATE_LIMIT = uint(defaultRateLimit)
 
 	//
-	defaultLogSlowSlaveStatements, err := conn.GetGlobalVarString("log_slow_slave_statements")
-	if err != nil {
-		return err
-	}
+	defaultLogSlowSlaveStatements, _ := conn.GetGlobalVarString("log_slow_slave_statements")
 	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = pct.ToBool(defaultLogSlowSlaveStatements)
 
 	//
-	DEFAULT_SLOW_LOG_VERBOSITY, err = conn.GetGlobalVarString("log_slow_verbosity")
-	if err != nil {
-		return err
-	}
-
+	DEFAULT_SLOW_LOG_VERBOSITY, _ = conn.GetGlobalVarString("log_slow_verbosity")
 	return nil
 }
 func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {

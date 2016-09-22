@@ -34,7 +34,7 @@ func (lo *LocalInterface) Run() {
 		JSONResponse(w, 200, configs)
 	})
 	http.HandleFunc("/defaults", func(w http.ResponseWriter, r *http.Request) {
-		defaults, _ := lo.agent.GetDefaults()
+		defaults, _ := lo.agent.GetDefaults(&proto.Cmd{})
 		JSONResponse(w, 200, defaults)
 	})
 	http.HandleFunc("/id", func(w http.ResponseWriter, r *http.Request) {

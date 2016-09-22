@@ -292,7 +292,13 @@ func (m *Manager) GetConfig() ([]proto.AgentConfig, []error) {
 	return configs, nil
 }
 
-func (m *Manager) GetDefaults() map[string]interface{} {
+func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
+	mysqlInstance, err := m.instanceRepo.Get(uuid, false) // true = cache (write to disk)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+	mysqlConn := m.mysqlFactory.Make(mysqlInstance.DSN)
+	ReadMySQLConfig(mysqlConn) // Read current values
 	return map[string]interface{}{
 		"CollectFrom":             DEFAULT_COLLECT_FROM,
 		"Interval":                DEFAULT_INTERVAL,
