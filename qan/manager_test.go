@@ -201,14 +201,13 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 		mysqlInstance := mysqlInstances[i]
 		// Write a realistic qan.conf config to disk.
 		config := pc.QAN{
-			UUID:              mysqlInstance.UUID,
-			CollectFrom:       analyzerType,
-			Interval:          300,
-			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,  // specify optional args
-			RemoveOldSlowLogs: true, // specify optional args
-			ExampleQueries:    true, // specify optional args
-			ReportLimit:       200,  // specify optional args
+			UUID:           mysqlInstance.UUID,
+			CollectFrom:    analyzerType,
+			Interval:       300,
+			WorkerRunTime:  600,
+			MaxSlowLogSize: 100,  // specify optional args
+			ExampleQueries: true, // specify optional args
+			ReportLimit:    200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -301,14 +300,13 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 	for _, mysqlInstance := range mysqlInstances {
 		// Write a realistic qan.conf config to disk.
 		config := pc.QAN{
-			UUID:              mysqlInstance.UUID,
-			CollectFrom:       "perfschema",
-			Interval:          300,
-			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,  // specify optional args
-			RemoveOldSlowLogs: true, // specify optional args
-			ExampleQueries:    true, // specify optional args
-			ReportLimit:       200,  // specify optional args
+			UUID:           mysqlInstance.UUID,
+			CollectFrom:    "perfschema",
+			Interval:       300,
+			WorkerRunTime:  600,
+			MaxSlowLogSize: 100,  // specify optional args
+			ExampleQueries: true, // specify optional args
+			ReportLimit:    200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -414,7 +412,6 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	configWithDefaults := config
 	configWithDefaults.MaxSlowLogSize = qan.DEFAULT_MAX_SLOW_LOG_SIZE
-	configWithDefaults.RemoveOldSlowLogs = qan.DEFAULT_REMOVE_OLD_SLOW_LOGS
 	configWithDefaults.ExampleQueries = qan.DEFAULT_EXAMPLE_QUERIES
 	configWithDefaults.ReportLimit = qan.DEFAULT_REPORT_LIMIT
 	qanConfig, err := json.Marshal(configWithDefaults)
@@ -502,12 +499,11 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 			"SET GLOBAL slow_query_log=OFF",
 			"SET GLOBAL long_query_time=10",
 		},
-		Interval:          300,        // 5 min
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: true,
-		ExampleQueries:    true,
-		WorkerRunTime:     600, // 10 min
-		CollectFrom:       "slowlog",
+		Interval:       300,        // 5 min
+		MaxSlowLogSize: 1073741824, // 1 GiB
+		ExampleQueries: true,
+		WorkerRunTime:  600, // 10 min
+		CollectFrom:    "slowlog",
 	}
 
 	// Send a StartTool cmd with the qan config to start an analyzer.
@@ -602,12 +598,11 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 			"SET GLOBAL slow_query_log=OFF",
 			"SET GLOBAL long_query_time=10",
 		},
-		Interval:          300,        // 5 min
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: true,
-		ExampleQueries:    true,
-		WorkerRunTime:     600, // 10 min
-		CollectFrom:       "slowlog",
+		Interval:       300,        // 5 min
+		MaxSlowLogSize: 1073741824, // 1 GiB
+		ExampleQueries: true,
+		WorkerRunTime:  600, // 10 min
+		CollectFrom:    "slowlog",
 	}
 
 	// Send a StartTool cmd with the qan config to start an analyzer.

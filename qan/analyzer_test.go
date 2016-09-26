@@ -280,6 +280,7 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 		"SET GLOBAL slow_query_log=OFF",
 		"SET GLOBAL log_output='file'",
 		"SET GLOBAL slow_query_log=ON",
+		"SET time_zone='+0:00'",
 	}
 
 	t.Check(s.nullmysql.GetExec(), DeepEquals, expectedQueries)

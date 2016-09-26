@@ -430,10 +430,5 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 	interval.Filename = newSlowLogFile
 	interval.EndOffset, _ = pct.FileSize(newSlowLogFile) // todo: handle err
 
-	// Save old slow log and remove later if configured to do so.
-	if w.config.RemoveOldSlowLogs {
-		w.oldSlowLogs[interval.Number] = newSlowLogFile
-	}
-
 	return nil
 }

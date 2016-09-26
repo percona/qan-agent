@@ -72,25 +72,19 @@ func ReadMySQLConfig(conn mysql.Connector) error {
 	DEFAULT_SLOW_LOG_VERBOSITY, _ = conn.GetGlobalVarString("log_slow_verbosity")
 	return nil
 }
+
 func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	runConfig := pc.QAN{
-		UUID:                    setConfig["UUID"],
-		CollectFrom:             DEFAULT_COLLECT_FROM,
-		Interval:                DEFAULT_INTERVAL,
-		LongQueryTime:           DEFAULT_LONG_QUERY_TIME,
-		MaxSlowLogSize:          DEFAULT_MAX_SLOW_LOG_SIZE,
-		RemoveOldSlowLogs:       DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		ExampleQueries:          DEFAULT_EXAMPLE_QUERIES,
-		SlowLogVerbosity:        DEFAULT_SLOW_LOG_VERBOSITY,
-		RateLimit:               DEFAULT_RATE_LIMIT,
-		LogSlowAdminStatements:  DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
-		LogSlowSlaveStatemtents: DEFAULT_LOG_SLOW_SLAVE_STATEMENTS,
-		WorkerRunTime:           DEFAULT_WORKER_RUNTIME,
-		ReportLimit:             DEFAULT_REPORT_LIMIT,
+		UUID:           setConfig["UUID"],
+		CollectFrom:    DEFAULT_COLLECT_FROM,
+		Interval:       DEFAULT_INTERVAL,
+		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
+		ExampleQueries: DEFAULT_EXAMPLE_QUERIES,
+		WorkerRunTime:  DEFAULT_WORKER_RUNTIME,
+		ReportLimit:    DEFAULT_REPORT_LIMIT,
 	}
 
 	// Strings
-
 	if val, set := setConfig["CollectFrom"]; set {
 		if val != "slowlog" && val != "perfschema" {
 			return runConfig, fmt.Errorf("CollectFrom must be 'slowlog' or 'perfschema'")
@@ -98,15 +92,7 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 		runConfig.CollectFrom = val
 	}
 
-	if val, set := setConfig["SlowLogVerbosity"]; set {
-		if val != "minimal" && val != "standard" && val != "full" {
-			return runConfig, fmt.Errorf("CollectFrom must be 'minimal', 'standard', or 'full'")
-		}
-		runConfig.SlowLogVerbosity = val
-	}
-
 	// Integers
-
 	if val, set := setConfig["Interval"]; set {
 		n, err := strconv.ParseUint(val, 10, 32)
 		if err != nil {
@@ -119,57 +105,9 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	}
 	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
 
-	if val, set := setConfig["MaxSlowLogSize"]; set {
-		n, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return runConfig, fmt.Errorf("invalid MaxSlowLogSize: '%s': %s", val, err)
-		}
-		if n < 0 {
-			return runConfig, fmt.Errorf("MaxSlowLogSize must be > 0")
-		}
-		runConfig.MaxSlowLogSize = n
-	}
-
-	if val, set := setConfig["RateLimit"]; set {
-		n, err := strconv.ParseUint(val, 10, 32)
-		if err != nil {
-			return runConfig, fmt.Errorf("invalid RateLimit: '%s': %s", val, err)
-		}
-		if n < 0 {
-			return runConfig, fmt.Errorf("RateLimit must be > 0")
-		}
-		runConfig.RateLimit = uint(n)
-	}
-
-	// Floats
-
-	if val, set := setConfig["LongQueryTime"]; set {
-		n, err := strconv.ParseFloat(val, 64)
-		if err != nil {
-			return runConfig, fmt.Errorf("invalid LongQueryTime: '%s': %s", val, err)
-		}
-		if n < 0 || n < 0.000001 {
-			return runConfig, fmt.Errorf("LongQueryTime must be > 0 and >= 0.000001")
-		}
-		runConfig.LongQueryTime = n
-	}
-
 	// Bools
-
-	if val, set := setConfig["RemoveOldSlowLogs"]; set {
-		runConfig.RemoveOldSlowLogs = pct.ToBool(val)
-	}
-
 	if val, set := setConfig["ExampleQueries"]; set {
 		runConfig.ExampleQueries = pct.ToBool(val)
-	}
-
-	if val, set := setConfig["LogSlowAdminStatements"]; set {
-		runConfig.LogSlowAdminStatements = pct.ToBool(val)
-	}
-
-	if val, set := setConfig["LogSlowSlaveStatemtents"]; set {
-		runConfig.LogSlowSlaveStatemtents = pct.ToBool(val)
 	}
 
 	return runConfig, nil
