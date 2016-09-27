@@ -178,7 +178,10 @@ func (e *QueryExecutor) classicExplain(tx *sql.Tx, query string) (classicExplain
 	// Partitions are introduced since MySQL 5.1
 	// We can simply run EXPLAIN /*!50100 PARTITIONS*/ to get this column when it's available
 	// without prior check for MySQL version.
-	rows, err := tx.Query(fmt.Sprintf("EXPLAIN /*!50100 PARTITIONS*/ %s", query))
+	if strings.TrimSpace(query) == "" {
+		return nil, fmt.Errorf("cannot run EXPLAIN on an empty query example")
+	}
+	rows, err := tx.Query(fmt.Sprintf("EXPLAIN PARTITIONS %s", query))
 	if err != nil {
 		return nil, err
 	}
