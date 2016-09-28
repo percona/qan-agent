@@ -61,7 +61,22 @@ func (s *TestSuite) TearDownSuite(t *C) {
 
 // --------------------------------------------------------------------------
 
+func (s *TestSuite) TestExplainWithoutQuery(t *C) {
+	db := ""
+	query := "  "
+
+	_, err := s.e.Explain(db, query, true)
+	t.Check(err, NotNil)
+
+	// This is not a good practice. We should not care about the error type but in this case, this is
+	// the only way to check we catched an empty query when calling 'explain'
+	isEmptyMessage := strings.Contains(err.Error(), "cannot run EXPLAIN on an empty query example")
+	t.Check(isEmptyMessage, Equals, true)
+
+}
+
 func (s *TestSuite) TestExplainWithoutDb(t *C) {
+	//TODO This test fails on MySQL 5.7+ because the response has new fields
 	db := ""
 	query := "SELECT 1"
 
@@ -139,6 +154,7 @@ func (s *TestSuite) TestExplainWithoutDb(t *C) {
 }
 
 func (s *TestSuite) TestExplainWithDb(t *C) {
+	//TODO This test fails on MySQL 5.7+ because the response has new fields
 	db := "information_schema"
 	query := "SELECT table_name FROM tables WHERE table_name='tables'"
 
