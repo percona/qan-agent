@@ -181,7 +181,7 @@ func (e *QueryExecutor) classicExplain(tx *sql.Tx, query string) (classicExplain
 	if strings.TrimSpace(query) == "" {
 		return nil, fmt.Errorf("cannot run EXPLAIN on an empty query example")
 	}
-	rows, err := tx.Query(fmt.Sprintf("EXPLAIN PARTITIONS %s", query))
+	rows, err := tx.Query(fmt.Sprintf("EXPLAIN %s", query))
 	if err != nil {
 		return nil, err
 	}
