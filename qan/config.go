@@ -19,7 +19,6 @@ package qan
 
 import (
 	"fmt"
-	"strconv"
 
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
@@ -73,9 +72,9 @@ func ReadMySQLConfig(conn mysql.Connector) error {
 	return nil
 }
 
-func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
+func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
-		UUID:           setConfig["UUID"],
+		UUID:           setConfig.UUID,
 		CollectFrom:    DEFAULT_COLLECT_FROM,
 		Interval:       DEFAULT_INTERVAL,
 		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
@@ -85,30 +84,20 @@ func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
 	}
 
 	// Strings
-	if val, set := setConfig["CollectFrom"]; set {
-		if val != "slowlog" && val != "perfschema" {
-			return runConfig, fmt.Errorf("CollectFrom must be 'slowlog' or 'perfschema'")
-		}
-		runConfig.CollectFrom = val
+	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {
+		return runConfig, fmt.Errorf("CollectFrom must be 'slowlog' or 'perfschema'")
 	}
+	runConfig.CollectFrom = setConfig.CollectFrom
 
 	// Integers
-	if val, set := setConfig["Interval"]; set {
-		n, err := strconv.ParseUint(val, 10, 32)
-		if err != nil {
-			return runConfig, fmt.Errorf("invalid Interval: '%s': %s", val, err)
-		}
-		if n < 0 || n > 3600 {
-			return runConfig, fmt.Errorf("Interval must be > 0 and <= 3600 (1 hour)")
-		}
-		runConfig.Interval = uint(n)
+	if setConfig.Interval < 0 || setConfig.Interval > 3600 {
+		return runConfig, fmt.Errorf("Interval must be > 0 and <= 3600 (1 hour)")
 	}
-	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
+	if setConfig.Interval > 0 {
+		runConfig.Interval = uint(setConfig.Interval)
+	}
 
-	// Bools
-	if val, set := setConfig["ExampleQueries"]; set {
-		runConfig.ExampleQueries = pct.ToBool(val)
-	}
+	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
 
 	return runConfig, nil
 }

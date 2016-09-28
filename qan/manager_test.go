@@ -448,23 +448,14 @@ func (s *ManagerTestSuite) TestValidateConfig(t *C) {
 	t.Assert(len(mysqlInstances), Equals, 1)
 	mysqlUUID := mysqlInstances[0].UUID
 
-	config := map[string]string{
-		"UUID": mysqlUUID,
-		//Start: []string{
-		//	"SET GLOBAL slow_query_log=OFF",
-		//	"SET GLOBAL long_query_time=0.123",
-		//	"SET GLOBAL slow_query_log=ON",
-		//},
-		//Stop: []string{
-		//	"SET GLOBAL slow_query_log=OFF",
-		//	"SET GLOBAL long_query_time=10",
-		//},
-		"Interval":          "300",        // 5 min
-		"MaxSlowLogSize":    "1073741824", // 1 GiB
-		"RemoveOldSlowLogs": "true",
-		"ExampleQueries":    "true",
-		"WorkerRunTime":     "600", // 10 min
-		"CollectFrom":       "slowlog",
+	config := pc.QAN{
+		UUID:              mysqlUUID,
+		Interval:          300,        // 5 min
+		MaxSlowLogSize:    1073741824, // 1 GiB
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
+		WorkerRunTime:     600, // 10 min
+		CollectFrom:       "slowlog",
 	}
 	_, err := qan.ValidateConfig(config)
 	t.Check(err, IsNil)
