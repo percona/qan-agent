@@ -81,10 +81,10 @@
 			"revisionTime": "2016-08-17T15:08:17Z"
 		},
 		{
-			"checksumSHA1": "NNrr16OZiqpGqnqDZUW7luWCCrw=",
+			"checksumSHA1": "bBwqWzQWZcpkyTmoKicR32H3/po=",
 			"path": "github.com/percona/pmm/proto/config",
-			"revision": "eb271243f8bfd77261f99d7ca6e80979e8f5af0e",
-			"revisionTime": "2016-09-28T15:14:13Z"
+			"revision": "14200be9d8a96a20dc14bd333b83231cf2d895eb",
+			"revisionTime": "2016-09-28T16:13:38Z"
 		},
 		{
 			"checksumSHA1": "CpfFqa/7s6PXhzhLtM6U9GrjVC8=",
