@@ -44,7 +44,7 @@ func (s *MySQLTestSuite) TestMakeGrant(t *C) {
 	got := i.MakeGrant(dsn, maxOpenConnections)
 	expect := []string{
 		"SET SESSION old_passwords=0",
-		"GRANT SUPER, PROCESS, USAGE, SELECT ON *.* TO 'new-user'@'localhost' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
+		"GRANT SUPER, PROCESS, USAGE, SELECT, RELOAD ON *.* TO 'new-user'@'localhost' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 		"GRANT UPDATE, DELETE, DROP ON performance_schema.* TO 'new-user'@'localhost' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 	}
 	t.Check(got, DeepEquals, expect)
@@ -53,7 +53,7 @@ func (s *MySQLTestSuite) TestMakeGrant(t *C) {
 	got = i.MakeGrant(dsn, maxOpenConnections)
 	expect = []string{
 		"SET SESSION old_passwords=0",
-		"GRANT SUPER, PROCESS, USAGE, SELECT ON *.* TO 'new-user'@'127.0.0.1' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
+		"GRANT SUPER, PROCESS, USAGE, SELECT, RELOAD ON *.* TO 'new-user'@'127.0.0.1' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 		"GRANT UPDATE, DELETE, DROP ON performance_schema.* TO 'new-user'@'127.0.0.1' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 	}
 	t.Check(got, DeepEquals, expect)
@@ -62,7 +62,7 @@ func (s *MySQLTestSuite) TestMakeGrant(t *C) {
 	got = i.MakeGrant(dsn, maxOpenConnections)
 	expect = []string{
 		"SET SESSION old_passwords=0",
-		"GRANT SUPER, PROCESS, USAGE, SELECT ON *.* TO 'new-user'@'%' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
+		"GRANT SUPER, PROCESS, USAGE, SELECT, RELOAD ON *.* TO 'new-user'@'%' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 		"GRANT UPDATE, DELETE, DROP ON performance_schema.* TO 'new-user'@'%' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 	}
 	t.Check(got, DeepEquals, expect)
@@ -72,7 +72,7 @@ func (s *MySQLTestSuite) TestMakeGrant(t *C) {
 	got = i.MakeGrant(dsn, maxOpenConnections)
 	expect = []string{
 		"SET SESSION old_passwords=0",
-		"GRANT SUPER, PROCESS, USAGE, SELECT ON *.* TO 'new-user'@'localhost' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
+		"GRANT SUPER, PROCESS, USAGE, SELECT, RELOAD ON *.* TO 'new-user'@'localhost' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 		"GRANT UPDATE, DELETE, DROP ON performance_schema.* TO 'new-user'@'localhost' IDENTIFIED BY 'some pass' WITH MAX_USER_CONNECTIONS 1",
 	}
 	t.Check(got, DeepEquals, expect)
