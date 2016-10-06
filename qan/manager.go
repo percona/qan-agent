@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/percona/pmm/proto"
-        pc "github.com/percona/pmm/proto/config"
+	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mrms"
 	"github.com/percona/qan-agent/mysql"
@@ -217,7 +217,7 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 
 		return cmd.Reply(runningConfig) // success
 	case "RestartTool":
-                setConfig := pc.QAN{}
+		setConfig := pc.QAN{}
 		if err := json.Unmarshal(cmd.Data, &setConfig); err != nil {
 			return cmd.Reply(nil, err)
 		}
@@ -298,15 +298,27 @@ func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
 	if err != nil {
 		return map[string]interface{}{}
 	}
+	exampleQueries := DEFAULT_EXAMPLE_QUERIES
+	collectFrom := DEFAULT_COLLECT_FROM
+	interval := DEFAULT_INTERVAL
+
+	for uuid, a := range m.analyzers {
+		if a.setConfig.UUID == uuid {
+			collectFrom = a.setConfig.CollectFrom
+			interval = a.setConfig.Interval
+			exampleQueries = a.setConfig.ExampleQueries
+		}
+	}
+
 	mysqlConn := m.mysqlFactory.Make(mysqlInstance.DSN)
 	ReadMySQLConfig(mysqlConn) // Read current values
 	return map[string]interface{}{
-		"CollectFrom":             DEFAULT_COLLECT_FROM,
-		"Interval":                DEFAULT_INTERVAL,
+		"CollectFrom":             collectFrom,
+		"Interval":                interval,
 		"LongQueryTime":           DEFAULT_LONG_QUERY_TIME,
 		"MaxSlowLogSize":          DEFAULT_MAX_SLOW_LOG_SIZE,
 		"RemoveOldSlowLogs":       DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		"ExampleQueries":          DEFAULT_EXAMPLE_QUERIES,
+		"ExampleQueries":          exampleQueries,
 		"SlowLogVerbosity":        DEFAULT_SLOW_LOG_VERBOSITY,
 		"RateLimit":               DEFAULT_RATE_LIMIT,
 		"LogSlowAdminStatements":  DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
