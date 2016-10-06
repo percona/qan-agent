@@ -42,12 +42,15 @@ var (
 )
 
 func ReadMySQLConfig(conn mysql.Connector) error {
-	err := conn.Connect()
-	if err != nil {
-		return err
+	if _, err := conn.Uptime(); err != nil {
+		err := conn.Connect()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
 	}
 
-	perfschemaStatus, err := conn.GetGlobalVarString("performance_schema")
+	perfschemaStatus, _ := conn.GetGlobalVarString("performance_schema")
 	if pct.ToBool(perfschemaStatus) {
 		DEFAULT_COLLECT_FROM = "perfschema"
 	}
