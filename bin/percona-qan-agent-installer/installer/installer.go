@@ -34,6 +34,7 @@ import (
 	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/term"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan"
 )
 
 var portNumberRe = regexp.MustCompile(`\.\d+$`)
@@ -282,9 +283,11 @@ func (i *Installer) getAgentConfig() (*proto.AgentConfig, error) {
 }
 
 func (i *Installer) getQANConfig(collectFrom string) (*proto.AgentConfig, error) {
-	config := map[string]string{
-		"UUID":        i.mysql.UUID,
-		"CollectFrom": collectFrom,
+	config := map[string]interface{}{
+		"UUID":           i.mysql.UUID,
+		"CollectFrom":    collectFrom,
+		"Interval":       qan.DEFAULT_INTERVAL,
+		"ExampleQueries": qan.DEFAULT_EXAMPLE_QUERIES,
 		// All defaults, created at runtime by qan manager
 	}
 	bytes, err := json.Marshal(config)
