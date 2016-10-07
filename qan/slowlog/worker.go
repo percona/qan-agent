@@ -20,6 +20,8 @@ package slowlog
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"time"
 
 	"github.com/percona/go-mysql/event"
@@ -338,15 +340,6 @@ func (w *Worker) Stop() error {
 func (w *Worker) Cleanup() error {
 	w.logger.Debug("Cleanup:call")
 	defer w.logger.Debug("Cleanup:return")
-	for i, file := range w.oldSlowLogs {
-		w.status.Update(w.name, "Removing slow log "+file)
-		if err := os.Remove(file); err != nil {
-			w.logger.Warn(err)
-			continue
-		}
-		delete(w.oldSlowLogs, i)
-		w.logger.Info("Removed " + file)
-	}
 	return nil
 }
 
@@ -427,8 +420,30 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 	}
 
 	// Modify interval so worker parses the rest of the old slow log.
+	curSlowLog := interval.Filename
 	interval.Filename = newSlowLogFile
 	interval.EndOffset, _ = pct.FileSize(newSlowLogFile) // todo: handle err
+
+	// Purge old slow logs.
+	if !qan.DEFAULT_REMOVE_OLD_SLOW_LOGS {
+		return nil
+	}
+	filesFound, err := filepath.Glob(fmt.Sprintf("%s-*", curSlowLog))
+	if err != nil {
+		return err
+	}
+	if len(filesFound) <= qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP {
+		return nil
+	}
+	sort.Strings(filesFound)
+	for _, f := range(filesFound[:len(filesFound)-qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP]) {
+		w.status.Update(w.name, "Removing slow log "+f)
+		if err := os.Remove(f); err != nil {
+			w.logger.Warn(err)
+			continue
+		}
+		w.logger.Info("Removed old slow log "+f)
+	}
 
 	return nil
 }
