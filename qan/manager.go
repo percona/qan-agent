@@ -303,10 +303,16 @@ func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
 	interval := DEFAULT_INTERVAL
 
 	for uuid, a := range m.analyzers {
-		if a.setConfig.UUID == uuid {
-			collectFrom = a.setConfig.CollectFrom
-			interval = a.setConfig.Interval
-			exampleQueries = a.setConfig.ExampleQueries
+		if a.setConfig.UUID != uuid {
+			continue
+		}
+		collectFrom = a.setConfig.CollectFrom
+		interval = a.setConfig.Interval
+		exampleQueries = a.setConfig.ExampleQueries
+		// For old format of qan config, get Interval and ExampleQueries from running config.
+		if interval == 0 {
+			interval = a.analyzer.Config().Interval
+			exampleQueries = a.analyzer.Config().ExampleQueries
 		}
 	}
 
