@@ -29,7 +29,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/agent/release"
@@ -548,7 +547,7 @@ func (agent *Agent) GetAllConfigs() (interface{}, []error) {
 		}
 		if config != nil {
 			// Not all services have a config.
-			configs = append(configs, SanitizeConfig(config)...)
+			configs = append(configs, config...)
 		}
 	}
 	return configs, errs
@@ -716,25 +715,4 @@ func (agent *Agent) AllStatus() map[string]string {
 		}
 	}
 	return status
-}
-
-func SanitizeConfig(config []proto.AgentConfig) []proto.AgentConfig {
-	for i, c := range config {
-		configSet := map[string]string{}
-		err := json.Unmarshal([]byte(c.Set), &configSet)
-		if err != nil {
-			continue
-		}
-		if configDSN, ok := configSet["DSN"]; ok {
-			dsn, err := mysql.ParseDSN(configDSN)
-			if err != nil {
-				continue
-			}
-			dsn.Passwd = "****"
-			configSet["DSN"] = dsn.FormatDSN()
-			buf, _ := json.Marshal(configSet)
-			config[i].Set = string(buf)
-		}
-	}
-	return config
 }

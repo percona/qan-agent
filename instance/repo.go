@@ -25,7 +25,6 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
@@ -142,37 +141,14 @@ func (r *Repo) Get(uuid string, cache bool) (proto.Instance, error) {
 		return in, nil
 	}
 
-	// Get instance info from API.
-	link := ""
-	for i := 0; i < 3; i++ {
-		link = r.api.EntryLink("instances")
-		if link != "" {
-			break
-		}
-		time.Sleep(1 * time.Second)
-	}
-	if link == "" {
-		return in, fmt.Errorf("instance is not cached and cannot get instances link from API")
-	}
-
-	url := fmt.Sprintf("%s/%s", link, uuid)
-	r.logger.Info("GET", url)
-	code, data, err := r.api.Get(url)
+	// Get instance from json file.
+	file := filepath.Join(r.instanceDir, uuid+pct.INSTANCE_FILE_SUFFIX)
+	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		return in, err
+		return in, fmt.Errorf("Cannot read instance file: %s: %s", file, err)
 	}
-	if code == 404 {
-		return in, ErrInstanceNotFound
-	}
-	if code != 200 {
-		return in, fmt.Errorf("Getting instance %s from %s returned code %d, expected 200", uuid, link, code)
-	}
-	if data == nil {
-		return in, fmt.Errorf("Getting instance %s from %s did not return data")
-	}
-
 	if err := json.Unmarshal(data, &in); err != nil {
-		return in, err
+		return in, fmt.Errorf("Invalid instance file: %s: %s", file, err)
 	}
 
 	// Use low-level add() because we've already locked the mutex.
