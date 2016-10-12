@@ -353,20 +353,6 @@ func (m *Manager) restartAnalyzer(setConfig pc.QAN) error {
 		return err
 	}
 
-	// Get the MySQL instance from repo. It should be cached in a json config file
-	localMySQLInstance, err := m.instanceRepo.Get(config.UUID, false) // true = cache (write to disk)
-
-	// Remove the instance from repo to force calling the api to get
-	// the new config on the next call to Get
-	m.instanceRepo.Remove(config.UUID)
-
-	// Get the instance again and since it was removed, Get will call the API
-	mysqlInstance, err := m.instanceRepo.Get(config.UUID, false) // true = cache (write to disk)
-
-	// Update the DSN with the value we saved because API doesn't have the password
-	mysqlInstance.DSN = localMySQLInstance.DSN
-	m.instanceRepo.Update(mysqlInstance, true)
-
 	return m.startAnalyzer(setConfig)
 
 }
@@ -380,8 +366,9 @@ func (m *Manager) startAnalyzer(setConfig pc.QAN) error {
 	defer m.logger.Debug("startAnalyzer:return")
 
 	uuid := setConfig.UUID
+
 	// Get the MySQL instance from repo.
-	mysqlInstance, err := m.instanceRepo.Get(uuid, true) // true = cache (write to disk)
+	mysqlInstance, err := m.instanceRepo.Get(uuid, false) // true = cache (write to disk)
 	if err != nil {
 		return fmt.Errorf("cannot get MySQL instance %s: %s", uuid, err)
 	}
