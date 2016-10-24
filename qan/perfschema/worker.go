@@ -91,8 +91,8 @@ func NewRealWorkerFactory(logChan chan proto.LogEntry) *RealWorkerFactory {
 }
 
 func (f *RealWorkerFactory) Make(name string, mysqlConn mysql.Connector) *Worker {
-	getRows := func(c chan<- *DigestRow, doneChan chan<- error) error {
-		return GetDigestRows(mysqlConn, c, doneChan)
+	getRows := func(c chan<- *DigestRow, lastFetchSeconds float64, doneChan chan<- error) error {
+		return GetDigestRows(mysqlConn, lastFetchSeconds, c, doneChan)
 	}
 	getText := func(digest string) (string, error) {
 		return GetDigestText(mysqlConn, digest)
@@ -100,19 +100,21 @@ func (f *RealWorkerFactory) Make(name string, mysqlConn mysql.Connector) *Worker
 	return NewWorker(pct.NewLogger(f.logChan, name), mysqlConn, getRows, getText)
 }
 
-func GetDigestRows(mysqlConn mysql.Connector, c chan<- *DigestRow, doneChan chan<- error) error {
+func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<- *DigestRow, doneChan chan<- error) error {
 	rows, err := mysqlConn.DB().Query(
-		"SELECT " +
-			" COALESCE(SCHEMA_NAME, ''), COALESCE(DIGEST, ''), COUNT_STAR," +
-			" SUM_TIMER_WAIT, MIN_TIMER_WAIT, AVG_TIMER_WAIT, MAX_TIMER_WAIT," +
-			" SUM_LOCK_TIME," +
-			" SUM_ERRORS, SUM_WARNINGS," +
-			" SUM_ROWS_AFFECTED, SUM_ROWS_SENT, SUM_ROWS_EXAMINED," +
-			" SUM_CREATED_TMP_DISK_TABLES, SUM_CREATED_TMP_TABLES," +
-			" SUM_SELECT_FULL_JOIN, SUM_SELECT_FULL_RANGE_JOIN, SUM_SELECT_RANGE, SUM_SELECT_RANGE_CHECK, SUM_SELECT_SCAN," +
-			" SUM_SORT_MERGE_PASSES, SUM_SORT_RANGE, SUM_SORT_ROWS, SUM_SORT_SCAN," +
-			" SUM_NO_INDEX_USED, SUM_NO_GOOD_INDEX_USED" +
-			" FROM performance_schema.events_statements_summary_by_digest")
+		fmt.Sprintf(
+			"SELECT "+
+				" COALESCE(SCHEMA_NAME, ''), COALESCE(DIGEST, ''), COUNT_STAR,"+
+				" SUM_TIMER_WAIT, MIN_TIMER_WAIT, AVG_TIMER_WAIT, MAX_TIMER_WAIT,"+
+				" SUM_LOCK_TIME,"+
+				" SUM_ERRORS, SUM_WARNINGS,"+
+				" SUM_ROWS_AFFECTED, SUM_ROWS_SENT, SUM_ROWS_EXAMINED,"+
+				" SUM_CREATED_TMP_DISK_TABLES, SUM_CREATED_TMP_TABLES,"+
+				" SUM_SELECT_FULL_JOIN, SUM_SELECT_FULL_RANGE_JOIN, SUM_SELECT_RANGE, SUM_SELECT_RANGE_CHECK, SUM_SELECT_SCAN,"+
+				" SUM_SORT_MERGE_PASSES, SUM_SORT_RANGE, SUM_SORT_ROWS, SUM_SORT_SCAN,"+
+				" SUM_NO_INDEX_USED, SUM_NO_GOOD_INDEX_USED"+
+				" FROM performance_schema.events_statements_summary_by_digest"+
+				" WHERE DIGEST IS NOT NULL AND LAST_SEEN > NOW() - INTERVAL %d SECOND", int64(lastFetchSeconds)))
 	if err != nil {
 		// This bubbles up to the analyzer which logs it as an error:
 		//   0. Analyer.Worker.Run()
@@ -186,7 +188,7 @@ func GetDigestText(mysqlConn mysql.Connector, digest string) (string, error) {
 
 // --------------------------------------------------------------------------
 
-type GetDigestRowsFunc func(c chan<- *DigestRow, doneChan chan<- error) error
+type GetDigestRowsFunc func(c chan<- *DigestRow, lastFetchSeconds float64, doneChan chan<- error) error
 type GetDigestTextFunc func(string) (string, error)
 
 type Worker struct {
@@ -202,7 +204,7 @@ type Worker struct {
 	iter          *qan.Interval
 	lastErr       error
 	lastRowCnt    uint
-	lastFetchTime float64
+	lastFetchTime time.Time
 	lastPrepTime  float64
 }
 
@@ -214,9 +216,10 @@ func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestR
 		getRows:   getRows,
 		getText:   getText,
 		// --
-		name:   name,
-		status: pct.NewStatus([]string{name, name + "-last"}),
-		prev:   make(Snapshot),
+		name:          name,
+		status:        pct.NewStatus([]string{name, name + "-last"}),
+		lastFetchTime: time.Now(),
+		prev:          make(Snapshot),
 	}
 	return w
 }
@@ -235,7 +238,6 @@ func (w *Worker) Setup(interval *qan.Interval) error {
 	w.iter = interval
 	// Reset -last status vals.
 	w.lastRowCnt = 0
-	w.lastFetchTime = 0
 	w.lastPrepTime = 0
 	return nil
 }
@@ -278,8 +280,8 @@ func (w *Worker) Cleanup() error {
 	w.logger.Debug("Cleanup:call:", w.iter.Number)
 	defer w.logger.Debug("Cleanup:return:", w.iter.Number)
 	w.prev = w.curr
-	last := fmt.Sprintf("rows: %d, fetch: %s, prep: %s",
-		w.lastRowCnt, pct.Duration(w.lastFetchTime), pct.Duration(w.lastPrepTime))
+	last := fmt.Sprintf("rows: %d, fetch: %v, prep: %s",
+		w.lastRowCnt, w.lastFetchTime, pct.Duration(w.lastPrepTime))
 	if w.lastErr != nil {
 		last += fmt.Sprintf(", error: %s", w.lastErr)
 	}
@@ -305,7 +307,7 @@ func (w *Worker) reset() {
 	w.prev = make(Snapshot)
 	w.lastErr = nil
 	w.lastRowCnt = 0
-	w.lastFetchTime = 0
+	w.lastFetchTime = time.Time{}
 	w.lastPrepTime = 0
 }
 
@@ -316,13 +318,15 @@ func (w *Worker) getSnapshot(prev Snapshot) (Snapshot, error) {
 	w.status.Update(w.name, "Processing rows")
 	defer w.status.Update(w.name, "Idle")
 
-	t0 := time.Now()
-	defer func() { w.lastFetchTime = time.Now().Sub(t0).Seconds() }()
+	defer func() {
+		w.lastFetchTime = time.Now()
+	}()
 
+	seconds := time.Now().Sub(w.lastFetchTime).Seconds()
 	curr := make(Snapshot)
 	rowChan := make(chan *DigestRow)
 	doneChan := make(chan error, 1)
-	if err := w.getRows(rowChan, doneChan); err != nil {
+	if err := w.getRows(rowChan, seconds, doneChan); err != nil {
 		if err == sql.ErrNoRows {
 			return curr, nil
 		}
