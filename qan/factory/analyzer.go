@@ -76,6 +76,7 @@ func (f *RealAnalyzerFactory) Make(
 	default:
 		panic("Invalid analyzerType: " + analyzerType)
 	}
+	worker.SetConfig(config)
 	return qan.NewRealAnalyzer(
 		pct.NewLogger(f.logChan, name),
 		config,
