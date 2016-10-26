@@ -42,12 +42,12 @@ import (
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
 
-var inputDir = RootDir() + "/agent/test/qan/perfschema/"
-var outputDir = RootDir() + "/agent/test/qan/perfschema/"
+var inputDir = RootDir() + "/test/qan/perfschema/"
+var outputDir = RootDir() + "/test/qan/perfschema/"
 
 type WorkerTestSuite struct {
 	dsn       string
-	logChan   chan *proto.LogEntry
+	logChan   chan proto.LogEntry
 	logger    *pct.Logger
 	nullmysql *mock.NullMySQL
 	mysqlConn *mysql.Connection
@@ -61,7 +61,7 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 	if err := s.mysqlConn.Connect(); err != nil {
 		t.Fatal(err)
 	}
-	s.logChan = make(chan *proto.LogEntry, 100)
+	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 	s.nullmysql = mock.NewNullMySQL()
 }
@@ -110,7 +110,7 @@ func (s *WorkerTestSuite) loadResult(file string) (*qan.Result, error) {
 }
 
 func makeGetRowsFunc(iters [][]*perfschema.DigestRow) perfschema.GetDigestRowsFunc {
-	return func(c chan<- *perfschema.DigestRow, done chan<- error) error {
+	return func(c chan<- *perfschema.DigestRow, lastFetchSeconds float64, done chan<- error) error {
 		if len(iters) == 0 {
 			return fmt.Errorf("No more iters")
 		}
