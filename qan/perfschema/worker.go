@@ -37,6 +37,7 @@ import (
 type DigestRow struct {
 	Schema                  string
 	Digest                  string
+	DigestText              string
 	CountStar               uint
 	SumTimerWait            uint64
 	MinTimerWait            uint64
@@ -103,17 +104,14 @@ func (f *RealWorkerFactory) Make(name string, mysqlConn mysql.Connector) *Worker
 	getRows := func(c chan<- *DigestRow, lastFetchSeconds float64, doneChan chan<- error) error {
 		return GetDigestRows(mysqlConn, lastFetchSeconds, c, doneChan)
 	}
-	getText := func(digest string) (string, error) {
-		return GetDigestText(mysqlConn, digest)
-	}
-	return NewWorker(pct.NewLogger(f.logChan, name), mysqlConn, getRows, getText)
+	return NewWorker(pct.NewLogger(f.logChan, name), mysqlConn, getRows)
 }
 
 func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<- *DigestRow, doneChan chan<- error) error {
 	rows, err := mysqlConn.DB().Query(
 		fmt.Sprintf(
 			"SELECT "+
-				" COALESCE(SCHEMA_NAME, ''), COALESCE(DIGEST, ''), COUNT_STAR,"+
+				" COALESCE(SCHEMA_NAME, ''), COALESCE(DIGEST, ''), COALESCE(DIGEST_TEXT, ''), COUNT_STAR,"+
 				" SUM_TIMER_WAIT, MIN_TIMER_WAIT, AVG_TIMER_WAIT, MAX_TIMER_WAIT,"+
 				" SUM_LOCK_TIME,"+
 				" SUM_ERRORS, SUM_WARNINGS,"+
@@ -143,6 +141,7 @@ func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<-
 			err = rows.Scan(
 				&row.Schema,
 				&row.Digest,
+				&row.DigestText,
 				&row.CountStar,
 				&row.SumTimerWait,
 				&row.MinTimerWait,
@@ -180,21 +179,6 @@ func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<-
 	return nil
 }
 
-func GetDigestText(mysqlConn mysql.Connector, digest string) (string, error) {
-	query := fmt.Sprintf("SELECT DIGEST_TEXT"+
-		" FROM performance_schema.events_statements_summary_by_digest"+
-		" WHERE DIGEST='%s' AND DIGEST_TEXT IS NOT NULL LIMIT 1", digest)
-	var digestText string
-	err := mysqlConn.DB().QueryRow(query).Scan(&digestText)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return "", nil
-		}
-		return "", err
-	}
-	return digestText, nil
-}
-
 // --------------------------------------------------------------------------
 
 type GetDigestRowsFunc func(c chan<- *DigestRow, lastFetchSeconds float64, doneChan chan<- error) error
@@ -204,7 +188,6 @@ type Worker struct {
 	logger    *pct.Logger
 	mysqlConn mysql.Connector
 	getRows   GetDigestRowsFunc
-	getText   GetDigestTextFunc
 	// --
 	name            string
 	status          *pct.Status
@@ -223,13 +206,12 @@ type Worker struct {
 	queryExamples map[string]perfSchemaExample
 }
 
-func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestRowsFunc, getText GetDigestTextFunc) *Worker {
+func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestRowsFunc) *Worker {
 	name := logger.Service()
 	w := &Worker{
 		logger:    logger,
 		mysqlConn: mysqlConn,
 		getRows:   getRows,
-		getText:   getText,
 		// --
 		name:          name,
 		status:        pct.NewStatus([]string{name, name + "-last"}),
@@ -426,15 +408,10 @@ ROW_LOOP:
 					digestText = prevClass.DigestText
 				} else {
 					// Have never seen class before, so get digext text from perf schema.
-					var err error
-					digestText, err = w.getText(row.Digest)
+					digestText = row.DigestText
 					if classId == "2" && digestText == "" {
 						// To make explains works
 						digestText = `-- performance_schema.events_statements_summary_by_digest is full`
-					}
-					if err != nil {
-						w.logger.Error(err)
-						continue
 					}
 				}
 				// Create the class and init with this schema and row.
