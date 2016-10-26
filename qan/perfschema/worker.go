@@ -181,10 +181,16 @@ func GetDigestRows(mysqlConn mysql.Connector, c chan<- *DigestRow, doneChan chan
 func GetDigestText(mysqlConn mysql.Connector, digest string) (string, error) {
 	query := fmt.Sprintf("SELECT DIGEST_TEXT"+
 		" FROM performance_schema.events_statements_summary_by_digest"+
-		" WHERE DIGEST='%s' LIMIT 1", digest)
+		" WHERE DIGEST='%s' AND DIGEST_TEXT IS NOT NULL LIMIT 1", digest)
 	var digestText string
 	err := mysqlConn.DB().QueryRow(query).Scan(&digestText)
-	return digestText, err
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", err
+	}
+	return digestText, nil
 }
 
 // --------------------------------------------------------------------------

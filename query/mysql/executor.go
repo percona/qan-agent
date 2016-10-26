@@ -118,8 +118,7 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				tableInfo = res[dbTable]
 			}
 
-			// SHOW TABLE STATUS does not accept db.tbl so pass them separately,
-			// and tbl is used in LIKE so it's not an ident.
+			// SHOW TABLE STATUS does not accept db.tbl so pass them separately.
 			db := escapeString(t.Db)
 			table := escapeString(t.Table)
 			status, err := e.showStatus(Ident(db, ""), table)
@@ -127,7 +126,7 @@ func (e *QueryExecutor) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfo
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
 				}
-				tableInfo.Errors = append(tableInfo.Errors, fmt.Sprintf("SHOW TABLE STATUS FROM %s LIKE %s: %s", t.Db, t.Table, err))
+				tableInfo.Errors = append(tableInfo.Errors, fmt.Sprintf("SHOW TABLE STATUS FROM %s WHERE Name='%s': %s", t.Db, t.Table, err))
 				continue
 			}
 			tableInfo.Status = status
@@ -178,7 +177,10 @@ func (e *QueryExecutor) classicExplain(tx *sql.Tx, query string) (classicExplain
 	// Partitions are introduced since MySQL 5.1
 	// We can simply run EXPLAIN /*!50100 PARTITIONS*/ to get this column when it's available
 	// without prior check for MySQL version.
-	rows, err := tx.Query(fmt.Sprintf("EXPLAIN /*!50100 PARTITIONS*/ %s", query))
+	if strings.TrimSpace(query) == "" {
+		return nil, fmt.Errorf("cannot run EXPLAIN on an empty query example")
+	}
+	rows, err := tx.Query(fmt.Sprintf("EXPLAIN %s", query))
 	if err != nil {
 		return nil, err
 	}
@@ -351,10 +353,8 @@ func (e *QueryExecutor) showIndex(dbTable string) (map[string][]proto.ShowIndexR
 }
 
 func (e *QueryExecutor) showStatus(db, table string) (*proto.ShowTableStatus, error) {
-	// Escape _ in the table name because it's a wildcard in LIKE.
-	table = strings.Replace(table, "_", "\\_", -1)
 	status := &proto.ShowTableStatus{}
-	err := e.conn.DB().QueryRow(fmt.Sprintf("SHOW TABLE STATUS FROM %s LIKE '%s'", db, table)).Scan(
+	err := e.conn.DB().QueryRow(fmt.Sprintf("SHOW TABLE STATUS FROM %s WHERE Name='%s'", db, table)).Scan(
 		&status.Name,
 		&status.Engine,
 		&status.Version,

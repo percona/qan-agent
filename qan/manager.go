@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/percona/pmm/proto"
+	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mrms"
 	"github.com/percona/qan-agent/mysql"
@@ -43,7 +44,7 @@ var (
 // An AnalyzerInstnace is an Analyzer ran by a Manager, one per MySQL instance
 // as configured.
 type AnalyzerInstance struct {
-	setConfig   map[string]string
+	setConfig   pc.QAN
 	mysqlConn   mysql.Connector
 	restartChan chan proto.Instance
 	tickChan    chan time.Time
@@ -123,7 +124,7 @@ func (m *Manager) Start() error {
 			continue
 		}
 
-		setConfig := map[string]string{}
+		setConfig := pc.QAN{}
 		if err := json.Unmarshal(data, &setConfig); err != nil {
 			m.logger.Warn(fmt.Sprintf("Cannot decode %s: %s", file, err))
 			continue
@@ -137,7 +138,7 @@ func (m *Manager) Start() error {
 		//       fails to connect to MySQL in mrms/monitor/instance.NewMysqlInstance();
 		//       it should succeed and retry until MySQL is online.
 		if err := m.startAnalyzer(setConfig); err != nil {
-			errMsg := fmt.Sprintf("Cannot start Query Analytics on MySQL %s: %s", setConfig["UUID"], err)
+			errMsg := fmt.Sprintf("Cannot start Query Analytics on MySQL %s: %s", setConfig.UUID, err)
 			m.logger.Error(errMsg)
 			continue
 		}
@@ -188,11 +189,11 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 
 	switch cmd.Cmd {
 	case "StartTool":
-		setConfig := map[string]string{}
+		setConfig := pc.QAN{}
 		if err := json.Unmarshal(cmd.Data, &setConfig); err != nil {
 			return cmd.Reply(nil, err)
 		}
-		uuid := setConfig["UUID"]
+		uuid := setConfig.UUID
 		if err := m.startAnalyzer(setConfig); err != nil {
 			switch err {
 			case ErrAlreadyRunning:
@@ -216,11 +217,11 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 
 		return cmd.Reply(runningConfig) // success
 	case "RestartTool":
-		setConfig := map[string]string{}
+		setConfig := pc.QAN{}
 		if err := json.Unmarshal(cmd.Data, &setConfig); err != nil {
 			return cmd.Reply(nil, err)
 		}
-		uuid := setConfig["UUID"]
+		uuid := setConfig.UUID
 		if err := m.restartAnalyzer(setConfig); err != nil {
 			return cmd.Reply(nil, err)
 		}
@@ -292,14 +293,38 @@ func (m *Manager) GetConfig() ([]proto.AgentConfig, []error) {
 	return configs, nil
 }
 
-func (m *Manager) GetDefaults() map[string]interface{} {
+func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
+	mysqlInstance, err := m.instanceRepo.Get(uuid, false) // true = cache (write to disk)
+	if err != nil {
+		return map[string]interface{}{}
+	}
+	exampleQueries := DEFAULT_EXAMPLE_QUERIES
+	collectFrom := DEFAULT_COLLECT_FROM
+	interval := DEFAULT_INTERVAL
+
+	for uuid, a := range m.analyzers {
+		if a.setConfig.UUID != uuid {
+			continue
+		}
+		collectFrom = a.setConfig.CollectFrom
+		interval = a.setConfig.Interval
+		exampleQueries = a.setConfig.ExampleQueries
+		// For old format of qan config, get Interval and ExampleQueries from running config.
+		if interval == 0 {
+			interval = a.analyzer.Config().Interval
+			exampleQueries = a.analyzer.Config().ExampleQueries
+		}
+	}
+
+	mysqlConn := m.mysqlFactory.Make(mysqlInstance.DSN)
+	ReadMySQLConfig(mysqlConn) // Read current values
 	return map[string]interface{}{
-		"CollectFrom":             DEFAULT_COLLECT_FROM,
-		"Interval":                DEFAULT_INTERVAL,
+		"CollectFrom":             collectFrom,
+		"Interval":                interval,
 		"LongQueryTime":           DEFAULT_LONG_QUERY_TIME,
 		"MaxSlowLogSize":          DEFAULT_MAX_SLOW_LOG_SIZE,
 		"RemoveOldSlowLogs":       DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		"ExampleQueries":          DEFAULT_EXAMPLE_QUERIES,
+		"ExampleQueries":          exampleQueries,
 		"SlowLogVerbosity":        DEFAULT_SLOW_LOG_VERBOSITY,
 		"RateLimit":               DEFAULT_RATE_LIMIT,
 		"LogSlowAdminStatements":  DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
@@ -312,7 +337,7 @@ func (m *Manager) GetDefaults() map[string]interface{} {
 /////////////////////////////////////////////////////////////////////////////
 // Implementation
 /////////////////////////////////////////////////////////////////////////////
-func (m *Manager) restartAnalyzer(setConfig map[string]string) error {
+func (m *Manager) restartAnalyzer(setConfig pc.QAN) error {
 	// XXX Assume caller has locked m.mux.
 
 	m.logger.Debug("startAnalyzer:call")
@@ -328,48 +353,24 @@ func (m *Manager) restartAnalyzer(setConfig map[string]string) error {
 		return err
 	}
 
-	// Get the MySQL instance from repo. It should be cached in a json config file
-	localMySQLInstance, err := m.instanceRepo.Get(config.UUID, false) // true = cache (write to disk)
-
-	// Remove the instance from repo to force calling the api to get
-	// the new config on the next call to Get
-	m.instanceRepo.Remove(config.UUID)
-
-	// Get the instance again and since it was removed, Get will call the API
-	mysqlInstance, err := m.instanceRepo.Get(config.UUID, false) // true = cache (write to disk)
-
-	// Update the DSN with the value we saved because API doesn't have the password
-	mysqlInstance.DSN = localMySQLInstance.DSN
-	m.instanceRepo.Update(mysqlInstance, true)
-
 	return m.startAnalyzer(setConfig)
 
 }
 
-func (m *Manager) startAnalyzer(setConfig map[string]string) error {
+func (m *Manager) startAnalyzer(setConfig pc.QAN) error {
 	/*
 		XXX Assume caller has locked m.mux.
 	*/
-	uuid, ok := setConfig["UUID"]
-	if !ok {
-		return errors.New("invalid config. UUID key missing")
-	}
 
 	m.logger.Debug("startAnalyzer:call")
 	defer m.logger.Debug("startAnalyzer:return")
 
+	uuid := setConfig.UUID
+
 	// Get the MySQL instance from repo.
-	mysqlInstance, err := m.instanceRepo.Get(uuid, true) // true = cache (write to disk)
+	mysqlInstance, err := m.instanceRepo.Get(uuid, false) // true = cache (write to disk)
 	if err != nil {
 		return fmt.Errorf("cannot get MySQL instance %s: %s", uuid, err)
-	}
-	// instanceRepo.Get tries to read the info from the json file and if it doesn't exixts
-	// it tries to retrieve the instance from the API, but API only has a sanitized DSN without
-	// password so, we need to override the dsn with the one that comes from pmm-admin via
-	// setConfig["dsn"]
-	if setConfig["DSN"] != "" {
-		mysqlInstance.DSN = setConfig["DSN"]
-		m.instanceRepo.Update(mysqlInstance, true)
 	}
 
 	// Create a MySQL connection.

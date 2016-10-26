@@ -19,7 +19,6 @@ package qan
 
 import (
 	"fmt"
-	"strconv"
 
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
@@ -31,7 +30,8 @@ var (
 	DEFAULT_INTERVAL                  uint  = 60         // 1 minute
 	DEFAULT_LONG_QUERY_TIME                 = 0.001      // 1ms
 	DEFAULT_MAX_SLOW_LOG_SIZE         int64 = 1073741824 // 1G
-	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true
+	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true	 // whether to remove old slow logs after rotation
+	DEFAULT_OLD_SLOW_LOGS_TO_KEEP		= 1      // how many slow logs to keep on filesystem
 	DEFAULT_EXAMPLE_QUERIES                 = true
 	DEFAULT_SLOW_LOG_VERBOSITY              = "full" // all metrics, Percona Server
 	DEFAULT_RATE_LIMIT                uint  = 100    // 1%, Percona Server
@@ -43,106 +43,96 @@ var (
 )
 
 func ReadMySQLConfig(conn mysql.Connector) error {
-	err := conn.Connect()
-	if err != nil {
-		return err
+	if _, err := conn.Uptime(); err != nil {
+		err := conn.Connect()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
 	}
 
-	perfschemaStatus, err := conn.GetGlobalVarString("performance_schema")
+	perfschemaStatus, _ := conn.GetGlobalVarString("performance_schema")
 	if pct.ToBool(perfschemaStatus) {
 		DEFAULT_COLLECT_FROM = "perfschema"
 	}
 
 	//
-	DEFAULT_LONG_QUERY_TIME, err = conn.GetGlobalVarNumber("long_query_time")
-	if err != nil {
-		return err
-	}
+	DEFAULT_LONG_QUERY_TIME, _ = conn.GetGlobalVarNumber("long_query_time")
 
 	//
-	defaultLogSlowAdminStatements, err := conn.GetGlobalVarString("log_slow_admin_statements")
-	if err != nil {
-		return err
-	}
+	defaultLogSlowAdminStatements, _ := conn.GetGlobalVarString("log_slow_admin_statements")
 	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = pct.ToBool(defaultLogSlowAdminStatements)
 
 	//
-	defaultRateLimit, err := conn.GetGlobalVarNumber("log_slow_rate_limit")
-	if err != nil {
-		return err
-	}
+	defaultRateLimit, _ := conn.GetGlobalVarNumber("log_slow_rate_limit")
 	DEFAULT_RATE_LIMIT = uint(defaultRateLimit)
 
 	//
-	defaultLogSlowSlaveStatements, err := conn.GetGlobalVarString("log_slow_slave_statements")
-	if err != nil {
-		return err
-	}
+	defaultLogSlowSlaveStatements, _ := conn.GetGlobalVarString("log_slow_slave_statements")
 	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = pct.ToBool(defaultLogSlowSlaveStatements)
 
 	//
-	DEFAULT_SLOW_LOG_VERBOSITY, err = conn.GetGlobalVarString("log_slow_verbosity")
-	if err != nil {
-		return err
-	}
-
+	DEFAULT_SLOW_LOG_VERBOSITY, _ = conn.GetGlobalVarString("log_slow_verbosity")
 	return nil
 }
 
-func ValidateConfig(setConfig map[string]string) (pc.QAN, error) {
+func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
-		UUID:                    setConfig["UUID"],
-		CollectFrom:             DEFAULT_COLLECT_FROM,
-		Interval:                DEFAULT_INTERVAL,
-		LongQueryTime:           DEFAULT_LONG_QUERY_TIME,
-		MaxSlowLogSize:          DEFAULT_MAX_SLOW_LOG_SIZE,
-		RemoveOldSlowLogs:       DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		ExampleQueries:          DEFAULT_EXAMPLE_QUERIES,
-		SlowLogVerbosity:        DEFAULT_SLOW_LOG_VERBOSITY,
-		RateLimit:               DEFAULT_RATE_LIMIT,
-		LogSlowAdminStatements:  DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
-		LogSlowSlaveStatemtents: DEFAULT_LOG_SLOW_SLAVE_STATEMENTS,
-		WorkerRunTime:           DEFAULT_WORKER_RUNTIME,
-		ReportLimit:             DEFAULT_REPORT_LIMIT,
+		UUID:           setConfig.UUID,
+		CollectFrom:    DEFAULT_COLLECT_FROM,
+		Interval:       DEFAULT_INTERVAL,
+		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
+		ExampleQueries: DEFAULT_EXAMPLE_QUERIES,
+		WorkerRunTime:  DEFAULT_WORKER_RUNTIME,
+		ReportLimit:    DEFAULT_REPORT_LIMIT,
 	}
 
 	// Strings
-
-	if val, set := setConfig["CollectFrom"]; set {
-		if val != "slowlog" && val != "perfschema" {
-			return runConfig, fmt.Errorf("CollectFrom must be 'slowlog' or 'perfschema'")
-		}
-		runConfig.CollectFrom = val
+	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {
+		return runConfig, fmt.Errorf("CollectFrom must be 'slowlog' or 'perfschema'")
 	}
+	runConfig.CollectFrom = setConfig.CollectFrom
 
 	// Integers
-
-	if val, set := setConfig["Interval"]; set {
-		n, err := strconv.ParseUint(val, 10, 32)
-		if err != nil {
-			return runConfig, fmt.Errorf("invalid Interval: '%s': %s", val, err)
-		}
-		if n < 0 || n > 3600 {
-			return runConfig, fmt.Errorf("Interval must be > 0 and <= 3600 (1 hour)")
-		}
-		runConfig.Interval = uint(n)
+	if setConfig.Interval < 0 || setConfig.Interval > 3600 {
+		return runConfig, fmt.Errorf("Interval must be > 0 and <= 3600 (1 hour)")
 	}
+	if setConfig.Interval > 0 {
+		runConfig.Interval = uint(setConfig.Interval)
+	}
+
 	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
 
-	if val, set := setConfig["MaxSlowLogSize"]; set {
-		n, err := strconv.ParseInt(val, 10, 64)
-		if err != nil {
-			return runConfig, fmt.Errorf("invalid MaxSlowLogSize: '%s': %s", val, err)
-		}
-		if n < 0 {
-			return runConfig, fmt.Errorf("MaxSlowLogSize must be > 0")
-		}
-		runConfig.MaxSlowLogSize = n
-	}
-
-	if val, set := setConfig["ExampleQueries"]; set {
-		runConfig.ExampleQueries = pct.ToBool(val)
-	}
-
 	return runConfig, nil
+}
+
+func GetMySQLConfig(config pc.QAN) ([]string, []string, error) {
+	switch config.CollectFrom {
+	case "slowlog":
+		return makeSlowLogConfig()
+	case "perfschema":
+		return makePerfSchemaConfig()
+	default:
+		return nil, nil, fmt.Errorf("invalid CollectFrom: '%s'; expected 'slowlog' or 'perfschema'", config.CollectFrom)
+	}
+}
+
+func makeSlowLogConfig() ([]string, []string, error) {
+	on := []string{
+		"SET GLOBAL slow_query_log=OFF",
+		"SET GLOBAL log_output='file'", // as of MySQL 5.1.6
+	}
+	off := []string{
+		"SET GLOBAL slow_query_log=OFF",
+	}
+
+	on = append(on,
+		"SET GLOBAL slow_query_log=ON",
+		"SET time_zone='+0:00'",
+	)
+	return on, off, nil
+}
+
+func makePerfSchemaConfig() ([]string, []string, error) {
+	return []string{"SET time_zone='+0:00'"}, []string{}, nil
 }

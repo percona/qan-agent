@@ -81,7 +81,6 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 	}
 	s.configDir = pct.Basedir.Dir("config")
 	s.im = instance.NewRepo(pct.NewLogger(s.logChan, "manager-test"), s.configDir, s.api)
-
 	s.mysqlUUID = "3130000000000000"
 	s.mysqlInstance = proto.Instance{
 		Subsystem: "mysql",
@@ -92,6 +91,29 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 
 	err = s.im.Init()
 	t.Assert(err, IsNil)
+}
+
+func (s *ManagerTestSuite) TestGetDefaults(t *C) {
+	uuid := "12345ABCDE"
+	instance := proto.Instance{
+		Subsystem: "mysql",
+		UUID:      uuid,
+		Name:      "db01",
+		DSN:       "user:pass@tcp(localhost)/",
+	}
+	s.nullmysql.SetGlobalVarNumber("long_query_time", 998)
+	s.nullmysql.SetGlobalVarString("log_slow_verbosity", "minimal")
+	s.im.Add(instance, true)
+
+	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
+	a := mock.NewQanAnalyzer("qan-analizer-1")
+	f := mock.NewQanAnalyzerFactory(a)
+	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	t.Assert(m, NotNil)
+
+	d := m.GetDefaults(uuid)
+	t.Assert(d["LongQueryTime"].(float64), Equals, float64(998))
+	t.Assert(d["SlowLogVerbosity"].(string), Equals, "minimal")
 }
 
 func (s *ManagerTestSuite) SetUpTest(t *C) {
@@ -179,14 +201,13 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 		mysqlInstance := mysqlInstances[i]
 		// Write a realistic qan.conf config to disk.
 		config := pc.QAN{
-			UUID:              mysqlInstance.UUID,
-			CollectFrom:       analyzerType,
-			Interval:          300,
-			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,  // specify optional args
-			RemoveOldSlowLogs: true, // specify optional args
-			ExampleQueries:    true, // specify optional args
-			ReportLimit:       200,  // specify optional args
+			UUID:           mysqlInstance.UUID,
+			CollectFrom:    analyzerType,
+			Interval:       300,
+			WorkerRunTime:  600,
+			MaxSlowLogSize: 100,  // specify optional args
+			ExampleQueries: true, // specify optional args
+			ReportLimit:    200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -279,14 +300,13 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 	for _, mysqlInstance := range mysqlInstances {
 		// Write a realistic qan.conf config to disk.
 		config := pc.QAN{
-			UUID:              mysqlInstance.UUID,
-			CollectFrom:       "perfschema",
-			Interval:          300,
-			WorkerRunTime:     600,
-			MaxSlowLogSize:    100,  // specify optional args
-			RemoveOldSlowLogs: true, // specify optional args
-			ExampleQueries:    true, // specify optional args
-			ReportLimit:       200,  // specify optional args
+			UUID:           mysqlInstance.UUID,
+			CollectFrom:    "perfschema",
+			Interval:       300,
+			WorkerRunTime:  600,
+			MaxSlowLogSize: 100,  // specify optional args
+			ExampleQueries: true, // specify optional args
+			ReportLimit:    200,  // specify optional args
 			Start: []string{
 				"SET GLOBAL slow_query_log=OFF",
 				"SET GLOBAL long_query_time=0.456",
@@ -392,7 +412,6 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	configWithDefaults := config
 	configWithDefaults.MaxSlowLogSize = qan.DEFAULT_MAX_SLOW_LOG_SIZE
-	configWithDefaults.RemoveOldSlowLogs = qan.DEFAULT_REMOVE_OLD_SLOW_LOGS
 	configWithDefaults.ExampleQueries = qan.DEFAULT_EXAMPLE_QUERIES
 	configWithDefaults.ReportLimit = qan.DEFAULT_REPORT_LIMIT
 	qanConfig, err := json.Marshal(configWithDefaults)
@@ -429,23 +448,14 @@ func (s *ManagerTestSuite) TestValidateConfig(t *C) {
 	t.Assert(len(mysqlInstances), Equals, 1)
 	mysqlUUID := mysqlInstances[0].UUID
 
-	config := map[string]string{
-		"UUID": mysqlUUID,
-		//Start: []string{
-		//	"SET GLOBAL slow_query_log=OFF",
-		//	"SET GLOBAL long_query_time=0.123",
-		//	"SET GLOBAL slow_query_log=ON",
-		//},
-		//Stop: []string{
-		//	"SET GLOBAL slow_query_log=OFF",
-		//	"SET GLOBAL long_query_time=10",
-		//},
-		"Interval":          "300",        // 5 min
-		"MaxSlowLogSize":    "1073741824", // 1 GiB
-		"RemoveOldSlowLogs": "true",
-		"ExampleQueries":    "true",
-		"WorkerRunTime":     "600", // 10 min
-		"CollectFrom":       "slowlog",
+	config := pc.QAN{
+		UUID:              mysqlUUID,
+		Interval:          300,        // 5 min
+		MaxSlowLogSize:    1073741824, // 1 GiB
+		RemoveOldSlowLogs: true,
+		ExampleQueries:    true,
+		WorkerRunTime:     600, // 10 min
+		CollectFrom:       "slowlog",
 	}
 	_, err := qan.ValidateConfig(config)
 	t.Check(err, IsNil)
@@ -480,12 +490,11 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 			"SET GLOBAL slow_query_log=OFF",
 			"SET GLOBAL long_query_time=10",
 		},
-		Interval:          300,        // 5 min
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: true,
-		ExampleQueries:    true,
-		WorkerRunTime:     600, // 10 min
-		CollectFrom:       "slowlog",
+		Interval:       300,        // 5 min
+		MaxSlowLogSize: 1073741824, // 1 GiB
+		ExampleQueries: true,
+		WorkerRunTime:  600, // 10 min
+		CollectFrom:    "slowlog",
 	}
 
 	// Send a StartTool cmd with the qan config to start an analyzer.
@@ -580,12 +589,11 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 			"SET GLOBAL slow_query_log=OFF",
 			"SET GLOBAL long_query_time=10",
 		},
-		Interval:          300,        // 5 min
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: true,
-		ExampleQueries:    true,
-		WorkerRunTime:     600, // 10 min
-		CollectFrom:       "slowlog",
+		Interval:       300,        // 5 min
+		MaxSlowLogSize: 1073741824, // 1 GiB
+		ExampleQueries: true,
+		WorkerRunTime:  600, // 10 min
+		CollectFrom:    "slowlog",
 	}
 
 	// Send a StartTool cmd with the qan config to start an analyzer.

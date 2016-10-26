@@ -29,7 +29,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-sql-driver/mysql"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/agent/release"
@@ -445,7 +444,7 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 	case "SetConfig":
 		data, errs = agent.handleSetConfig(cmd)
 	case "GetDefaults":
-		data, errs = agent.GetDefaults()
+		data, errs = agent.GetDefaults(cmd)
 	case "Version":
 		data, errs = agent.handleVersion(cmd)
 	case "Reconnect":
@@ -548,13 +547,23 @@ func (agent *Agent) GetAllConfigs() (interface{}, []error) {
 		}
 		if config != nil {
 			// Not all services have a config.
-			configs = append(configs, SanitizeConfig(config)...)
+			configs = append(configs, config...)
 		}
 	}
 	return configs, errs
 }
 
-func (agent *Agent) GetDefaults() (interface{}, []error) {
+func (agent *Agent) GetDefaults(cmd *proto.Cmd) (interface{}, []error) {
+	var data map[string]string
+	err := json.Unmarshal(cmd.Data, &data)
+	if err != nil {
+		return nil, []error{fmt.Errorf("agent.GetDefaults: cannot unmarshal cmd. %v", err)}
+	}
+	uuid, ok := data["UUID"]
+	if !ok {
+		return nil, []error{errors.New("missing uuid in GetDefaults call")}
+	}
+
 	defaults := map[string]map[string]interface{}{
 		"bin": map[string]interface{}{
 			"pid-file": DEFAULT_PIDFILE,
@@ -570,7 +579,7 @@ func (agent *Agent) GetDefaults() (interface{}, []error) {
 			agent.logger.Error("Nil manager:", service)
 			continue
 		}
-		def := manager.GetDefaults()
+		def := manager.GetDefaults(uuid)
 		if def == nil {
 			continue
 		}
@@ -706,25 +715,4 @@ func (agent *Agent) AllStatus() map[string]string {
 		}
 	}
 	return status
-}
-
-func SanitizeConfig(config []proto.AgentConfig) []proto.AgentConfig {
-	for i, c := range config {
-		configSet := map[string]string{}
-		err := json.Unmarshal([]byte(c.Set), &configSet)
-		if err != nil {
-			continue
-		}
-		if configDSN, ok := configSet["DSN"]; ok {
-			dsn, err := mysql.ParseDSN(configDSN)
-			if err != nil {
-				continue
-			}
-			dsn.Passwd = "****"
-			configSet["DSN"] = dsn.FormatDSN()
-			buf, _ := json.Marshal(configSet)
-			config[i].Set = string(buf)
-		}
-	}
-	return config
 }

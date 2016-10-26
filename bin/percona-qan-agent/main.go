@@ -66,7 +66,7 @@ func init() {
 	golog.SetOutput(os.Stdout)
 
 	flag.StringVar(&flagBasedir, "basedir", pct.DEFAULT_BASEDIR, "Agent basedir")
-	flag.StringVar(&flagPidFile, "pid-file", agent.DEFAULT_PIDFILE, "PID file")
+	flag.StringVar(&flagPidFile, "pid-file", "", "PID file")
 	flag.StringVar(&flagListen, "listen", agent.DEFAULT_LISTEN, "Agent interface address")
 	flag.BoolVar(&flagPing, "ping", false, "Ping API")
 	flag.BoolVar(&flagVersion, "version", false, "Print version")
@@ -140,15 +140,20 @@ func main() {
 	// //////////////////////////////////////////////////////////////////////
 
 	// Create PID file or die trying.
-	pidFile := pct.NewPidFile()
-	if err := pidFile.Set(flagPidFile); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+	var pidFile *pct.PidFile
+	if flagPidFile != "" {
+		pidFile = pct.NewPidFile()
+		if err := pidFile.Set(flagPidFile); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 	}
 
 	err = run(agentConfig) // run the agent
 
-	pidFile.Remove() // always remove PID file
+	if flagPidFile != "" {
+		pidFile.Remove() // always remove PID file
+	}
 
 	if err != nil {
 		golog.Println(err)

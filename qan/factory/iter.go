@@ -61,7 +61,6 @@ func (f *RealIntervalIterFactory) Make(analyzerType string, mysqlConn mysql.Conn
 			if err != nil {
 				return "", err
 			}
-
 			filename := AbsDataFile(dataDir, slowQueryLogFile)
 			return filename, nil
 		}

@@ -43,7 +43,7 @@ func MakeGrant(dsn dsn.DSN, mysqlMaxUserConns int64) []string {
 	// Just in case, disable it for this session
 	grants := []string{
 		"SET SESSION old_passwords=0",
-		fmt.Sprintf("GRANT SUPER, PROCESS, USAGE, SELECT ON *.* TO '%s'@'%s' IDENTIFIED BY '%s' WITH MAX_USER_CONNECTIONS %d",
+		fmt.Sprintf("GRANT SUPER, PROCESS, USAGE, SELECT, RELOAD ON *.* TO '%s'@'%s' IDENTIFIED BY '%s' WITH MAX_USER_CONNECTIONS %d",
 			dsn.Username, host, dsn.Password, mysqlMaxUserConns),
 		fmt.Sprintf("GRANT UPDATE, DELETE, DROP ON performance_schema.* TO '%s'@'%s' IDENTIFIED BY '%s' WITH MAX_USER_CONNECTIONS %d",
 			dsn.Username, host, dsn.Password, mysqlMaxUserConns),
@@ -60,7 +60,7 @@ func (i *Installer) getAgentDSN() (dsn.DSN, error) {
 	if err != nil && err != dsn.ErrNoSocket {
 		return agentDSN, err
 	}
-	userDSN.Params = []string{dsn.ParseTimeParam}
+	userDSN.Params = []string{dsn.ParseTimeParam, dsn.TimezoneParam, dsn.LocationParam}
 	if i.flags.Bool["old-passwords"] {
 		userDSN.Params = append(userDSN.Params, dsn.OldPasswordsParam)
 	}
