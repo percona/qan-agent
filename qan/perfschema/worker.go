@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/percona/go-mysql/event"
@@ -82,6 +83,14 @@ type WorkerFactory interface {
 type RealWorkerFactory struct {
 	logChan chan proto.LogEntry
 }
+
+type perfSchemaExample struct {
+	Schema   sql.NullString
+	SQLText  sql.NullString
+	LastSeen time.Time
+}
+
+const MAX_EXAMPLES = 1000
 
 func NewRealWorkerFactory(logChan chan proto.LogEntry) *RealWorkerFactory {
 	f := &RealWorkerFactory{
@@ -197,15 +206,21 @@ type Worker struct {
 	getRows   GetDigestRowsFunc
 	getText   GetDigestTextFunc
 	// --
-	name          string
-	status        *pct.Status
-	prev          Snapshot
-	curr          Snapshot
-	iter          *qan.Interval
-	lastErr       error
-	lastRowCnt    uint
-	lastFetchTime time.Time
-	lastPrepTime  float64
+	name            string
+	status          *pct.Status
+	prev            Snapshot
+	curr            Snapshot
+	iter            *qan.Interval
+	lastErr         error
+	lastRowCnt      uint
+	lastFetchTime   time.Time
+	lastPrepTime    float64
+	collectExamples bool
+	//
+	ticker        *time.Ticker
+	isRunning     bool
+	lock          sync.Mutex
+	queryExamples map[string]perfSchemaExample
 }
 
 func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestRowsFunc, getText GetDigestTextFunc) *Worker {
@@ -220,6 +235,7 @@ func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestR
 		status:        pct.NewStatus([]string{name, name + "-last"}),
 		lastFetchTime: time.Now(),
 		prev:          make(Snapshot),
+		queryExamples: make(map[string]perfSchemaExample),
 	}
 	return w
 }
@@ -290,6 +306,9 @@ func (w *Worker) Cleanup() error {
 }
 
 func (w *Worker) Stop() error {
+	if w.ticker != nil {
+		w.ticker.Stop()
+	}
 	return nil
 }
 
@@ -298,6 +317,11 @@ func (w *Worker) Status() map[string]string {
 }
 
 func (w *Worker) SetConfig(config pc.QAN) {
+	w.collectExamples = config.ExampleQueries
+	if w.collectExamples {
+		w.ticker = time.NewTicker(time.Millisecond * 1000)
+		go w.getQueryExamples(w.ticker.C)
+	}
 }
 
 // --------------------------------------------------------------------------
@@ -309,6 +333,46 @@ func (w *Worker) reset() {
 	w.lastRowCnt = 0
 	w.lastFetchTime = time.Time{}
 	w.lastPrepTime = 0
+}
+
+func (w *Worker) getQueryExamples(ticker <-chan time.Time) {
+	isRunning := false
+	for _ = range ticker {
+		if isRunning {
+			continue
+		}
+		w.isRunning = true
+
+		err := w.mysqlConn.Connect()
+		if err != nil {
+			continue
+		}
+
+		query := "SELECT DIGEST, CURRENT_SCHEMA, SQL_TEXT FROM performance_schema.events_statements_history"
+		rows, err := w.mysqlConn.DB().Query(query)
+		if err != nil {
+			return
+		}
+		for rows.Next() {
+			ex := perfSchemaExample{
+				LastSeen: time.Now(),
+			}
+			var digest sql.NullString
+			err := rows.Scan(&digest, &ex.Schema, &ex.SQLText)
+			if err != nil {
+				continue
+			}
+			if !digest.Valid {
+				continue
+			}
+			w.lock.Lock()
+			classID := strings.ToUpper(digest.String[16:32])
+			w.queryExamples[classID] = ex
+			w.lock.Unlock()
+		}
+		rows.Close()
+		w.isRunning = false
+	}
 }
 
 func (w *Worker) getSnapshot(prev Snapshot) (Snapshot, error) {
@@ -548,7 +612,15 @@ CLASS_LOOP:
 		// of checksum is historical: pt-query-digest does the same:
 		// my $checksum = uc substr(md5_hex($val), -16);
 		// 0 as tzDiff (last param) because we are not saving examples
-		class := event.NewClass(classId, class.DigestText, false)
+		ex, ok := w.queryExamples[classId]
+		class := event.NewClass(classId, class.DigestText, ok)
+		if ok {
+			class.Example = &event.Example{
+				QueryTime: float64(ex.LastSeen.Unix()),
+				Db:        ex.Schema.String,
+				Query:     ex.SQLText.String,
+			}
+		}
 		class.TotalQueries = d.CountStar
 		class.Metrics = stats
 		classes = append(classes, class)
