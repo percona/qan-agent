@@ -416,7 +416,10 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 	}
 
 	if err := w.mysqlConn.Exec([]string{"FLUSH SLOW LOGS"}); err != nil {
-		return err
+		// MySQL 5.1 support.
+		if err := w.mysqlConn.Exec([]string{"FLUSH LOGS"}); err != nil {
+			return err
+		}
 	}
 
 	// Modify interval so worker parses the rest of the old slow log.
