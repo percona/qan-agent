@@ -20,10 +20,10 @@ package mock
 import (
 	"time"
 
-	"github.com/percona/qan-agent/mysql"
-	"github.com/percona/qan-agent/qan"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
+	"github.com/percona/qan-agent/mysql"
+	"github.com/percona/qan-agent/qan"
 )
 
 type QanAnalyzer struct {

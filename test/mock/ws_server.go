@@ -21,46 +21,83 @@ import (
 	"golang.org/x/net/websocket"
 	"log"
 	"net/http"
+	"os"
+	"strings"
+	"sync"
 )
 
-type WebsocketServer struct {
+func NewWebsocketServer() *WebsocketServer {
+	return &WebsocketServer{
+		Clients:                   NewClients(),
+		internalClientConnectChan: make(chan *client),
+		ClientConnectChan:         make(chan *client, 1),
+	}
 }
 
-var SendChan chan interface{}
-var RecvChan chan interface{}
+type WebsocketServer struct {
+	Clients                   *clients
+	internalClientConnectChan chan *client
+	ClientConnectChan         chan *client
+}
 
 // addr: http://127.0.0.1:8000
 // endpoint: /agent
 func (s *WebsocketServer) Run(addr string, endpoint string) {
-	go run()
-	http.Handle(endpoint, websocket.Handler(wsHandler))
+	go s.run()
+	http.Handle(endpoint, websocket.Handler(s.wsHandler))
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal("ListenAndServe:", err)
 	}
 }
 
-type client struct {
-	ws       *websocket.Conn
-	origin   string
-	SendChan chan interface{} // data to client
-	RecvChan chan interface{} // data from client
+// addr: https://127.0.0.1:8443
+// endpoint: /agent
+func (s *WebsocketServer) RunWss(addr string, endpoint string) {
+	go s.run()
+	http.Handle(endpoint, websocket.Handler(s.wsHandler))
+	curDir, _ := os.Getwd()
+	curDir = strings.TrimSuffix(curDir, "client")
+	if err := http.ListenAndServeTLS(addr, curDir+"test/keys/cert.pem", curDir+"test/keys/key.pem", nil); err != nil {
+		log.Fatal("ListenAndServe:", err)
+	}
 }
 
-func wsHandler(ws *websocket.Conn) {
-	c := &client{
-		ws:       ws,
-		origin:   ws.Config().Origin.String(),
-		SendChan: make(chan interface{}, 5),
-		RecvChan: make(chan interface{}, 5),
+func (s *WebsocketServer) run() {
+	for {
+		select {
+		case c := <-s.internalClientConnectChan:
+			s.Clients.add(c)
+			select {
+			case s.ClientConnectChan <- c:
+			default:
+			}
+		}
 	}
-	internalClientConnectChan <- c
+}
+
+func (s *WebsocketServer) wsHandler(ws *websocket.Conn) {
+	c := &client{
+		ws:             ws,
+		origin:         ws.Config().Origin.String(),
+		SendChan:       make(chan interface{}, 5),
+		RecvChan:       make(chan interface{}, 5),
+		disconnectChan: make(chan struct{}),
+	}
+	s.internalClientConnectChan <- c
 
 	defer func() {
-		ClientRmChan <- c
-		ClientDisconnectChan <- c
+		close(c.disconnectChan)
 	}()
 	go c.send()
 	c.recv()
+}
+
+type client struct {
+	ws             *websocket.Conn
+	origin         string
+	SendChan       chan interface{} // data to client
+	RecvChan       chan interface{} // data from client
+	disconnectChan chan struct{}
 }
 
 func (c *client) recv() {
@@ -69,10 +106,8 @@ func (c *client) recv() {
 		var data interface{}
 		err := websocket.JSON.Receive(c.ws, &data)
 		if err != nil {
-			//log.Printf("ERROR: recv: %s\n", err)
 			break
 		}
-		//log.Printf("recv: %+v\n", data)
 		c.RecvChan <- data
 	}
 }
@@ -88,38 +123,71 @@ func (c *client) send() {
 	}
 }
 
-var internalClientConnectChan = make(chan *client)
-var ClientConnectChan = make(chan *client, 1)
-var ClientDisconnectChan = make(chan *client)
-var ClientRmChan = make(chan *client, 5)
-var Clients = make(map[*client]*client)
-
-func DisconnectClient(c *client) {
-	c, ok := Clients[c]
-	if ok {
-		close(c.SendChan)
-		c.ws.Close()
-		//log.Printf("disconnect: %+v\n", c)
-		<-ClientDisconnectChan
+func NewClients() *clients {
+	return &clients{
+		list: make(map[*client]*client),
 	}
 }
 
-func run() {
+type clients struct {
+	list map[*client]*client
+	sync.RWMutex
+}
+
+func (cl *clients) add(c *client) {
+	cl.Lock()
+	defer cl.Unlock()
+
+	cl.list[c] = c
+}
+
+func (cl *clients) del(c *client) {
+	cl.Lock()
+	defer cl.Unlock()
+
+	if _, ok := cl.list[c]; ok {
+		delete(cl.list, c)
+		close(c.SendChan)
+	}
+}
+
+func (cl *clients) get(c *client) *client {
+	cl.RLock()
+	defer cl.RUnlock()
+
+	c, ok := cl.list[c]
+	if ok {
+		return c
+	}
+	return nil
+}
+
+func (cl *clients) getAny() *client {
+	cl.RLock()
+	defer cl.RUnlock()
+
+	for _, c := range cl.list {
+		return c
+	}
+	return nil
+}
+
+func (cl *clients) Disconnect(c *client) {
+	c = cl.get(c)
+	if c != nil {
+		c.ws.Close()
+		<-c.disconnectChan
+		cl.del(c)
+	}
+}
+
+// Disconnect all clients.
+func (cl *clients) DisconnectAll() {
 	for {
-		select {
-		case c := <-internalClientConnectChan:
-			// todo: this is probably prone to deadlocks, not thread-safe
-			Clients[c] = c
-			// log.Printf("connect: %+v\n", c)
-			select {
-			case ClientConnectChan <- c:
-			default:
-			}
-		case c := <-ClientRmChan:
-			if _, ok := Clients[c]; ok {
-				//log.Printf("remove : %+v\n", c)
-				delete(Clients, c)
-			}
+		c := cl.getAny()
+		if c == nil {
+			return
 		}
+		cl.Disconnect(c)
 	}
 }

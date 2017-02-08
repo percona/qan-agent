@@ -439,13 +439,13 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 		return nil
 	}
 	sort.Strings(filesFound)
-	for _, f := range(filesFound[:len(filesFound)-qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP]) {
+	for _, f := range filesFound[:len(filesFound)-qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP] {
 		w.status.Update(w.name, "Removing slow log "+f)
 		if err := os.Remove(f); err != nil {
 			w.logger.Warn(err)
 			continue
 		}
-		w.logger.Info("Removed old slow log "+f)
+		w.logger.Info("Removed old slow log " + f)
 	}
 
 	return nil
