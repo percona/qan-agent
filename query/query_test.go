@@ -41,7 +41,7 @@ func Test(t *testing.T) { TestingT(t) }
 /////////////////////////////////////////////////////////////////////////////
 
 type ManagerTestSuite struct {
-	logChan       chan *proto.LogEntry
+	logChan       chan proto.LogEntry
 	logger        *pct.Logger
 	configDir     string
 	tmpDir        string
@@ -59,7 +59,7 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
 	}
 
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, query.SERVICE_NAME+"-manager-test")
 
 	var err error

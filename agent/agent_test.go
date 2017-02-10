@@ -277,11 +277,10 @@ func (s *AgentTestSuite) TestStatusAfterConnFail(t *C) {
 func (s *AgentTestSuite) TestStartStopService(t *C) {
 	// To start a service, first we make a config for the service:
 	qanConfig := &pc.QAN{
-		Interval:          60,         // seconds
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: true,
-		ExampleQueries:    true,
-		WorkerRunTime:     120, // seconds
+		Interval:       60,         // seconds
+		MaxSlowLogSize: 1073741824, // 1 GiB
+		ExampleQueries: true,
+		WorkerRunTime:  120, // seconds
 	}
 
 	// Second, the service config is encoded and encapsulated in a ServiceData:
@@ -384,11 +383,10 @@ func (s *AgentTestSuite) TestStartServiceSlow(t *C) {
 	// This test is like TestStartService but simulates a slow starting service.
 
 	qanConfig := &pc.QAN{
-		Interval:          60,         // seconds
-		MaxSlowLogSize:    1073741824, // 1 GiB
-		RemoveOldSlowLogs: true,
-		ExampleQueries:    true,
-		WorkerRunTime:     120, // seconds
+		Interval:       60,         // seconds
+		MaxSlowLogSize: 1073741824, // 1 GiB
+		ExampleQueries: true,
+		WorkerRunTime:  120, // seconds
 	}
 	qanConfigData, _ := json.Marshal(qanConfig)
 	serviceCmd := &proto.ServiceData{

@@ -1,9 +1,6 @@
 #!/bin/bash
 
-export PCT_TEST_MYSQL_DSN=${PCT_TEST_MYSQL_DSN:-"percona:percona@tcp(127.0.0.1:3306)/?parseTime=true"}
-export PATH="$PATH:/usr/local/go/bin"
-export GOROOT=${GOROOT:-"/usr/local/go"}
-export GOPATH=${GOPATH:-"/home/jenkinstools/go"}
+export PCT_TEST_MYSQL_DSN=${PCT_TEST_MYSQL_DSN:-"root:root@tcp(127.0.0.1:3306)/?parseTime=true"}
 
 if [ ! -d ".git" ]; then
    echo "../.git directory not found.  Run this script from the root dir of the repo." >&2
@@ -25,17 +22,17 @@ done
 
 # Update dependencies
 if [ "$UPDATE_DEPENDENCIES" == "yes" ]; then
-    if ! type "gpm" &> /dev/null; then
-        cmd="go get -u github.com/tools/godep"
-        # If godeps is not installed then install it first
-        echo -n "Fetching godep binary ($cmd)... "
+    if ! type "govendor" &> /dev/null; then
+        cmd="go get -u github.com/kardianos/govendor"
+        # If govendor is not installed then install it first
+        echo -n "Fetching govendor binary ($cmd)... "
         ${cmd} && echo "done"
         if [ $? -ne 0 ]; then
             echo "failed"
             exit 1
         fi
     fi
-    cmd="godep restore"
+    cmd="govendor sync"
     echo -n "Setting dependencies ($cmd)... "
     ${cmd} && echo "done"
     if [ $? -ne 0 ]; then

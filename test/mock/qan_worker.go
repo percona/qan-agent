@@ -18,8 +18,8 @@
 package mock
 
 import (
-	"github.com/percona/qan-agent/qan"
 	pc "github.com/percona/pmm/proto/config"
+	"github.com/percona/qan-agent/qan"
 )
 
 type QanWorker struct {

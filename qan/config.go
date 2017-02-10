@@ -30,8 +30,8 @@ var (
 	DEFAULT_INTERVAL                  uint  = 60         // 1 minute
 	DEFAULT_LONG_QUERY_TIME                 = 0.001      // 1ms
 	DEFAULT_MAX_SLOW_LOG_SIZE         int64 = 1073741824 // 1G
-	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true	 // whether to remove old slow logs after rotation
-	DEFAULT_OLD_SLOW_LOGS_TO_KEEP		= 1      // how many slow logs to keep on filesystem
+	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true       // whether to remove old slow logs after rotation
+	DEFAULT_OLD_SLOW_LOGS_TO_KEEP           = 1          // how many slow logs to keep on filesystem
 	DEFAULT_EXAMPLE_QUERIES                 = true
 	DEFAULT_SLOW_LOG_VERBOSITY              = "full" // all metrics, Percona Server
 	DEFAULT_RATE_LIMIT                uint  = 100    // 1%, Percona Server

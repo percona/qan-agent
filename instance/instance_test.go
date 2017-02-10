@@ -173,7 +173,8 @@ func (s *ManagerTestSuite) TestStartAndUpdate(t *C) {
 		{Code: 404, Data: nil, Error: nil},
 	}
 	in, err = m.Repo().Get("notfound", false)
-	t.Check(err, Equals, instance.ErrInstanceNotFound)
+	t.Check(err, FitsTypeOf, instance.ErrInstanceNotFound(""))
+	t.Check(err, ErrorMatches, "Cannot read instance file: .*/instance/notfound.json: open .*/instance/notfound.json: no such file or directory")
 
 	in, err = m.Repo().Get("BBB", false)
 	t.Check(err, IsNil)

@@ -145,15 +145,15 @@ func (r *Repo) Get(uuid string, cache bool) (proto.Instance, error) {
 	file := filepath.Join(r.instanceDir, uuid+pct.INSTANCE_FILE_SUFFIX)
 	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		return in, fmt.Errorf("Cannot read instance file: %s: %s", file, err)
+		return in, ErrInstanceNotFound(fmt.Sprintf("Cannot read instance file: %s: %s", file, err))
 	}
 	if err := json.Unmarshal(data, &in); err != nil {
-		return in, fmt.Errorf("Invalid instance file: %s: %s", file, err)
+		return in, ErrInstanceNotFound(fmt.Sprintf("Invalid instance file: %s: %s", file, err))
 	}
 
 	// Use low-level add() because we've already locked the mutex.
 	if err := r.add(in, cache); err != nil {
-		return in, fmt.Errorf("Failed to add new instance: %s", err)
+		return in, fmt.Errorf("mFailed to add new instance: %s", err)
 	}
 
 	return in, nil
