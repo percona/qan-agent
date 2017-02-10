@@ -447,7 +447,7 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 	// t.Assert(reply.Error, Equals, "")
 	// ... obtained string = "cannot get MySQL instance 3130000000009999: Cannot read instance file: /tmp/agent-test398904814/config/3130000000009999.json: open /tmp/agent-test398904814/config/3130000000009999.json: no such file or directory"
 	// ... expected string = ""
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	// Make and start a qan.Manager with mock factories, no analyzer yet.
 	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
@@ -564,7 +564,7 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	//	... obtained string = "Query Analytics is already running on MySQL 3130000000000000.To reconfigure or restart Query Analytics, stop then start it again."
 	//	... expected string = "qan-analizer-1 service is running"
 	//
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	// Make and start a qan.Manager with mock factories, no analyzer yet.
 	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}

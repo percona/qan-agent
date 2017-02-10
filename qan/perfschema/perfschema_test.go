@@ -293,7 +293,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	//perfschema_test.go:344:
 	//t.Assert(res, NotNil)
 	//... value *qan.Result = (*qan.Result)(nil)
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	if s.dsn == "" {
 		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
@@ -390,7 +390,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	//perfschema_test.go:448:
 	//t.Assert(res, NotNil)
 	//... value *qan.Result = (*qan.Result)(nil)
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	if s.dsn == "" {
 		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
@@ -471,7 +471,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 	//perfschema_test.go:518:
 	//t.Assert(res, NotNil)
 	//... value *qan.Result = (*qan.Result)(nil)
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	if s.dsn == "" {
 		t.Fatal("PCT_TEST_MYSQL_DSN is not set")

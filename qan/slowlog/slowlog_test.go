@@ -503,7 +503,7 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 	//
 	//... expected int64 = 2200
 	//
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	slowlogFileName := "slow006.log"
 

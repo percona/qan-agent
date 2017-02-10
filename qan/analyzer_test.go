@@ -146,7 +146,7 @@ func (s *AnalyzerTestSuite) TestRunMockWorker(t *C) {
 	//t.Fatal("Timeout waiting for <-s.worker.SetupChan")
 	//... Error: Timeout waiting for <-s.worker.SetupChan
 
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	a := qan.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -205,7 +205,7 @@ func (s *AnalyzerTestSuite) TestStartServiceFast(t *C) {
 	//analyzer_test.go:235:
 	//t.Error("Timeout waiting for primer tick")
 	//... Error: Timeout waiting for primer tick
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	// Simulate the next tick being 3m away (mock.clock.Eta = 180) so that
 	// run() sends the first tick on the tick chan, causing the first
@@ -255,7 +255,7 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	//analyzer_test.go:278:
 	//t.Error("Timeout waiting for <-s.nullmysql.SetChan")
 	//... Error: Timeout waiting for <-s.nullmysql.SetChan
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	a := qan.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -318,7 +318,7 @@ func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
 	//t.Assert(data, HasLen, 1)
 	//... obtained []interface {} = []interface {}(nil)
 	//... n int = 1
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
 	if dsn == "" {
@@ -388,7 +388,7 @@ func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
 	//analyzer_test.go:419:
 	//t.Fatal("Timeout waiting for <-s.worker.SetupChan")
 	//... Error: Timeout waiting for <-s.worker.SetupChan
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	a := qan.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -460,7 +460,7 @@ func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
 
 // Test that a disabled slow log rotation in Percona Server (or MySQL) does not change analizer config
 func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	/*
 		PS can be configured to rotate slow log, making qan break.
@@ -495,7 +495,7 @@ func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
 
 // Test slow log rotation take over from Percona Server
 func (s *AnalyzerTestSuite) TestSlowLogTakeOver(t *C) {
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	a := qan.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),

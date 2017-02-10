@@ -36,7 +36,7 @@ type ReportTestSuite struct{}
 var _ = Suite(&ReportTestSuite{})
 
 func (s *ReportTestSuite) TestResult001(t *C) {
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	data, err := ioutil.ReadFile(outputDir + "/result001.json")
 	t.Assert(err, IsNil)
@@ -92,7 +92,7 @@ func (s *ReportTestSuite) TestResult001(t *C) {
 }
 
 func (s *ReportTestSuite) TestResult014(t *C) {
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/36")
+	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	config := pc.QAN{
 		UUID:           "1",
