@@ -28,27 +28,15 @@ import (
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/installer"
-	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/term"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
 )
 
 var (
-	flagBasedir                 string
-	flagOldPasswords            bool
-	flagInteractive             bool
-	flagDebug                   bool
-	flagMySQL                   bool
-	flagMySQLDefaultsFile       string
-	flagMySQLUser               string
-	flagMySQLPass               string
-	flagMySQLHost               string
-	flagMySQLPort               string
-	flagMySQLSocket             string
-	flagMySQLMaxUserConnections int64
-	flagQuerySource             string
-	flagAgentMySQLUser          string
-	flagAgentMySQLPass          string
+	flagBasedir string
+	flagDebug   bool
+	// @todo remove this flag, it's currently used by pmm as mysql=false
+	flagMySQL bool
 
 	flagServerUser     string
 	flagServerPass     string
@@ -66,20 +54,6 @@ func init() {
 	fs.BoolVar(&flagMySQL, "mysql", true, "Create MySQL instance")
 	fs.BoolVar(&flagDebug, "debug", false, "Debug")
 	fs.StringVar(&flagBasedir, "basedir", pct.DEFAULT_BASEDIR, "Agent basedir")
-	fs.StringVar(&flagQuerySource, "query-source", "auto", "Where to collect queries: slowlog, perfschema, auto")
-
-	fs.StringVar(&flagMySQLUser, "user", "", "MySQL username")
-	fs.StringVar(&flagMySQLPass, "password", "", "MySQL password")
-	fs.StringVar(&flagMySQLHost, "host", "", "MySQL host")
-	fs.StringVar(&flagMySQLPort, "port", "", "MySQL port")
-	fs.StringVar(&flagMySQLSocket, "socket", "", "MySQL socket file")
-	fs.StringVar(&flagMySQLDefaultsFile, "defaults-file", "", "Path to my.cnf")
-
-	fs.StringVar(&flagAgentMySQLUser, "agent-user", "", "Existing MySQL username for agent")
-	fs.StringVar(&flagAgentMySQLPass, "agent-password", "", "Existing MySQL password for agent")
-
-	fs.Int64Var(&flagMySQLMaxUserConnections, "max-user-connections", 5, "Max number of MySQL connections")
-	fs.BoolVar(&flagOldPasswords, "old-passwords", false, "Old passwords")
 
 	fs.StringVar(&flagServerUser, "server-user", "pmm", "Username to use for API auth")
 	fs.StringVar(&flagServerPass, "server-pass", "", "Password to use for API auth")
@@ -126,40 +100,9 @@ func main() {
 		ServerInsecureSSL: flagUseInsecureSSL,
 	}
 
-	if flagMySQLSocket != "" && flagMySQLHost != "" {
-		log.Print("Options -socket and -host are exclusive\n\n")
-		os.Exit(1)
-	}
-
-	if flagMySQLSocket != "" && flagMySQLPort != "" {
-		log.Print("Options -socket and -port are exclusive\n\n")
-		os.Exit(1)
-	}
-
-	if flagQuerySource != "auto" && flagQuerySource != "slowlog" && flagQuerySource != "perfschema" {
-		log.Printf("Invalid value for -query-source: '%s'\n\n", flagQuerySource)
-		os.Exit(1)
-	}
-
 	flags := installer.Flags{
 		Bool: map[string]bool{
-			"mysql":         flagMySQL,
-			"debug":         flagDebug,
-			"old-passwords": flagOldPasswords,
-		},
-		String: map[string]string{
-			"mysql-defaults-file": flagMySQLDefaultsFile,
-			"mysql-user":          flagMySQLUser,
-			"mysql-pass":          flagMySQLPass,
-			"mysql-host":          flagMySQLHost,
-			"mysql-port":          flagMySQLPort,
-			"mysql-socket":        flagMySQLSocket,
-			"query-source":        flagQuerySource,
-			"agent-mysql-user":    flagAgentMySQLUser,
-			"agent-mysql-pass":    flagAgentMySQLPass,
-		},
-		Int64: map[string]int64{
-			"mysql-max-user-connections": flagMySQLMaxUserConnections,
+			"debug": flagDebug,
 		},
 	}
 
@@ -184,8 +127,7 @@ func main() {
 	logChan := make(chan proto.LogEntry, 100)
 	logger := pct.NewLogger(logChan, "instance-repo")
 	instanceRepo := instance.NewRepo(logger, pct.Basedir.Dir("config"), api)
-	terminal := term.NewTerminal(os.Stdin, flagInteractive, flagDebug)
-	agentInstaller, err := installer.NewInstaller(terminal, flagBasedir, api, instanceRepo, agentConfig, flags)
+	agentInstaller, err := installer.NewInstaller(flagBasedir, api, instanceRepo, agentConfig, flags)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
