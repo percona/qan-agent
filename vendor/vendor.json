@@ -129,6 +129,12 @@
 			"revisionTime": "2017-01-30T11:31:45Z"
 		},
 		{
+			"checksumSHA1": "QQvkN/xnpeY55fudfy92iC86XyA=",
+			"path": "github.com/stretchr/testify/suite",
+			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
+			"revisionTime": "2017-01-30T11:31:45Z"
+		},
+		{
 			"checksumSHA1": "VZJjjUxfQrqpAkuGkmn8f2mgPGQ=",
 			"path": "golang.org/x/net/websocket",
 			"revision": "07b51741c1d6423d4a6abab1c49940ec09cb1aaf",
