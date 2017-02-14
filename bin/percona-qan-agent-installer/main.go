@@ -35,7 +35,6 @@ import (
 
 var (
 	flagBasedir                 string
-	flagVerbose                 bool
 	flagOldPasswords            bool
 	flagInteractive             bool
 	flagDebug                   bool
