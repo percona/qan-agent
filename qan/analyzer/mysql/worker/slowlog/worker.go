@@ -212,7 +212,7 @@ func (w *Worker) Run() (*report.Result, error) {
 
 	// Make an event aggregate to do all the heavy lifting: fingerprint
 	// queries, group, and aggregate.
-	a := event.NewAggregator(w.job.ExampleQueries, w.utcOffset, w.outlierTime)
+	aggregator := event.NewAggregator(w.job.ExampleQueries, w.utcOffset, w.outlierTime)
 
 	// Misc runtime meta data.
 	jobSize := w.job.EndOffset - w.job.StartOffset
@@ -288,7 +288,7 @@ EVENT_LOOP:
 		select {
 		case fingerprint = <-w.fingerprintChan:
 			id := query.Id(fingerprint)
-			a.AddEvent(event, id, fingerprint)
+			aggregator.AddEvent(event, id, fingerprint)
 		case _ = <-w.errChan:
 			w.logger.Warn(fmt.Sprintf("Cannot fingerprint '%s'", event.Query))
 			go w.fingerprinter()
@@ -306,7 +306,7 @@ EVENT_LOOP:
 
 	// Finalize the global and class metrics, i.e. calculate metric stats.
 	w.status.Update(w.name, "Finalizing job "+w.job.Id)
-	r := a.Finalize()
+	r := aggregator.Finalize()
 
 	// The aggregator result is a map, but we need an array of classes for
 	// the query report, so convert it.

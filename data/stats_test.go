@@ -19,10 +19,10 @@ package data_test
 
 import (
 	"fmt"
-	. "github.com/go-test/test"
+	"time"
+
 	"github.com/percona/qan-agent/data"
 	. "gopkg.in/check.v1"
-	"time"
 )
 
 type StatsTestSuite struct {
@@ -33,46 +33,46 @@ type StatsTestSuite struct {
 var _ = Suite(&StatsTestSuite{})
 
 func (s *StatsTestSuite) SetUpSuite(t *C) {
-	s.now = time.Now()
+	s.now = time.Now().UTC()
 
 	// +1s results in 0.999999s diff, so +1.1s to workaround.
 	s.send = []data.SentInfo{
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(1100 * time.Millisecond),
 			End:      s.now.Add(1400 * time.Millisecond),
 			SendTime: 0.2,
 			Files:    1,
 			Bytes:    11100,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(2100 * time.Millisecond),
 			End:      s.now.Add(2500 * time.Millisecond),
 			SendTime: 0.3,
 			Files:    1,
 			Bytes:    22200,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(3100 * time.Millisecond),
 			End:      s.now.Add(3500 * time.Millisecond),
 			SendTime: 0.3,
 			Files:    1,
 			Bytes:    33300,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(4100 * time.Millisecond),
 			End:      s.now.Add(4700 * time.Millisecond),
 			SendTime: 0.5,
 			Files:    1,
 			Bytes:    44400,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(5100 * time.Millisecond),
 			End:      s.now.Add(5800 * time.Millisecond),
 			SendTime: 0.6,
 			Files:    3,
 			Bytes:    5155505,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(6100 * time.Millisecond),
 			End:      s.now.Add(6900 * time.Millisecond),
 			SendTime: 0.850,
@@ -97,21 +97,12 @@ func (s *StatsTestSuite) TestRoundRobinFull(t *C) {
 
 	d = ss.Dump()
 	if len(d) != 4 {
-		Dump(d)
 		t.Errorf("len(d)=%d, expected 4", len(d))
 	}
-	if same, diff := IsDeeply(d[0], s.send[2]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[1], s.send[3]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[2], s.send[4]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[3], s.send[5]); !same {
-		t.Error(diff)
-	}
+	t.Check(d[0], DeepEquals, s.send[2])
+	t.Check(d[1], DeepEquals, s.send[3])
+	t.Check(d[2], DeepEquals, s.send[4])
+	t.Check(d[3], DeepEquals, s.send[5])
 
 	got := ss.Report()
 	expect := data.SentReport{
@@ -127,10 +118,7 @@ func (s *StatsTestSuite) TestRoundRobinFull(t *C) {
 		Timeouts:    0,
 		BadFiles:    0,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 
 	t.Check(
 		data.FormatSentReport(got),
@@ -153,23 +141,15 @@ func (s *StatsTestSuite) TestRoundRobinPartial(t *C) {
 
 	d = ss.Dump()
 	if len(d) != 4 {
-		Dump(d)
 		t.Errorf("len(d)=%d, expected 4", len(d))
 	}
-	if same, diff := IsDeeply(d[0], s.send[0]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[1], s.send[1]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[2], s.send[2]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[3], s.send[3]); !same {
-		t.Error(diff)
-	}
+	t.Check(d[0], DeepEquals, s.send[0])
+	t.Check(d[1], DeepEquals, s.send[1])
+	t.Check(d[2], DeepEquals, s.send[2])
+	t.Check(d[3], DeepEquals, s.send[3])
 
-	got := ss.Report()
+	got := data.SentReport{}
+	got = ss.Report()
 	expect := data.SentReport{
 		Begin:       s.send[0].Begin,
 		End:         s.send[3].End,
@@ -183,10 +163,7 @@ func (s *StatsTestSuite) TestRoundRobinPartial(t *C) {
 		Timeouts:    0,
 		BadFiles:    0,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 func (s *StatsTestSuite) TestOnlyLast(t *C) {
@@ -202,12 +179,9 @@ func (s *StatsTestSuite) TestOnlyLast(t *C) {
 
 	d = ss.Dump()
 	if len(d) != 1 {
-		Dump(d)
 		t.Errorf("len(d)=%d, expected 1", len(d))
 	}
-	if same, diff := IsDeeply(d[0], s.send[3]); !same {
-		t.Error(diff)
-	}
+	t.Check(d[0], DeepEquals, s.send[3])
 
 	got := ss.Report()
 	expect := data.SentReport{
@@ -223,10 +197,7 @@ func (s *StatsTestSuite) TestOnlyLast(t *C) {
 		Timeouts:    0,
 		BadFiles:    0,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 func (s *StatsTestSuite) TestErrors(t *C) {
@@ -251,7 +222,6 @@ func (s *StatsTestSuite) TestErrors(t *C) {
 
 	d = ss.Dump()
 	if len(d) != len(send) {
-		Dump(d)
 		t.Errorf("len(d)=%d, expected %d", len(d), len(send))
 	}
 
@@ -269,10 +239,7 @@ func (s *StatsTestSuite) TestErrors(t *C) {
 		Timeouts:    1,
 		BadFiles:    1,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 
 	t.Check(
 		data.FormatSentReport(got),
@@ -284,10 +251,10 @@ func (s *StatsTestSuite) TestErrors(t *C) {
 }
 
 func (s *StatsTestSuite) TestDelayBeforeFull(t *C) {
-	s.now = time.Now()
+	s.now = time.Now().UTC()
 
 	send := []data.SentInfo{
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(1100 * time.Millisecond),
 			End:      s.now.Add(1400 * time.Millisecond),
 			SendTime: 0.2,
@@ -295,7 +262,7 @@ func (s *StatsTestSuite) TestDelayBeforeFull(t *C) {
 			Bytes:    11100,
 		},
 		// 4s delay
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(5100 * time.Millisecond),
 			End:      s.now.Add(5500 * time.Millisecond),
 			SendTime: 0.3,
@@ -303,28 +270,28 @@ func (s *StatsTestSuite) TestDelayBeforeFull(t *C) {
 			Bytes:    22200,
 		},
 		// resume normal
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(6100 * time.Millisecond),
 			End:      s.now.Add(6500 * time.Millisecond),
 			SendTime: 0.3,
 			Files:    3,
 			Bytes:    33300,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(7100 * time.Millisecond),
 			End:      s.now.Add(7700 * time.Millisecond),
 			SendTime: 0.5,
 			Files:    4,
 			Bytes:    44400,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(8100 * time.Millisecond),
 			End:      s.now.Add(8800 * time.Millisecond),
 			SendTime: 0.6,
 			Files:    5,
 			Bytes:    5155505,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(9100 * time.Millisecond),
 			End:      s.now.Add(9900 * time.Millisecond),
 			SendTime: 0.850,
@@ -344,21 +311,12 @@ func (s *StatsTestSuite) TestDelayBeforeFull(t *C) {
 
 	d = ss.Dump()
 	if len(d) != 4 {
-		Dump(d)
 		t.Errorf("len(d)=%d, expected 4", len(d))
 	}
-	if same, diff := IsDeeply(d[0], send[2]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[1], send[3]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[2], send[4]); !same {
-		t.Error(diff)
-	}
-	if same, diff := IsDeeply(d[3], send[5]); !same {
-		t.Error(diff)
-	}
+	t.Check(d[0], DeepEquals, send[2])
+	t.Check(d[1], DeepEquals, send[3])
+	t.Check(d[2], DeepEquals, send[4])
+	t.Check(d[3], DeepEquals, send[5])
 
 	got := ss.Report()
 	expect := data.SentReport{
@@ -374,31 +332,28 @@ func (s *StatsTestSuite) TestDelayBeforeFull(t *C) {
 		Timeouts:    0,
 		BadFiles:    0,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 func (s *StatsTestSuite) TestGaps(t *C) {
-	s.now = time.Now()
+	s.now = time.Now().UTC()
 
 	send := []data.SentInfo{
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(1100 * time.Millisecond),
 			End:      s.now.Add(1400 * time.Millisecond),
 			SendTime: 0.2,
 			Files:    1,
 			Bytes:    11100,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(2100 * time.Millisecond),
 			End:      s.now.Add(2500 * time.Millisecond),
 			SendTime: 0.3,
 			Files:    2,
 			Bytes:    22200,
 		},
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(3100 * time.Millisecond),
 			End:      s.now.Add(3500 * time.Millisecond),
 			SendTime: 0.3,
@@ -406,7 +361,7 @@ func (s *StatsTestSuite) TestGaps(t *C) {
 			Bytes:    33300,
 		},
 		// missing 3
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(7100 * time.Millisecond),
 			End:      s.now.Add(7700 * time.Millisecond),
 			SendTime: 0.5,
@@ -414,7 +369,7 @@ func (s *StatsTestSuite) TestGaps(t *C) {
 			Bytes:    44400,
 		},
 		// missing 2
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(10100 * time.Millisecond),
 			End:      s.now.Add(10700 * time.Millisecond),
 			SendTime: 0.6,
@@ -422,7 +377,7 @@ func (s *StatsTestSuite) TestGaps(t *C) {
 			Bytes:    5155505,
 		},
 		// missing 1
-		data.SentInfo{
+		{
 			Begin:    s.now.Add(12100 * time.Millisecond),
 			End:      s.now.Add(12900 * time.Millisecond),
 			SendTime: 0.850,
@@ -442,7 +397,6 @@ func (s *StatsTestSuite) TestGaps(t *C) {
 
 	d = ss.Dump()
 	if len(d) != 3 {
-		Dump(d)
 		t.Errorf("len(d)=%d, expected 3", len(d))
 	}
 
@@ -460,10 +414,7 @@ func (s *StatsTestSuite) TestGaps(t *C) {
 		Timeouts:    0,
 		BadFiles:    0,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 func (s *StatsTestSuite) TestEmptyReport(t *C) {
@@ -484,8 +435,5 @@ func (s *StatsTestSuite) TestEmptyReport(t *C) {
 		Timeouts:    0,
 		BadFiles:    0,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }

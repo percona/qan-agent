@@ -26,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/log"
@@ -199,10 +198,7 @@ func (s *RelayTestSuite) TestOfflineBuffering(t *C) {
 		{Ts: test.Ts, Level: proto.LOG_ERROR, Service: "test", Msg: "err2"},
 		{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log", Msg: "Connected to API"},
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 func (s *RelayTestSuite) TestOffline1stBufferOverflow(t *C) {
@@ -267,10 +263,7 @@ func (s *RelayTestSuite) TestOffline1stBufferOverflow(t *C) {
 	}
 	// Last msg (+4):
 	expect[len(expect)-1] = proto.LogEntry{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log", Msg: "Connected to API"}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 
 	// Both bufs should be empty now.
 	if !test.WaitStatus(2, s.relay, "log-buf1", "0") {
@@ -382,10 +375,7 @@ func (s *RelayTestSuite) TestOffline2ndBufferOverflow(t *C) {
 	// Last msg (+4):
 	expect[len(expect)-1] = proto.LogEntry{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log", Msg: "Connected to API"}
 
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -469,10 +459,7 @@ func (s *ManagerTestSuite) TestLogService(t *C) {
 	}
 	t.Assert(gotLog, NotNil)
 	expectLog := proto.LogEntry{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log-svc-test", Msg: "i'm a log entry"}
-	if same, diff := IsDeeply(gotLog, expectLog); !same {
-		t.Logf("%+v", got)
-		t.Error(diff)
-	}
+	t.Check(gotLog, DeepEquals, expectLog)
 
 	// Change log level and file
 	newLogFile := s.logFile + "-2"
@@ -493,10 +480,7 @@ func (s *ManagerTestSuite) TestLogService(t *C) {
 
 	gotReply := m.Handle(cmd)
 	expectReply := cmd.Reply(config)
-	if same, diff := IsDeeply(gotReply, expectReply); !same {
-		t.Logf("%+v", gotReply)
-		t.Error(diff)
-	}
+	t.Check(gotReply, DeepEquals, expectReply)
 
 	logger.Warn("blah")
 	got = test.WaitLog(s.recvChan, 3)
@@ -508,10 +492,7 @@ func (s *ManagerTestSuite) TestLogService(t *C) {
 		}
 	}
 	expectLog = proto.LogEntry{Ts: test.Ts, Level: proto.LOG_WARNING, Service: "log-svc-test", Msg: "blah"}
-	if same, diff := IsDeeply(gotLog, expectLog); !same {
-		t.Logf("%+v", got)
-		t.Error(diff)
-	}
+	t.Check(gotLog, DeepEquals, expectLog)
 
 	// Verify new log config on disk.
 	data, err := ioutil.ReadFile(pct.Basedir.ConfigFile("log"))
@@ -571,11 +552,7 @@ func (s *ManagerTestSuite) TestReconnect(t *C) {
 		{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log", Msg: "Started"},
 		{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log", Msg: "Connected to API"},
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(m.Status())
-		Dump(got)
-		t.Fatal(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 
 	// Log something before we reconnect.
 	relay := m.Relay()
@@ -616,8 +593,5 @@ func (s *ManagerTestSuite) TestReconnect(t *C) {
 		{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log", Msg: "Connected to API"},
 		{Ts: test.Ts, Level: proto.LOG_INFO, Service: "log-svc-test", Msg: "after reconnect"},
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }

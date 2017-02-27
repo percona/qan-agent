@@ -26,7 +26,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/agent/release"
@@ -195,12 +194,14 @@ func (s *AgentTestSuite) TestStatus(t *C) {
 	t.Assert(got, NotNil)
 
 	expectStatus := map[string]string{
-		"agent": "Idle",
+		"mm":                "",
+		"qan":               "",
+		"ws":                "Connected",
+		"ws-link":           "http://localhost",
+		"agent":             "Idle",
+		"agent-cmd-handler": "Idle",
 	}
-	if ok, diff := IsDeeply(got, expectStatus); !ok {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Assert(got, DeepEquals, expectStatus)
 
 	// We asked for all status, so we should get mm too.
 	_, ok := got["mm"]
@@ -322,13 +323,14 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 	// which should show everything is "Ready" or "Idle".
 	status := test.GetStatus(s.sendChan, s.recvChan)
 	expectStatus := map[string]string{
-		"agent": "Idle",
-		"qan":   "Ready",
-		"mm":    "",
+		"ws-link":           "http://localhost",
+		"agent":             "Idle",
+		"agent-cmd-handler": "Idle",
+		"mm":                "",
+		"qan":               "Ready",
+		"ws":                "Connected",
 	}
-	if same, diff := IsDeeply(status, expectStatus); !same {
-		t.Error(diff)
-	}
+	t.Check(status, DeepEquals, expectStatus)
 
 	// Finally, since we're using mock objects, let's double check the
 	// execution trace, i.e. what calls the agent made based on all
@@ -415,9 +417,7 @@ func (s *AgentTestSuite) TestStartServiceSlow(t *C) {
 	// Agent should be able to reply on status chan, indicating that it's
 	// still starting the service.
 	gotStatus := test.GetStatus(s.sendChan, s.recvChan)
-	if !t.Check(gotStatus["agent"], Equals, "Idle") {
-		Dump(gotStatus)
-	}
+	t.Check(gotStatus["agent"], Equals, "Idle")
 
 	// Make it seem like service has started now.
 	s.readyChan <- true
@@ -494,11 +494,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		Keepalive:   DEFAULT_KEEPALIVE,
 		PidFile:     DEFAULT_PIDFILE,
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		// @todo: if expect is not ptr, IsDeeply dies with "got ptr, expected struct"
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 
 	// Load a config with all options to make sure LoadConfig() hasn't missed any.
 	os.Remove(s.configFile)
@@ -518,10 +514,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		Keepalive:   DEFAULT_KEEPALIVE,
 		PidFile:     "pid file",
 	}
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
-		t.Error(diff)
-	}
+	t.Check(got, DeepEquals, expect)
 }
 
 func (s *AgentTestSuite) TestGetConfig(t *C) {
@@ -547,13 +540,11 @@ func (s *AgentTestSuite) TestGetConfig(t *C) {
 		{
 			Service: "agent",
 			Running: string(bytes),
+			Updated: time.Time{}.UTC(),
 		},
 	}
 
-	if ok, diff := IsDeeply(gotConfig, expect); !ok {
-		t.Logf("%+v", gotConfig)
-		t.Error(diff)
-	}
+	t.Check(gotConfig, DeepEquals, expect)
 }
 
 func (s *AgentTestSuite) TestGetAllConfigs(t *C) {
@@ -582,21 +573,20 @@ func (s *AgentTestSuite) TestGetAllConfigs(t *C) {
 		{
 			Service: "agent",
 			Running: string(bytes),
+			Updated: time.Time{}.UTC(),
 		},
 		{
 			Service: "mm",
 			Set:     `{"Foo":"bar"}`,
+			Updated: time.Time{}.UTC(),
 		},
 		{
 			Service: "qan",
 			Set:     `{"Foo":"bar"}`,
+			Updated: time.Time{}.UTC(),
 		},
 	}
-	if ok, diff := IsDeeply(gotConfigs, expectConfigs); !ok {
-		Dump(gotConfigs)
-		Dump(expectConfigs)
-		t.Error(diff)
-	}
+	t.Check(gotConfigs, DeepEquals, expectConfigs)
 }
 
 func (s *AgentTestSuite) TestGetVersion(t *C) {
@@ -672,10 +662,7 @@ func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
 	expect := *s.config
 	expect.ApiHostname = "http://localhost"
 	expect.Links = nil
-	if ok, diff := IsDeeply(gotConfig, &expect); !ok {
-		t.Logf("%+v", gotConfig)
-		t.Error(diff)
-	}
+	t.Check(gotConfig, DeepEquals, &expect)
 
 	/**
 	 * Verify new agent config in API connector.
@@ -691,11 +678,7 @@ func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
 	if err := json.Unmarshal(data, gotConfig); err != nil {
 		t.Fatal(err)
 	}
-	if same, diff := IsDeeply(gotConfig, &expect); !same {
-		// @todo: if expect is not ptr, IsDeeply dies with "got ptr, expected struct"
-		t.Logf("%+v", gotConfig)
-		t.Error(diff)
-	}
+	t.Check(gotConfig, DeepEquals, &expect)
 
 	// After changing the API host, the agent's ws should NOT reconnect yet,
 	// but status should show that its link has changed, so sending a Reconnect

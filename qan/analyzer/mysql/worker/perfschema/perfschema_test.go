@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	gotest "github.com/go-test/test"
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
@@ -37,6 +36,7 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 	"github.com/percona/qan-agent/test/mock"
 	. "github.com/percona/qan-agent/test/rootdir"
+	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
 
@@ -99,8 +99,14 @@ func (s *WorkerTestSuite) loadData(dir string) ([][]*DigestRow, error) {
 	return iters, nil
 }
 
-func (s *WorkerTestSuite) loadResult(file string) (*report.Result, error) {
+func (s *WorkerTestSuite) loadResult(file string, got *report.Result) (*report.Result, error) {
 	file = filepath.Join(inputDir, file)
+	updateTestData := os.Getenv("UPDATE_TEST_DATA")
+	if updateTestData != "" {
+		data, _ := json.MarshalIndent(got, "", "  ")
+		ioutil.WriteFile(file, data, 0666)
+
+	}
 	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
@@ -197,11 +203,9 @@ func (s *WorkerTestSuite) Test001(t *C) {
 	res, err = w.Run()
 	t.Assert(err, IsNil)
 	normalizeResult(res)
-	expect, err := s.loadResult("001/res01.json")
+	expect, err := s.loadResult("001/res01.json", res)
 	t.Assert(err, IsNil)
-	if same, diff := gotest.IsDeeply(res, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
 	t.Assert(err, IsNil)
@@ -249,11 +253,9 @@ func (s *WorkerTestSuite) Test002(t *C) {
 	res, err = w.Run()
 	t.Assert(err, IsNil)
 	normalizeResult(res)
-	expect, err := s.loadResult("002/res01.json")
+	expect, err := s.loadResult("002/res01.json", res)
 	t.Assert(err, IsNil)
-	if same, diff := gotest.IsDeeply(res, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
 	t.Assert(err, IsNil)
@@ -557,15 +559,15 @@ func (s *WorkerTestSuite) TestIter(t *C) {
 
 	tickChan <- t1
 	got := <-iterChan
-	t.Check(got, DeepEquals, &iter.Interval{Number: 1, StartTime: time.Time{}, StopTime: t1})
+	assert.Equal(t, &iter.Interval{Number: 1, StartTime: time.Time{}, StopTime: t1}, got)
 
 	tickChan <- t2
 	got = <-iterChan
-	t.Check(got, DeepEquals, &iter.Interval{Number: 2, StartTime: t1, StopTime: t2})
+	assert.Equal(t, &iter.Interval{Number: 2, StartTime: t1, StopTime: t2}, got)
 
 	tickChan <- t3
 	got = <-iterChan
-	t.Check(got, DeepEquals, &iter.Interval{Number: 3, StartTime: t2, StopTime: t3})
+	assert.Equal(t, &iter.Interval{Number: 3, StartTime: t2, StopTime: t3}, got)
 }
 
 func (s *WorkerTestSuite) Test003(t *C) {
@@ -606,11 +608,9 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	res, err = w.Run()
 	t.Assert(err, IsNil)
 	normalizeResult(res)
-	expect, err := s.loadResult("003/res02.json")
+	expect, err := s.loadResult("003/res02.json", res)
 	t.Assert(err, IsNil)
-	if same, diff := gotest.IsDeeply(res, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
 	t.Assert(err, IsNil)
@@ -626,19 +626,9 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	res, err = w.Run()
 	t.Assert(err, IsNil)
 	normalizeResult(res)
-	expect, err = s.loadResult("003/res03.json")
+	expect, err = s.loadResult("003/res03.json", res)
 	t.Assert(err, IsNil)
-
-	// Hash order randomness combined with
-	//   globalStats.Avg = (globalStats.Avg + classStats.Avg) / 2
-	// in event.GlobalClass create a different average depending
-	// on the order of values. In real world the variation is small
-	// and acceptable, but it makes exact static tests impossible.
-	res.Global.Metrics.TimeMetrics["Query_time"].Avg = 0
-
-	if same, diff := gotest.IsDeeply(res, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
 	t.Assert(err, IsNil)
@@ -654,12 +644,9 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	res, err = w.Run()
 	t.Assert(err, IsNil)
 	normalizeResult(res)
-	expect, err = s.loadResult("003/res04.json")
+	expect, err = s.loadResult("003/res04.json", res)
 	t.Assert(err, IsNil)
-	res.Global.Metrics.TimeMetrics["Query_time"].Avg = 0
-	if same, diff := gotest.IsDeeply(res, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
 	t.Assert(err, IsNil)

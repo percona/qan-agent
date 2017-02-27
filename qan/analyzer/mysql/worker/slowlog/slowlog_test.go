@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	gotest "github.com/go-test/test"
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/go-mysql/log"
 	"github.com/percona/pmm/proto"
@@ -40,6 +39,7 @@ import (
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	. "github.com/percona/qan-agent/test/rootdir"
+	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
 
@@ -75,7 +75,7 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
 	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
-	s.now = time.Now()
+	s.now = time.Now().UTC()
 	s.mysqlInstance = proto.Instance{UUID: "1", Name: "mysql1"}
 	s.config = pc.QAN{
 		UUID: s.mysqlInstance.UUID,
@@ -129,16 +129,19 @@ func (s *WorkerTestSuite) TestWorkerWithAnotherTZ(t *C) {
 	got, err := s.RunWorker(s.config, mysqlConn, i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	test.LoadReport(outputDir+"slow001.json", expect)
+	test.LoadReport(outputDir+"slow001.json", expect, got)
 
 	expect.Class[0].Example.Ts = "2007-10-15 22:45:10"
 	expect.Class[1].Example.Ts = "2007-10-15 22:43:52"
 
+	// we need to create empty maps because of `json:",omitempty"` we get nil maps
+	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[1].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := gotest.IsDeeply(got, expect); !ok {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, got)
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001(t *C) {
@@ -153,12 +156,16 @@ func (s *WorkerTestSuite) TestWorkerSlow001(t *C) {
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	test.LoadReport(outputDir+"slow001.json", expect)
+	test.LoadReport(outputDir+"slow001.json", expect, got)
+
+	// we need to create empty maps because of `json:",omitempty"` we get nil maps
+	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[1].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := gotest.IsDeeply(got, expect); !ok {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, got)
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
@@ -175,14 +182,16 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 	got, err := s.RunWorker(config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	if err := test.LoadReport(outputDir+"slow001-no-examples.json", expect); err != nil {
-		t.Fatal(err)
-	}
+	test.LoadReport(outputDir+"slow001-no-examples.json", expect, got)
+
+	// we need to create empty maps because of `json:",omitempty"` we get nil maps
+	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[1].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if same, diff := gotest.IsDeeply(got, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, got)
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001Half(t *C) {
@@ -200,14 +209,15 @@ func (s *WorkerTestSuite) TestWorkerSlow001Half(t *C) {
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	if err := test.LoadReport(outputDir+"slow001-half.json", expect); err != nil {
-		t.Fatal(err)
-	}
+	test.LoadReport(outputDir+"slow001-half.json", expect, got)
+
+	// we need to create empty maps because of `json:",omitempty"` we get nil maps
+	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := gotest.IsDeeply(got, expect); !ok {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, got)
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001Resume(t *C) {
@@ -225,12 +235,15 @@ func (s *WorkerTestSuite) TestWorkerSlow001Resume(t *C) {
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	test.LoadReport(outputDir+"slow001-resume.json", expect)
+	test.LoadReport(outputDir+"slow001-resume.json", expect, got)
+
+	// we need to create empty maps because of `json:",omitempty"` we get nil maps
+	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := gotest.IsDeeply(got, expect); !ok {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, got)
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow011(t *C) {
@@ -246,14 +259,12 @@ func (s *WorkerTestSuite) TestWorkerSlow011(t *C) {
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	if err := test.LoadReport(outputDir+"slow011.json", expect); err != nil {
+	if err := test.LoadReport(outputDir+"slow011.json", expect, got); err != nil {
 		t.Fatal(err)
 	}
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if same, diff := gotest.IsDeeply(got, expect); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expect, got)
 }
 
 func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
@@ -334,9 +345,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
 	expectSet = append(expectSet, "FLUSH SLOW LOGS")
-	if same, diff := gotest.IsDeeply(gotSet, expectSet); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expectSet, gotSet)
 
 	// When rotated, the interval end offset is extended to end of file.
 	t.Check(i2.EndOffset, Equals, int64(2200))
@@ -434,9 +443,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
 	expectSet = append(expectSet, "FLUSH SLOW LOGS")
-	if same, diff := gotest.IsDeeply(gotSet, expectSet); !same {
-		t.Error(diff)
-	}
+	assert.Equal(t, expectSet, gotSet)
 
 	// When rotated, the interval end offset is extended to end of file.
 	t.Check(i2.EndOffset, Equals, int64(2200))
@@ -631,7 +638,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 	p := mock.NewLogParser()
 	w.SetLogParser(p)
 
-	now := time.Now()
+	now := time.Now().UTC()
 	i := &iter.Interval{
 		Number:      1,
 		StartTime:   now,
@@ -797,7 +804,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 		StartOffset: 3,
 		EndOffset:   6,
 	}
-	t.Check(got, DeepEquals, expect)
+	assert.Equal(t, expect, got)
 
 	/**
 	 * Rename the file, then re-create it.  The file change should be detected.
@@ -828,7 +835,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 		StartOffset: 0,
 		EndOffset:   10,
 	}
-	t.Check(got, DeepEquals, expect)
+	assert.Equal(t, expect, got)
 
 	// Iter should no longer detect file change.
 	_ = ioutil.WriteFile(fileName, []byte("123456789ABCDEF"), 0777)
@@ -845,7 +852,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 		StartOffset: 10,
 		EndOffset:   15,
 	}
-	t.Check(got, DeepEquals, expect)
+	assert.Equal(t, expect, got)
 
 	i.Stop()
 }

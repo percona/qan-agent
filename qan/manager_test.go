@@ -24,7 +24,6 @@ import (
 	"os"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
@@ -457,10 +456,7 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 	gotConfig := &pc.QAN{}
 	err = json.Unmarshal(data, gotConfig)
 	t.Check(err, IsNil)
-	if same, diff := IsDeeply(gotConfig, config); !same {
-		Dump(gotConfig)
-		t.Error(diff)
-	}
+	t.Check(gotConfig, DeepEquals, config)
 
 	// Now the manager and analyzer should be running.
 	status := m.Status()
@@ -571,10 +567,7 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	gotConfig := &pc.QAN{}
 	err = json.Unmarshal(data, gotConfig)
 	t.Check(err, IsNil)
-	if same, diff := IsDeeply(gotConfig, config); !same {
-		Dump(gotConfig)
-		t.Error(diff)
-	}
+	t.Check(gotConfig, DeepEquals, config)
 
 	// Now the manager and analyzer should be running.
 	status := m.Status()

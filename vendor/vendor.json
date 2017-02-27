@@ -15,12 +15,6 @@
 			"revisionTime": "2016-08-02T11:38:42Z"
 		},
 		{
-			"checksumSHA1": "ZACslY42W+iP/UG/5l/BizNFBsg=",
-			"path": "github.com/go-test/test",
-			"revision": "d8206cdc307a7a343b78a42cac235e0a002744a7",
-			"revisionTime": "2015-05-19T17:35:15Z"
-		},
-		{
 			"checksumSHA1": "i/LIWi9lm6JVINdLOdrZ9DGGXxc=",
 			"path": "github.com/google/btree",
 			"revision": "7d79101e329e5a3adf994758c578dab82b90c017",

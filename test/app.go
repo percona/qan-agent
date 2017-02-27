@@ -251,7 +251,13 @@ func ClearDir(path ...string) error {
 	return nil
 }
 
-func LoadReport(file string, v interface{}) error {
+func LoadReport(file string, v interface{}, got interface{}) error {
+	updateTestData := os.Getenv("UPDATE_TEST_DATA")
+	if updateTestData != "" {
+		data, _ := json.MarshalIndent(&got, "", "  ")
+		ioutil.WriteFile(file, data, 0666)
+
+	}
 	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		return err
