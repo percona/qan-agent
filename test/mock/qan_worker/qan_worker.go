@@ -15,11 +15,12 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package mock
+package qan_worker
 
 import (
 	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 )
 
 type QanWorker struct {
@@ -31,8 +32,8 @@ type QanWorker struct {
 	SetupCrashChan   chan bool
 	RunCrashChan     chan bool
 	CleanupCrashChan chan bool
-	Interval         *qan.Interval
-	Result           *qan.Result
+	Interval         *iter.Interval
+	Result           *report.Result
 }
 
 func NewQanWorker() *QanWorker {
@@ -49,13 +50,13 @@ func NewQanWorker() *QanWorker {
 	return w
 }
 
-func (w *QanWorker) Setup(interval *qan.Interval) error {
+func (w *QanWorker) Setup(interval *iter.Interval) error {
 	w.Interval = interval
 	w.SetupChan <- true
 	return w.crashOrError()
 }
 
-func (w *QanWorker) Run() (*qan.Result, error) {
+func (w *QanWorker) Run() (*report.Result, error) {
 	w.RunChan <- true
 	return w.Result, w.crashOrError()
 }

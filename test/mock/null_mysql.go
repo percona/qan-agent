@@ -26,7 +26,7 @@ import (
 	"github.com/percona/qan-agent/mysql"
 )
 
-var ERR_NOT_FOUND = errors.New("not found")
+var ERR_NOT_FOUND = errors.New("var not found in NullMySQL mock")
 
 type NullMySQL struct {
 	set                  []mysql.Query

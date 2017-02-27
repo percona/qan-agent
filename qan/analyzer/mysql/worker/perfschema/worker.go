@@ -30,7 +30,8 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 )
 
 // A DigestRow is a row from performance_schema.events_statements_summary_by_digest.
@@ -71,7 +72,7 @@ type Class struct {
 
 // A Snapshot represents all rows from performance_schema.events_statements_summary_by_digest
 // at a single time, grouped by digest into classes. Two consecutive Snapshots are needed to
-// produce a qan.Result.
+// produce a mysqlAnalyzer.Result.
 type Snapshot map[string]Class // keyed on digest (classId)
 
 // --------------------------------------------------------------------------
@@ -210,7 +211,7 @@ type Worker struct {
 	status          *pct.Status
 	prev            Snapshot
 	curr            Snapshot
-	iter            *qan.Interval
+	iter            *iter.Interval
 	lastErr         error
 	lastRowCnt      uint
 	lastFetchTime   time.Time
@@ -240,7 +241,7 @@ func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestR
 	return w
 }
 
-func (w *Worker) Setup(interval *qan.Interval) error {
+func (w *Worker) Setup(interval *iter.Interval) error {
 	if w.iter != nil {
 		// Ensure intervals are in sequence, else reset.
 		if interval.Number != w.iter.Number+1 {
@@ -258,7 +259,7 @@ func (w *Worker) Setup(interval *qan.Interval) error {
 	return nil
 }
 
-func (w *Worker) Run() (*qan.Result, error) {
+func (w *Worker) Run() (*report.Result, error) {
 	w.logger.Debug("Run:call:", w.iter.Number)
 	defer w.logger.Debug("Run:return:", w.iter.Number)
 
@@ -452,7 +453,7 @@ ROW_LOOP:
 	return curr, err
 }
 
-func (w *Worker) prepareResult(prev, curr Snapshot) (*qan.Result, error) {
+func (w *Worker) prepareResult(prev, curr Snapshot) (*report.Result, error) {
 	w.logger.Debug("prepareResult:call:", w.iter.Number)
 	defer w.logger.Debug("prepareResult:return:", w.iter.Number)
 
@@ -635,7 +636,7 @@ CLASS_LOOP:
 		return nil, nil
 	}
 
-	result := &qan.Result{
+	result := &report.Result{
 		Global: global,
 		Class:  classes,
 	}

@@ -22,17 +22,18 @@ import (
 
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/qan"
 )
 
 type QanAnalyzer struct {
-	StartChan chan bool
-	StopChan  chan bool
-	ErrorChan chan error
-	CrashChan chan bool
-	config    pc.QAN
-	name      string
+	StartChan          chan bool
+	StopChan           chan bool
+	ErrorChan          chan error
+	CrashChan          chan bool
+	config             pc.QAN
+	name               string
+	ValidateConfigMock func(config pc.QAN) (pc.QAN, error)
+	Defaults           map[string]interface{}
 }
 
 func NewQanAnalyzer(name string) *QanAnalyzer {
@@ -43,6 +44,10 @@ func NewQanAnalyzer(name string) *QanAnalyzer {
 		CrashChan: make(chan bool, 1),
 		config:    pc.QAN{},
 		name:      name,
+		ValidateConfigMock: func(config pc.QAN) (pc.QAN, error) {
+			return config, nil
+		},
+		Defaults: map[string]interface{}{},
 	}
 	return a
 }
@@ -75,6 +80,14 @@ func (a *QanAnalyzer) SetConfig(config pc.QAN) {
 	a.config = config
 }
 
+func (a *QanAnalyzer) ValidateConfig(config pc.QAN) (pc.QAN, error) {
+	return a.ValidateConfigMock(config)
+}
+
+func (a *QanAnalyzer) GetDefaults(uuid string) map[string]interface{} {
+	return a.Defaults
+}
+
 // --------------------------------------------------------------------------
 
 func (a *QanAnalyzer) crashOrError() error {
@@ -96,11 +109,11 @@ func (a *QanAnalyzer) crashOrError() error {
 /////////////////////////////////////////////////////////////////////////////
 
 type AnalyzerArgs struct {
-	Config      pc.QAN
-	Name        string
-	MysqlConn   mysql.Connector
-	RestartChan chan proto.Instance
-	TickChan    chan time.Time
+	Type          string
+	Name          string
+	ProtoInstance proto.Instance
+	RestartChan   chan proto.Instance
+	TickChan      chan time.Time
 }
 
 type QanAnalyzerFactory struct {
@@ -118,28 +131,19 @@ func NewQanAnalyzerFactory(a ...qan.Analyzer) *QanAnalyzerFactory {
 }
 
 func (f *QanAnalyzerFactory) Make(
-	config pc.QAN,
-	name string,
-	mysqlConn mysql.Connector,
-	restartChan chan proto.Instance,
-	tickChan chan time.Time,
+	analyzerType string,
+	analyzerName string,
+	protoInstance proto.Instance,
 ) qan.Analyzer {
 	if f.n < len(f.analyzers) {
 		a := f.analyzers[f.n]
-		// The factory is supposed to provide the config as an initialization
-		// parameter for the created qan.Analizer but since we are mocking
-		// and need to create the analyzer and pass it to the factory first,
-		// we just set the config here.
-		a.SetConfig(config)
-		f.n++
 		args := AnalyzerArgs{
-			Config:      config,
-			Name:        name,
-			MysqlConn:   mysqlConn,
-			RestartChan: restartChan,
-			TickChan:    tickChan,
+			Type:          analyzerType,
+			Name:          analyzerName,
+			ProtoInstance: protoInstance,
 		}
 		f.Args = append(f.Args, args)
+		f.n++
 		return a
 	}
 	panic("Need more analyzers")

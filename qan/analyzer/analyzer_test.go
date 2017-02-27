@@ -15,28 +15,4 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package qan_test
-
-import (
-	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-agent/qan"
-	. "gopkg.in/check.v1"
-)
-
-type ConfigTestSuite struct{}
-
-var _ = Suite(&ConfigTestSuite{})
-
-func (s *ConfigTestSuite) TestSlowLogMySQLBasic(t *C) {
-	on, off, err := qan.GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"})
-	t.Assert(err, IsNil)
-	t.Check(on, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-		"SET GLOBAL log_output='file'",
-		"SET GLOBAL slow_query_log=ON",
-		"SET time_zone='+0:00'",
-	})
-	t.Check(off, DeepEquals, []string{
-		"SET GLOBAL slow_query_log=OFF",
-	})
-}
+package analyzer

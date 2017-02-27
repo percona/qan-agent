@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
 )
 
 type FilenameFunc func() (string, error)
@@ -34,7 +34,7 @@ type Iter struct {
 	tickChan chan time.Time
 	// --
 	intervalNo   int
-	intervalChan chan *qan.Interval
+	intervalChan chan *iter.Interval
 	sync         *pct.SyncChan
 }
 
@@ -44,7 +44,7 @@ func NewIter(logger *pct.Logger, filename FilenameFunc, tickChan chan time.Time)
 		filename: filename,
 		tickChan: tickChan,
 		// --
-		intervalChan: make(chan *qan.Interval, 1),
+		intervalChan: make(chan *iter.Interval, 1),
 		sync:         pct.NewSyncChan(),
 	}
 	return iter
@@ -60,7 +60,7 @@ func (i *Iter) Stop() {
 	return
 }
 
-func (i *Iter) IntervalChan() chan *qan.Interval {
+func (i *Iter) IntervalChan() chan *iter.Interval {
 	return i.intervalChan
 }
 
@@ -79,7 +79,7 @@ func (i *Iter) run() {
 	}()
 
 	var prevFileInfo os.FileInfo
-	cur := &qan.Interval{}
+	cur := &iter.Interval{}
 
 	for {
 		i.logger.Debug("run:idle")
@@ -92,7 +92,7 @@ func (i *Iter) run() {
 			curFile, err := i.filename()
 			if err != nil {
 				i.logger.Warn(err)
-				cur = new(qan.Interval)
+				cur = new(iter.Interval)
 				continue
 			}
 
@@ -101,7 +101,7 @@ func (i *Iter) run() {
 			curSize, err := pct.FileSize(curFile)
 			if err != nil {
 				i.logger.Warn(err)
-				cur = new(qan.Interval)
+				cur = new(iter.Interval)
 				continue
 			}
 			i.logger.Debug(fmt.Sprintf("run:%s:%d", curFile, curSize))
@@ -137,7 +137,7 @@ func (i *Iter) run() {
 				}
 
 				// Next interval:
-				cur = &qan.Interval{
+				cur = &iter.Interval{
 					StartTime:   now,
 					StartOffset: curSize,
 				}

@@ -24,9 +24,9 @@ import (
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
-	"github.com/percona/qan-agent/qan/perfschema"
-	"github.com/percona/qan-agent/qan/slowlog"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/worker/perfschema"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/worker/slowlog"
 )
 
 type RealIntervalIterFactory struct {
@@ -40,7 +40,7 @@ func NewRealIntervalIterFactory(logChan chan proto.LogEntry) *RealIntervalIterFa
 	return f
 }
 
-func (f *RealIntervalIterFactory) Make(analyzerType string, mysqlConn mysql.Connector, tickChan chan time.Time) qan.IntervalIter {
+func (f *RealIntervalIterFactory) Make(analyzerType string, mysqlConn mysql.Connector, tickChan chan time.Time) iter.IntervalIter {
 	switch analyzerType {
 	case "slowlog":
 		// The interval iter gets the slow log file (@@global.slow_query_log_file)

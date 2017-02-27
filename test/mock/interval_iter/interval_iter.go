@@ -15,22 +15,23 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package mock
+package interval_iter
 
 import (
-	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
-	"github.com/percona/qan-agent/qan/slowlog"
 	"time"
+
+	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/worker/slowlog"
 )
 
 type IntervalIterFactory struct {
-	Iters     []qan.IntervalIter
+	Iters     []iter.IntervalIter
 	iterNo    int
-	TickChans map[qan.IntervalIter]chan time.Time
+	TickChans map[iter.IntervalIter]chan time.Time
 }
 
-func (tf *IntervalIterFactory) Make(collectFrom string, filename slowlog.FilenameFunc, tickChan chan time.Time) qan.IntervalIter {
+func (tf *IntervalIterFactory) Make(collectFrom string, filename slowlog.FilenameFunc, tickChan chan time.Time) iter.IntervalIter {
 	if tf.iterNo >= len(tf.Iters) {
 		return tf.Iters[tf.iterNo-1]
 	}
@@ -47,18 +48,18 @@ func (tf *IntervalIterFactory) Reset() {
 // --------------------------------------------------------------------------
 
 type Iter struct {
-	testIntervalChan chan *qan.Interval
-	intervalChan     chan *qan.Interval
+	testIntervalChan chan *iter.Interval
+	intervalChan     chan *iter.Interval
 	sync             *pct.SyncChan
 	tickChan         chan time.Time
 	calls            []string
 }
 
-func NewIter(intervalChan chan *qan.Interval) *Iter {
+func NewIter(intervalChan chan *iter.Interval) *Iter {
 	iter := &Iter{
 		testIntervalChan: intervalChan,
 		// --
-		intervalChan: make(chan *qan.Interval, 1),
+		intervalChan: make(chan *iter.Interval, 1),
 		sync:         pct.NewSyncChan(),
 		tickChan:     make(chan time.Time),
 		calls:        []string{},
@@ -77,7 +78,7 @@ func (i *Iter) Stop() {
 	i.sync.Wait()
 }
 
-func (i *Iter) IntervalChan() chan *qan.Interval {
+func (i *Iter) IntervalChan() chan *iter.Interval {
 	return i.intervalChan
 }
 

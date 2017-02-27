@@ -32,7 +32,9 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/config"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 )
 
 type WorkerFactory interface {
@@ -134,7 +136,7 @@ func NewWorker(logger *pct.Logger, config pc.QAN, mysqlConn mysql.Connector) *Wo
 	return w
 }
 
-func (w *Worker) Setup(interval *qan.Interval) error {
+func (w *Worker) Setup(interval *iter.Interval) error {
 	w.logger.Debug("Setup:call")
 	defer w.logger.Debug("Setup:return")
 	w.logger.Debug("Setup:", interval)
@@ -159,7 +161,7 @@ func (w *Worker) Setup(interval *qan.Interval) error {
 	return nil
 }
 
-func (w *Worker) Run() (*qan.Result, error) {
+func (w *Worker) Run() (*report.Result, error) {
 	w.logger.Debug("Run:call")
 	defer w.logger.Debug("Run:return")
 
@@ -184,7 +186,7 @@ func (w *Worker) Run() (*qan.Result, error) {
 
 	// Create a slow log parser and run it.  It sends log.Event via its channel.
 	// Be sure to stop it when done, else we'll leak goroutines.
-	result := &qan.Result{}
+	result := &report.Result{}
 	opts := log.Options{
 		StartOffset: uint64(w.job.StartOffset),
 		FilterAdminCommand: map[string]bool{
@@ -387,7 +389,7 @@ func (w *Worker) fingerprinter() {
 	}
 }
 
-func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
+func (w *Worker) rotateSlowLog(interval *iter.Interval) error {
 	w.logger.Debug("rotateSlowLog:call")
 	defer w.logger.Debug("rotateSlowLog:return")
 
@@ -428,18 +430,18 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 	interval.EndOffset, _ = pct.FileSize(newSlowLogFile) // todo: handle err
 
 	// Purge old slow logs.
-	if !qan.DEFAULT_REMOVE_OLD_SLOW_LOGS {
+	if !config.DEFAULT_REMOVE_OLD_SLOW_LOGS {
 		return nil
 	}
 	filesFound, err := filepath.Glob(fmt.Sprintf("%s-*", curSlowLog))
 	if err != nil {
 		return err
 	}
-	if len(filesFound) <= qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP {
+	if len(filesFound) <= config.DEFAULT_OLD_SLOW_LOGS_TO_KEEP {
 		return nil
 	}
 	sort.Strings(filesFound)
-	for _, f := range filesFound[:len(filesFound)-qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP] {
+	for _, f := range filesFound[:len(filesFound)-config.DEFAULT_OLD_SLOW_LOGS_TO_KEEP] {
 		w.status.Update(w.name, "Removing slow log "+f)
 		if err := os.Remove(f); err != nil {
 			w.logger.Warn(err)

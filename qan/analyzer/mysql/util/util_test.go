@@ -15,13 +15,25 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package qan_test
+package util
 
 import (
 	"testing"
 
-	. "gopkg.in/check.v1"
+	pc "github.com/percona/pmm/proto/config"
+	"github.com/stretchr/testify/assert"
 )
 
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
+func TestSlowLogMySQLBasic(t *testing.T) {
+	on, off, err := GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"})
+	assert.Nil(t, err)
+	assert.Equal(t, []string{
+		"SET GLOBAL slow_query_log=OFF",
+		"SET GLOBAL log_output='file'",
+		"SET GLOBAL slow_query_log=ON",
+		"SET time_zone='+0:00'",
+	}, on)
+	assert.Equal(t, []string{
+		"SET GLOBAL slow_query_log=OFF",
+	}, off)
+}

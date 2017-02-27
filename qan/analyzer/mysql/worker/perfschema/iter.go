@@ -21,26 +21,25 @@ import (
 	"time"
 
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
 )
 
 type Iter struct {
 	logger   *pct.Logger
 	tickChan chan time.Time
 	// --
-	intervalChan chan *qan.Interval
+	intervalChan chan *iter.Interval
 	sync         *pct.SyncChan
 }
 
 func NewIter(logger *pct.Logger, tickChan chan time.Time) *Iter {
-	iter := &Iter{
+	return &Iter{
 		logger:   logger,
 		tickChan: tickChan,
 		// --
-		intervalChan: make(chan *qan.Interval, 1),
+		intervalChan: make(chan *iter.Interval, 1),
 		sync:         pct.NewSyncChan(),
 	}
-	return iter
 }
 
 func (i *Iter) Start() {
@@ -53,7 +52,7 @@ func (i *Iter) Stop() {
 	return
 }
 
-func (i *Iter) IntervalChan() chan *qan.Interval {
+func (i *Iter) IntervalChan() chan *iter.Interval {
 	return i.intervalChan
 }
 
@@ -79,7 +78,7 @@ func (i *Iter) run() {
 		case now := <-i.tickChan:
 			i.logger.Debug("run:tick")
 			n++
-			iter := &qan.Interval{
+			iter := &iter.Interval{
 				Number:    n,
 				StartTime: prev,
 				StopTime:  now,

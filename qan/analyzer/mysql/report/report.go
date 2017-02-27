@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package qan
+package report
 
 import (
 	"sort"
@@ -24,6 +24,7 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
 )
 
 // slowlog|perf schema --> Result --> qan.Report --> data.Spooler
@@ -49,7 +50,7 @@ func (a ByQueryTime) Less(i, j int) bool {
 	return a[i].Metrics.TimeMetrics["Query_time"].Sum > a[j].Metrics.TimeMetrics["Query_time"].Sum
 }
 
-func MakeReport(config pc.QAN, interval *Interval, result *Result) *qan.Report {
+func MakeReport(config pc.QAN, interval *iter.Interval, result *Result) *qan.Report {
 	// Sort classes by Query_time_sum, descending.
 	sort.Sort(ByQueryTime(result.Class))
 

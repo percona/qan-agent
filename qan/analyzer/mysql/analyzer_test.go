@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package qan_test
+package mysql_test
 
 import (
 	"io/ioutil"
@@ -28,24 +28,30 @@ import (
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
-	"github.com/percona/qan-agent/qan/slowlog"
+	mysqlAnalyzer "github.com/percona/qan-agent/qan/analyzer/mysql"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/worker/slowlog"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/percona/qan-agent/test/mock/interval_iter"
+	"github.com/percona/qan-agent/test/mock/qan_worker"
+	. "github.com/percona/qan-agent/test/rootdir"
 	. "gopkg.in/check.v1"
 )
 
+var inputDir = RootDir() + "/test/slow-logs/"
+
 type AnalyzerTestSuite struct {
 	nullmysql     *mock.NullMySQL
-	iter          *mock.Iter
+	iter          *interval_iter.Iter
 	spool         *mock.Spooler
 	clock         *mock.Clock
 	api           *mock.API
-	worker        *mock.QanWorker
+	worker        *qan_worker.QanWorker
 	restartChan   chan proto.Instance
 	logChan       chan proto.LogEntry
 	logger        *pct.Logger
-	intervalChan  chan *qan.Interval
+	intervalChan  chan *iter.Interval
 	dataChan      chan interface{}
 	tmpDir        string
 	configDir     string
@@ -66,9 +72,9 @@ func (s *AnalyzerTestSuite) SetUpSuite(t *C) {
 	s.logChan = make(chan proto.LogEntry, 1000)
 	s.logger = pct.NewLogger(s.logChan, "qan-test")
 
-	s.intervalChan = make(chan *qan.Interval, 1)
+	s.intervalChan = make(chan *iter.Interval, 1)
 
-	s.iter = mock.NewIter(s.intervalChan)
+	s.iter = interval_iter.NewIter(s.intervalChan)
 
 	s.dataChan = make(chan interface{}, 1)
 	s.spool = mock.NewSpooler(s.dataChan)
@@ -114,7 +120,7 @@ func (s *AnalyzerTestSuite) SetUpTest(t *C) {
 	if err := test.ClearDir(s.configDir, "*"); err != nil {
 		t.Fatal(err)
 	}
-	s.worker = mock.NewQanWorker()
+	s.worker = qan_worker.NewQanWorker()
 	// Config needs to be recreated on every test since it can be modified by the test analyzers
 	s.config = pc.QAN{
 		UUID:           s.mysqlUUID,
@@ -140,15 +146,9 @@ func (s *AnalyzerTestSuite) TearDownSuite(t *C) {
 // --------------------------------------------------------------------------
 
 func (s *AnalyzerTestSuite) TestRunMockWorker(t *C) {
-	//FAIL: analyzer_test.go:142: AnalyzerTestSuite.TestRunMockWorker
-	//
-	//analyzer_test.go:175:
-	//t.Fatal("Timeout waiting for <-s.worker.SetupChan")
-	//... Error: Timeout waiting for <-s.worker.SetupChan
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
-
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		s.config,
 		s.iter,
@@ -168,7 +168,7 @@ func (s *AnalyzerTestSuite) TestRunMockWorker(t *C) {
 
 	// Send an interval. The analyzer runs the worker with it.
 	now := time.Now()
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   now,
 		StopTime:    now.Add(1 * time.Minute),
@@ -200,12 +200,7 @@ func (s *AnalyzerTestSuite) TestRunMockWorker(t *C) {
 }
 
 func (s *AnalyzerTestSuite) TestStartServiceFast(t *C) {
-	//FAIL: analyzer_test.go:202: AnalyzerTestSuite.TestStartServiceFast
-	//
-	//analyzer_test.go:235:
-	//t.Error("Timeout waiting for primer tick")
-	//... Error: Timeout waiting for primer tick
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	// Simulate the next tick being 3m away (mock.clock.Eta = 180) so that
 	// run() sends the first tick on the tick chan, causing the first
@@ -215,7 +210,7 @@ func (s *AnalyzerTestSuite) TestStartServiceFast(t *C) {
 
 	config := s.config
 	config.Interval = 300 // 5m
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		config,
 		s.iter,
@@ -250,14 +245,10 @@ func (s *AnalyzerTestSuite) TestStartServiceFast(t *C) {
 }
 
 func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
-	//FAIL: analyzer_test.go:253: AnalyzerTestSuite.TestMySQLRestart
-	//
-	//analyzer_test.go:278:
-	//t.Error("Timeout waiting for <-s.nullmysql.SetChan")
-	//... Error: Timeout waiting for <-s.nullmysql.SetChan
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
+	s.nullmysql.Reset()
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		s.config,
 		s.iter,
@@ -272,32 +263,41 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 
 	// Analyzer starts its iter when MySQL is ready.
-	t.Check(s.iter.Calls(), DeepEquals, []string{})
+	t.Check(s.iter.Calls(), DeepEquals, []string{"Start"})
 	s.iter.Reset()
 
 	// Simulate a MySQL restart. This causes the analyzer to re-configure MySQL
 	// using the same Start queries.
 	s.nullmysql.Reset()
-	s.restartChan <- s.mysqlInstance
-	if !test.WaitState(s.nullmysql.SetChan) {
-		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
-	}
-	test.WaitStatus(1, a, "qan-analyzer", "Idle")
-
-	// Analyzer stops and re-starts its iter on MySQL restart. We are not setting any config
-	t.Check(s.iter.Calls(), DeepEquals, []string{})
-
-	s.nullmysql.Reset()
-
-	// Enable slow log rotation by setting max_slowlog_size to a value > 4096,
-	// then simulate MySQL restart.
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 100000)
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 	s.restartChan <- s.mysqlInstance
 	if !test.WaitState(s.nullmysql.SetChan) {
 		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
 	}
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 	expectedQueries := []string{
+		"SET GLOBAL slow_query_log=OFF",
+		"SET GLOBAL log_output='file'",
+		"SET GLOBAL slow_query_log=ON",
+		"SET time_zone='+0:00'",
+	}
+
+	t.Check(s.nullmysql.GetExec(), DeepEquals, expectedQueries)
+	t.Check(a.Config().MaxSlowLogSize, Equals, MAX_SLOW_LOG_SIZE)
+
+	// Analyzer stops and re-starts its iter on MySQL restart. We are not setting any config
+	t.Check(s.iter.Calls(), DeepEquals, []string{"Stop", "Start"})
+
+	// Enable slow log rotation by setting max_slowlog_size to a value > 4096,
+	// then simulate MySQL restart.
+	s.nullmysql.Reset()
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 100000)
+	s.restartChan <- s.mysqlInstance
+	if !test.WaitState(s.nullmysql.SetChan) {
+		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
+	}
+	test.WaitStatus(1, a, "qan-analyzer", "Idle")
+	expectedQueries = []string{
 		"SET GLOBAL max_slowlog_size = 0",
 		"SET GLOBAL slow_query_log=OFF",
 		"SET GLOBAL log_output='file'",
@@ -312,14 +312,6 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 }
 
 func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
-	//FAIL: analyzer_test.go:315: AnalyzerTestSuite.TestRealSlowLogWorker
-	//
-	//analyzer_test.go:371:
-	//t.Assert(data, HasLen, 1)
-	//... obtained []interface {} = []interface {}(nil)
-	//... n int = 1
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
-
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
 	if dsn == "" {
 		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
@@ -344,10 +336,10 @@ func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
 	}
 
 	worker := slowlog.NewWorker(pct.NewLogger(s.logChan, "qan-worker"), config, realmysql)
-	//intervalChan := make(chan *qan.Interval, 1)
+	//intervalChan := make(chan *iter.Interval, 1)
 	//iter := mock.NewIter(intervalChan)
 
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		config,
 		s.iter,
@@ -364,7 +356,7 @@ func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
 	}
 
 	now := time.Now().UTC()
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   now,
 		StopTime:    now.Add(1 * time.Minute),
@@ -383,14 +375,9 @@ func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
 }
 
 func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
-	//FAIL: analyzer_test.go:386: AnalyzerTestSuite.TestRecoverWorkerPanic
-	//
-	//analyzer_test.go:419:
-	//t.Fatal("Timeout waiting for <-s.worker.SetupChan")
-	//... Error: Timeout waiting for <-s.worker.SetupChan
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		s.config,
 		s.iter,
@@ -410,7 +397,7 @@ func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
 
 	// Send an interval. The analyzer runs the worker with it.
 	now := time.Now()
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   now,
 		StopTime:    now.Add(1 * time.Minute),
@@ -427,7 +414,7 @@ func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
 	// Wait for that ^ run of the worker to fully stop and return.
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 
-	i = &qan.Interval{
+	i = &iter.Interval{
 		Number:      2,
 		StartTime:   now,
 		StopTime:    now.Add(1 * time.Minute),
@@ -460,14 +447,14 @@ func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
 
 // Test that a disabled slow log rotation in Percona Server (or MySQL) does not change analizer config
 func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	/*
 		PS can be configured to rotate slow log, making qan break.
 		Since qan cannot handle the situation where a slow log is rotated by a third party we take over Percona Server
 		rotation and disable it on DB.
 	*/
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		s.config,
 		s.iter,
@@ -483,7 +470,9 @@ func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 
 	// Disable DB rotation by setting max_slowlog_size to a value < 4096
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 1000)
+	s.nullmysql.Reset()
+	lower := mysqlAnalyzer.MIN_SLOWLOG_ROTATION_SIZE - 1
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", float64(lower))
 	// Trigger our PS slow log rotation take-over, everything should stay the same since max_slowlog_size is < 4096
 	a.TakeOverPerconaServerRotation()
 	t.Check(a.Config().MaxSlowLogSize, Equals, MAX_SLOW_LOG_SIZE)
@@ -495,9 +484,9 @@ func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
 
 // Test slow log rotation take over from Percona Server
 func (s *AnalyzerTestSuite) TestSlowLogTakeOver(t *C) {
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
-	a := qan.NewRealAnalyzer(
+	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
 		s.config,
 		s.iter,
@@ -512,10 +501,11 @@ func (s *AnalyzerTestSuite) TestSlowLogTakeOver(t *C) {
 	t.Assert(err, IsNil)
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 
-	s.nullmysql.Reset()
 	// Increase our max_slowlog_size in mocked DB
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 5000)
-	// Trigger slowlog rotation, takeover should succeed since max_slowlog_size >= 4096
+	s.nullmysql.Reset()
+	greater := mysqlAnalyzer.MIN_SLOWLOG_ROTATION_SIZE + 1
+	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", float64(greater))
+	// Trigger slowlog rotation, takeover should succeed since max_slowlog_size >= mysqlAnalyzer.MIN_SLOWLOG_ROTATION_SIZE
 	a.TakeOverPerconaServerRotation()
 	expectedQueries := []string{
 		"SET GLOBAL max_slowlog_size = 0",
@@ -523,7 +513,7 @@ func (s *AnalyzerTestSuite) TestSlowLogTakeOver(t *C) {
 
 	t.Check(s.nullmysql.GetExec(), DeepEquals, expectedQueries)
 	// Config should now have the configured Percona Server slow log rotation file size
-	t.Check(a.Config().MaxSlowLogSize, Equals, int64(5000))
+	t.Check(a.Config().MaxSlowLogSize, Equals, int64(greater))
 
 	err = a.Stop()
 	t.Assert(err, IsNil)

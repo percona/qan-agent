@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package slowlog_test
+package slowlog
 
 import (
 	"fmt"
@@ -28,17 +28,18 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
+	gotest "github.com/go-test/test"
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/go-mysql/log"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
-	"github.com/percona/qan-agent/qan/slowlog"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	. "github.com/percona/qan-agent/test/rootdir"
 	. "gopkg.in/check.v1"
 )
 
@@ -63,7 +64,7 @@ type WorkerTestSuite struct {
 	mysqlInstance proto.Instance
 	config        pc.QAN
 	mysqlConn     mysql.Connector
-	worker        *slowlog.Worker
+	worker        *Worker
 	nullmysql     *mock.NullMySQL
 	dsn           string
 }
@@ -100,8 +101,8 @@ func (s *WorkerTestSuite) SetUpTest(t *C) {
 	s.nullmysql.Reset()
 }
 
-func (s *WorkerTestSuite) RunWorker(config pc.QAN, mysqlConn mysql.Connector, i *qan.Interval) (*qan.Result, error) {
-	w := slowlog.NewWorker(s.logger, config, mysqlConn)
+func (s *WorkerTestSuite) RunWorker(config pc.QAN, mysqlConn mysql.Connector, i *iter.Interval) (*report.Result, error) {
+	w := NewWorker(s.logger, config, mysqlConn)
 	w.ZeroRunTime = true
 	w.Setup(i)
 	err, res := w.Run()
@@ -117,7 +118,7 @@ func (s *WorkerTestSuite) TestWorkerWithAnotherTZ(t *C) {
 	mysqlConn.SystemTzOffsetHours = 1
 	defer func() { mysqlConn.SystemTzOffsetHours = 0 }()
 
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   s.now,
 		StopTime:    s.now.Add(1 * time.Minute),
@@ -127,7 +128,7 @@ func (s *WorkerTestSuite) TestWorkerWithAnotherTZ(t *C) {
 	}
 	got, err := s.RunWorker(s.config, mysqlConn, i)
 	t.Check(err, IsNil)
-	expect := &qan.Result{}
+	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001.json", expect)
 
 	expect.Class[0].Example.Ts = "2007-10-15 22:45:10"
@@ -135,14 +136,13 @@ func (s *WorkerTestSuite) TestWorkerWithAnotherTZ(t *C) {
 
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := IsDeeply(got, expect); !ok {
-		Dump(got)
+	if ok, diff := gotest.IsDeeply(got, expect); !ok {
 		t.Error(diff)
 	}
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001(t *C) {
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   s.now,
 		StopTime:    s.now.Add(1 * time.Minute),
@@ -152,18 +152,17 @@ func (s *WorkerTestSuite) TestWorkerSlow001(t *C) {
 	}
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
-	expect := &qan.Result{}
+	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001.json", expect)
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := IsDeeply(got, expect); !ok {
-		Dump(got)
+	if ok, diff := gotest.IsDeeply(got, expect); !ok {
 		t.Error(diff)
 	}
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      99,
 		StartTime:   s.now,
 		StopTime:    s.now.Add(1 * time.Minute),
@@ -175,14 +174,13 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 	config.ExampleQueries = false
 	got, err := s.RunWorker(config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
-	expect := &qan.Result{}
+	expect := &report.Result{}
 	if err := test.LoadReport(outputDir+"slow001-no-examples.json", expect); err != nil {
 		t.Fatal(err)
 	}
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
+	if same, diff := gotest.IsDeeply(got, expect); !same {
 		t.Error(diff)
 	}
 }
@@ -191,7 +189,7 @@ func (s *WorkerTestSuite) TestWorkerSlow001Half(t *C) {
 	// This tests that the worker will stop processing events before
 	// the end of the slow log file.  358 is the last byte of the first
 	// (of 2) events.
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   s.now,
 		StopTime:    s.now.Add(1 * time.Minute),
@@ -201,14 +199,13 @@ func (s *WorkerTestSuite) TestWorkerSlow001Half(t *C) {
 	}
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
-	expect := &qan.Result{}
+	expect := &report.Result{}
 	if err := test.LoadReport(outputDir+"slow001-half.json", expect); err != nil {
 		t.Fatal(err)
 	}
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := IsDeeply(got, expect); !ok {
-		Dump(got)
+	if ok, diff := gotest.IsDeeply(got, expect); !ok {
 		t.Error(diff)
 	}
 }
@@ -217,7 +214,7 @@ func (s *WorkerTestSuite) TestWorkerSlow001Resume(t *C) {
 	// This tests that the worker will resume processing events from
 	// somewhere in the slow log file.  359 is the first byte of the
 	// second (of 2) events.
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      2,
 		StartTime:   s.now,
 		StopTime:    s.now.Add(1 * time.Minute),
@@ -227,19 +224,18 @@ func (s *WorkerTestSuite) TestWorkerSlow001Resume(t *C) {
 	}
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
-	expect := &qan.Result{}
+	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001-resume.json", expect)
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if ok, diff := IsDeeply(got, expect); !ok {
-		Dump(got)
+	if ok, diff := gotest.IsDeeply(got, expect); !ok {
 		t.Error(diff)
 	}
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow011(t *C) {
 	// Percona Server rate limit
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   s.now,
 		StopTime:    s.now.Add(1 * time.Minute),
@@ -249,14 +245,13 @@ func (s *WorkerTestSuite) TestWorkerSlow011(t *C) {
 	}
 	got, err := s.RunWorker(s.config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
-	expect := &qan.Result{}
+	expect := &report.Result{}
 	if err := test.LoadReport(outputDir+"slow011.json", expect); err != nil {
 		t.Fatal(err)
 	}
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	if same, diff := IsDeeply(got, expect); !same {
-		Dump(got)
+	if same, diff := gotest.IsDeeply(got, expect); !same {
 		t.Error(diff)
 	}
 }
@@ -300,7 +295,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 		},
 		CollectFrom: "slowlog",
 	}
-	w := slowlog.NewWorker(s.logger, config, s.nullmysql)
+	w := NewWorker(s.logger, config, s.nullmysql)
 
 	// Make copy of slow log because test will mv/rename it.
 	cp := exec.Command("cp", inputDir+slowlogFile, "/tmp/"+slowlogFile)
@@ -308,7 +303,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 
 	// First interval: 0 - 736
 	now := time.Now()
-	i1 := &qan.Interval{
+	i1 := &iter.Interval{
 		Filename:    "/tmp/" + slowlogFile,
 		StartOffset: 0,
 		EndOffset:   736,
@@ -328,7 +323,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	t.Check(res.Global.UniqueQueries, Equals, uint(1))
 
 	// Second interval: 736 - 1833, but will actually go to end: 2200.
-	i2 := &qan.Interval{
+	i2 := &iter.Interval{
 		Filename:    "/tmp/" + slowlogFile,
 		StartOffset: 736,
 		EndOffset:   1833,
@@ -339,8 +334,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
 	expectSet = append(expectSet, "FLUSH SLOW LOGS")
-	if same, diff := IsDeeply(gotSet, expectSet); !same {
-		Dump(gotSet)
+	if same, diff := gotest.IsDeeply(gotSet, expectSet); !same {
 		t.Error(diff)
 	}
 
@@ -401,7 +395,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 		},
 		CollectFrom: "slowlog",
 	}
-	w := slowlog.NewWorker(s.logger, config, s.nullmysql)
+	w := NewWorker(s.logger, config, s.nullmysql)
 
 	// Make copy of slow log because test will mv/rename it.
 	cp := exec.Command("cp", inputDir+slowlogFile, "/tmp/"+slowlogFile)
@@ -409,7 +403,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 
 	// First interval: 0 - 736
 	now := time.Now()
-	i1 := &qan.Interval{
+	i1 := &iter.Interval{
 		Filename:    "/tmp/" + slowlogFile,
 		StartOffset: 0,
 		EndOffset:   736,
@@ -429,7 +423,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	t.Check(res.Global.UniqueQueries, Equals, uint(1))
 
 	// Second interval: 736 - 1833, but will actually go to end: 2200.
-	i2 := &qan.Interval{
+	i2 := &iter.Interval{
 		Filename:    "/tmp/" + slowlogFile,
 		StartOffset: 736,
 		EndOffset:   1833,
@@ -440,8 +434,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
 	expectSet = append(expectSet, "FLUSH SLOW LOGS")
-	if same, diff := IsDeeply(gotSet, expectSet); !same {
-		Dump(gotSet)
+	if same, diff := gotest.IsDeeply(gotSet, expectSet); !same {
 		t.Error(diff)
 	}
 
@@ -560,11 +553,11 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 		},
 		CollectFrom: "slowlog",
 	}
-	w := slowlog.NewWorker(s.logger, config, conn)
+	w := NewWorker(s.logger, config, conn)
 
 	// First interval: 0 - 736
 	now := time.Now()
-	i1 := &qan.Interval{
+	i1 := &iter.Interval{
 		Filename:    slowlogFile,
 		StartOffset: 0,
 		EndOffset:   736,
@@ -582,7 +575,7 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 	t.Check(res.Global.UniqueQueries, Equals, uint(1))
 
 	// Second interval: 736 - 1833, but will actually go to end: 2200.
-	i2 := &qan.Interval{
+	i2 := &iter.Interval{
 		Filename:    slowlogFile,
 		StartOffset: 736,
 		EndOffset:   1833,
@@ -631,7 +624,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 		Stop:           []string{},
 		CollectFrom:    "slowlog",
 	}
-	w := slowlog.NewWorker(s.logger, config, s.nullmysql)
+	w := NewWorker(s.logger, config, s.nullmysql)
 
 	// Make and set a mock log.LogParser. The worker will use this once when
 	// Start() is called instead of making a real slow log parser.
@@ -639,7 +632,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 	w.SetLogParser(p)
 
 	now := time.Now()
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:      1,
 		StartTime:   now,
 		StopTime:    now.Add(1 * time.Minute),
@@ -651,7 +644,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 
 	// Run the worker. It calls p.Start() and p.Stop() when done.
 	doneChan := make(chan bool, 1)
-	var res *qan.Result
+	var res *report.Result
 	var err error
 	go func() {
 		res, err = w.Run() // calls p.Start()
@@ -707,6 +700,45 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 	t.Check(res.Class, HasLen, 1)
 }
 
+func (s *WorkerTestSuite) TestResult014(t *C) {
+	config := pc.QAN{
+		UUID:           "1",
+		CollectFrom:    "slowlog",
+		Interval:       60,
+		WorkerRunTime:  60,
+		ReportLimit:    500,
+		MaxSlowLogSize: 1024 * 1024 * 1000,
+	}
+	logChan := make(chan proto.LogEntry, 1000)
+	w := NewWorker(pct.NewLogger(logChan, "w"), config, mock.NewNullMySQL())
+	i := &iter.Interval{
+		Filename:    inputDir + "slow014.log",
+		StartOffset: 0,
+		EndOffset:   127118681,
+	}
+	w.Setup(i)
+	result, err := w.Run()
+	t.Assert(err, IsNil)
+	w.Cleanup()
+
+	start := time.Now().Add(-1 * time.Second)
+	stop := time.Now()
+	interval := &iter.Interval{
+		Filename:    "slow.log",
+		StartTime:   start,
+		StopTime:    stop,
+		StartOffset: 0,
+		EndOffset:   127118680,
+	}
+	report := report.MakeReport(config, interval, result)
+
+	t.Check(report.Global.TotalQueries, Equals, uint(4))
+	t.Check(report.Global.UniqueQueries, Equals, uint(4))
+	t.Assert(report.Class, HasLen, 4)
+	// This query required improving the log parser to get the correct checksum ID:
+	t.Check(report.Class[0].Id, Equals, "DB9EF18846547B8C")
+}
+
 /////////////////////////////////////////////////////////////////////////////
 // IntervalIter test suite
 /////////////////////////////////////////////////////////////////////////////
@@ -741,7 +773,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 	defer func() { os.Remove(tmpFile.Name()) }()
 
 	// Start interating the file, waiting for ticks.
-	i := slowlog.NewIter(s.logger, getFilename, tickChan)
+	i := NewIter(s.logger, getFilename, tickChan)
 	i.Start()
 
 	// Send a tick to start the interval
@@ -757,7 +789,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 
 	// Get the interval
 	got := <-i.IntervalChan()
-	expect := &qan.Interval{
+	expect := &iter.Interval{
 		Number:      1,
 		Filename:    fileName,
 		StartTime:   t1,
@@ -788,7 +820,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 	tickChan <- t3
 
 	got = <-i.IntervalChan()
-	expect = &qan.Interval{
+	expect = &iter.Interval{
 		Number:      2,
 		Filename:    fileName,
 		StartTime:   t2,
@@ -805,7 +837,7 @@ func (s *IterTestSuite) TestIterFile(t *C) {
 	tickChan <- t4
 
 	got = <-i.IntervalChan()
-	expect = &qan.Interval{
+	expect = &iter.Interval{
 		Number:      3,
 		Filename:    fileName,
 		StartTime:   t3,

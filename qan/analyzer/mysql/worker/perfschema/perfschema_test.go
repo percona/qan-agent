@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package perfschema_test
+package perfschema
 
 import (
 	"encoding/json"
@@ -28,14 +28,15 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
+	gotest "github.com/go-test/test"
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
-	"github.com/percona/qan-agent/qan/perfschema"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 	"github.com/percona/qan-agent/test/mock"
+	. "github.com/percona/qan-agent/test/rootdir"
 	. "gopkg.in/check.v1"
 )
 
@@ -43,7 +44,6 @@ import (
 func Test(t *testing.T) { TestingT(t) }
 
 var inputDir = RootDir() + "/test/qan/perfschema/"
-var outputDir = RootDir() + "/test/qan/perfschema/"
 
 type WorkerTestSuite struct {
 	dsn       string
@@ -79,18 +79,18 @@ func (s *WorkerTestSuite) TearDownSuite(t *C) {
 
 // --------------------------------------------------------------------------
 
-func (s *WorkerTestSuite) loadData(dir string) ([][]*perfschema.DigestRow, error) {
+func (s *WorkerTestSuite) loadData(dir string) ([][]*DigestRow, error) {
 	files, err := filepath.Glob(filepath.Join(inputDir, dir, "/iter*.json"))
 	if err != nil {
 		return nil, err
 	}
-	iters := [][]*perfschema.DigestRow{}
+	iters := [][]*DigestRow{}
 	for _, file := range files {
 		bytes, err := ioutil.ReadFile(file)
 		if err != nil {
 			return nil, err
 		}
-		rows := []*perfschema.DigestRow{}
+		rows := []*DigestRow{}
 		if err := json.Unmarshal(bytes, &rows); err != nil {
 			return nil, err
 		}
@@ -99,21 +99,21 @@ func (s *WorkerTestSuite) loadData(dir string) ([][]*perfschema.DigestRow, error
 	return iters, nil
 }
 
-func (s *WorkerTestSuite) loadResult(file string) (*qan.Result, error) {
+func (s *WorkerTestSuite) loadResult(file string) (*report.Result, error) {
 	file = filepath.Join(inputDir, file)
 	bytes, err := ioutil.ReadFile(file)
 	if err != nil {
 		return nil, err
 	}
-	res := &qan.Result{}
+	res := &report.Result{}
 	if err := json.Unmarshal(bytes, &res); err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func makeGetRowsFunc(iters [][]*perfschema.DigestRow) perfschema.GetDigestRowsFunc {
-	return func(c chan<- *perfschema.DigestRow, lastFetchSeconds float64, done chan<- error) error {
+func makeGetRowsFunc(iters [][]*DigestRow) GetDigestRowsFunc {
+	return func(c chan<- *DigestRow, lastFetchSeconds float64, done chan<- error) error {
 		if len(iters) == 0 {
 			return fmt.Errorf("No more iters")
 		}
@@ -131,7 +131,7 @@ func makeGetRowsFunc(iters [][]*perfschema.DigestRow) perfschema.GetDigestRowsFu
 	}
 }
 
-func makeGetTextFunc(texts ...string) perfschema.GetDigestTextFunc {
+func makeGetTextFunc(texts ...string) GetDigestTextFunc {
 	return func(digest string) (string, error) {
 		if len(texts) == 0 {
 			return "", fmt.Errorf("No more texts")
@@ -150,7 +150,7 @@ func (a ByClassId) Less(i, j int) bool {
 	return a[i].Id < a[j].Id
 }
 
-func normalizeResult(res *qan.Result) {
+func normalizeResult(res *report.Result) {
 	sort.Sort(ByClassId(res.Class))
 	// Perf Schema never has example queries, so remove the empty
 	// event.Example struct the json creates.
@@ -169,10 +169,10 @@ func (s *WorkerTestSuite) Test001(t *C) {
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
 	getText := makeGetTextFunc("select 1")
-	w := perfschema.NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
 
 	// First run doesn't produce a result because 2 snapshots are required.
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:    1,
 		StartTime: time.Now().UTC(),
 	}
@@ -187,7 +187,7 @@ func (s *WorkerTestSuite) Test001(t *C) {
 	t.Assert(err, IsNil)
 
 	// The second run produces a result: the diff of 2nd - 1st.
-	i = &qan.Interval{
+	i = &iter.Interval{
 		Number:    2,
 		StartTime: time.Now().UTC(),
 	}
@@ -199,8 +199,7 @@ func (s *WorkerTestSuite) Test001(t *C) {
 	normalizeResult(res)
 	expect, err := s.loadResult("001/res01.json")
 	t.Assert(err, IsNil)
-	if same, diff := IsDeeply(res, expect); !same {
-		Dump(res)
+	if same, diff := gotest.IsDeeply(res, expect); !same {
 		t.Error(diff)
 	}
 
@@ -222,10 +221,10 @@ func (s *WorkerTestSuite) Test002(t *C) {
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
 	getText := makeGetTextFunc("select 1")
-	w := perfschema.NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
 
 	// First run doesn't produce a result because 2 snapshots are required.
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:    1,
 		StartTime: time.Now().UTC(),
 	}
@@ -240,7 +239,7 @@ func (s *WorkerTestSuite) Test002(t *C) {
 	t.Assert(err, IsNil)
 
 	// The second run produces a result: the diff of 2nd - 1st.
-	i = &qan.Interval{
+	i = &iter.Interval{
 		Number:    2,
 		StartTime: time.Now().UTC(),
 	}
@@ -252,8 +251,7 @@ func (s *WorkerTestSuite) Test002(t *C) {
 	normalizeResult(res)
 	expect, err := s.loadResult("002/res01.json")
 	t.Assert(err, IsNil)
-	if same, diff := IsDeeply(res, expect); !same {
-		Dump(res)
+	if same, diff := gotest.IsDeeply(res, expect); !same {
 		t.Error(diff)
 	}
 
@@ -269,10 +267,10 @@ func (s *WorkerTestSuite) TestEmptyDigest(t *C) {
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
 	getText := makeGetTextFunc("select 1")
-	w := perfschema.NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
 
 	// First run doesn't produce a result because 2 snapshots are required.
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:    1,
 		StartTime: time.Now().UTC(),
 	}
@@ -292,7 +290,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	//
 	//perfschema_test.go:344:
 	//t.Assert(res, NotNil)
-	//... value *qan.Result = (*qan.Result)(nil)
+	//... value *iter.Result = (*iter.Result)(nil)
 	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	if s.dsn == "" {
@@ -301,7 +299,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	mysqlConn := mysql.NewConnection(s.dsn)
 	err := mysqlConn.Connect()
 	t.Assert(err, IsNil)
-	f := perfschema.NewRealWorkerFactory(s.logChan)
+	f := NewRealWorkerFactory(s.logChan)
 	w := f.Make("qan-worker", mysqlConn)
 
 	start := []mysql.Query{
@@ -329,7 +327,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 
 	// First interval.
-	err = w.Setup(&qan.Interval{Number: 1, StartTime: time.Now().UTC()})
+	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
 	t.Assert(err, IsNil)
 
 	res, err := w.Run()
@@ -344,7 +342,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	time.Sleep(1 * time.Second)
 
 	// Second interval and a result.
-	err = w.Setup(&qan.Interval{Number: 2, StartTime: time.Now().UTC()})
+	err = w.Setup(&iter.Interval{Number: 2, StartTime: time.Now().UTC()})
 	t.Assert(err, IsNil)
 
 	res, err = w.Run()
@@ -389,7 +387,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 
 	//perfschema_test.go:448:
 	//t.Assert(res, NotNil)
-	//... value *qan.Result = (*qan.Result)(nil)
+	//... value *iter.Result = (*iter.Result)(nil)
 	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	if s.dsn == "" {
@@ -398,7 +396,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	mysqlConn := mysql.NewConnection(s.dsn)
 	err := mysqlConn.Connect()
 	t.Assert(err, IsNil)
-	f := perfschema.NewRealWorkerFactory(s.logChan)
+	f := NewRealWorkerFactory(s.logChan)
 	w := f.Make("qan-worker", mysqlConn)
 
 	start := []mysql.Query{
@@ -426,7 +424,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 
 	// First interval.
-	err = w.Setup(&qan.Interval{Number: 1, StartTime: time.Now().UTC()})
+	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
 	t.Assert(err, IsNil)
 
 	res, err := w.Run()
@@ -443,7 +441,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	// Simulate the ticker being reset which results in it resetting
 	// its internal interval number, so instead of 2 here we have 1 again.
 	// Second interval and a result.
-	err = w.Setup(&qan.Interval{Number: 1, StartTime: time.Now().UTC()})
+	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
 	t.Assert(err, IsNil)
 
 	res, err = w.Run()
@@ -454,7 +452,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	t.Assert(err, IsNil)
 
 	// Simulate normal operation resuming, i.e. interval 2.
-	err = w.Setup(&qan.Interval{Number: 2, StartTime: time.Now().UTC()})
+	err = w.Setup(&iter.Interval{Number: 2, StartTime: time.Now().UTC()})
 	t.Assert(err, IsNil)
 
 	// Now there should be a result.
@@ -470,7 +468,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 	//
 	//perfschema_test.go:518:
 	//t.Assert(res, NotNil)
-	//... value *qan.Result = (*qan.Result)(nil)
+	//... value *iter.Result = (*iter.Result)(nil)
 	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	if s.dsn == "" {
@@ -479,7 +477,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 	mysqlConn := mysql.NewConnection(s.dsn)
 	err := mysqlConn.Connect()
 	t.Assert(err, IsNil)
-	f := perfschema.NewRealWorkerFactory(s.logChan)
+	f := NewRealWorkerFactory(s.logChan)
 	w := f.Make("qan-worker", mysqlConn)
 
 	start := []mysql.Query{
@@ -506,7 +504,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 
 	// First interval.
 	now := time.Now().UTC()
-	err = w.Setup(&qan.Interval{Number: 1, StartTime: now})
+	err = w.Setup(&iter.Interval{Number: 1, StartTime: now})
 	t.Assert(err, IsNil)
 
 	res, err := w.Run()
@@ -519,7 +517,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 	// Simulate the ticker sending a time that's earlier than the previous
 	// tick, which shouldn't happen.
 	now = now.Add(-1 * time.Minute)
-	err = w.Setup(&qan.Interval{Number: 2, StartTime: now})
+	err = w.Setup(&iter.Interval{Number: 2, StartTime: now})
 	t.Assert(err, IsNil)
 
 	res, err = w.Run()
@@ -531,7 +529,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 
 	// Simulate normal operation resuming.
 	now = now.Add(1 * time.Minute)
-	err = w.Setup(&qan.Interval{Number: 3, StartTime: now})
+	err = w.Setup(&iter.Interval{Number: 3, StartTime: now})
 	t.Assert(err, IsNil)
 
 	// Now there should be a result.
@@ -544,7 +542,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 
 func (s *WorkerTestSuite) TestIter(t *C) {
 	tickChan := make(chan time.Time, 1)
-	i := perfschema.NewIter(pct.NewLogger(s.logChan, "iter"), tickChan)
+	i := NewIter(pct.NewLogger(s.logChan, "iter"), tickChan)
 	t.Assert(i, NotNil)
 
 	iterChan := i.IntervalChan()
@@ -559,15 +557,15 @@ func (s *WorkerTestSuite) TestIter(t *C) {
 
 	tickChan <- t1
 	got := <-iterChan
-	t.Check(got, DeepEquals, &qan.Interval{Number: 1, StartTime: time.Time{}, StopTime: t1})
+	t.Check(got, DeepEquals, &iter.Interval{Number: 1, StartTime: time.Time{}, StopTime: t1})
 
 	tickChan <- t2
 	got = <-iterChan
-	t.Check(got, DeepEquals, &qan.Interval{Number: 2, StartTime: t1, StopTime: t2})
+	t.Check(got, DeepEquals, &iter.Interval{Number: 2, StartTime: t1, StopTime: t2})
 
 	tickChan <- t3
 	got = <-iterChan
-	t.Check(got, DeepEquals, &qan.Interval{Number: 3, StartTime: t2, StopTime: t3})
+	t.Check(got, DeepEquals, &iter.Interval{Number: 3, StartTime: t2, StopTime: t3})
 }
 
 func (s *WorkerTestSuite) Test003(t *C) {
@@ -580,10 +578,10 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
 	getText := makeGetTextFunc("select 1", "select 2", "select 3", "select 4")
-	w := perfschema.NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
 
 	// First interval doesn't produce a result because 2 snapshots are required.
-	i := &qan.Interval{
+	i := &iter.Interval{
 		Number:    1,
 		StartTime: time.Now().UTC(),
 	}
@@ -598,7 +596,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	t.Assert(err, IsNil)
 
 	// Second interval produces a result: the diff of 2nd - 1st.
-	i = &qan.Interval{
+	i = &iter.Interval{
 		Number:    2,
 		StartTime: time.Now().UTC(),
 	}
@@ -610,8 +608,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	normalizeResult(res)
 	expect, err := s.loadResult("003/res02.json")
 	t.Assert(err, IsNil)
-	if same, diff := IsDeeply(res, expect); !same {
-		Dump(res)
+	if same, diff := gotest.IsDeeply(res, expect); !same {
 		t.Error(diff)
 	}
 
@@ -619,7 +616,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	t.Assert(err, IsNil)
 
 	// Third interval...
-	i = &qan.Interval{
+	i = &iter.Interval{
 		Number:    3,
 		StartTime: time.Now().UTC(),
 	}
@@ -639,8 +636,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	// and acceptable, but it makes exact static tests impossible.
 	res.Global.Metrics.TimeMetrics["Query_time"].Avg = 0
 
-	if same, diff := IsDeeply(res, expect); !same {
-		Dump(res)
+	if same, diff := gotest.IsDeeply(res, expect); !same {
 		t.Error(diff)
 	}
 
@@ -648,7 +644,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	t.Assert(err, IsNil)
 
 	// Fourth interval...
-	i = &qan.Interval{
+	i = &iter.Interval{
 		Number:    4,
 		StartTime: time.Now().UTC(),
 	}
@@ -661,8 +657,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	expect, err = s.loadResult("003/res04.json")
 	t.Assert(err, IsNil)
 	res.Global.Metrics.TimeMetrics["Query_time"].Avg = 0
-	if same, diff := IsDeeply(res, expect); !same {
-		Dump(res)
+	if same, diff := gotest.IsDeeply(res, expect); !same {
 		t.Error(diff)
 	}
 
