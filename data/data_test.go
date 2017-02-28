@@ -112,7 +112,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolData(t *C) {
 	}
 
 	// Doesn't matter what data we spool; just send some bytes...
-	now := time.Now()
+	now := time.Now().UTC()
 	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
@@ -189,7 +189,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Fatal(err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
@@ -310,7 +310,7 @@ func (s *DiskvSpoolerTestSuite) TestRejectData(t *C) {
 	t.Assert(ok, Equals, true)
 
 	// Spool any data...
-	now := time.Now()
+	now := time.Now().UTC()
 	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
