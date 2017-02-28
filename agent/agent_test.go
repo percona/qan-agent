@@ -33,6 +33,7 @@ import (
 	pctCmd "github.com/percona/qan-agent/pct/cmd"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
 
@@ -194,14 +195,18 @@ func (s *AgentTestSuite) TestStatus(t *C) {
 	t.Assert(got, NotNil)
 
 	expectStatus := map[string]string{
+		"agent":             "Idle",
+		"agent-cmd-handler": "Idle",
 		"mm":                "",
 		"qan":               "",
 		"ws":                "Connected",
 		"ws-link":           "http://localhost",
-		"agent":             "Idle",
-		"agent-cmd-handler": "Idle",
 	}
-	t.Assert(got, DeepEquals, expectStatus)
+
+	t.Assert(got["agent"], DeepEquals, expectStatus["agent"])
+	t.Assert(got["qan"], DeepEquals, expectStatus["qan"])
+	t.Assert(got["mm"], DeepEquals, expectStatus["mm"])
+	t.Assert(got["ws"], DeepEquals, expectStatus["ws"])
 
 	// We asked for all status, so we should get mm too.
 	_, ok := got["mm"]
@@ -330,7 +335,7 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 		"qan":               "Ready",
 		"ws":                "Connected",
 	}
-	t.Check(status, DeepEquals, expectStatus)
+	assert.Equal(t, expectStatus, status)
 
 	// Finally, since we're using mock objects, let's double check the
 	// execution trace, i.e. what calls the agent made based on all
@@ -342,7 +347,7 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 		`Status mm`,
 		`Status qan`,
 	}
-	t.Check(got, DeepEquals, expect)
+	assert.Equal(t, expect, got)
 
 	/**
 	 * Stop the service.
@@ -375,8 +380,7 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 	}
 
 	status = test.GetStatus(s.sendChan, s.recvChan)
-	// TODO check why now we need to comment this line to make the tests pass
-	//t.Check(status["agent"], Equals, "Idle")
+	t.Check(status["agent"], Equals, "Idle")
 	t.Check(status["qan"], Equals, "Stopped")
 	t.Check(status["mm"], Equals, "")
 }
@@ -494,7 +498,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		Keepalive:   DEFAULT_KEEPALIVE,
 		PidFile:     DEFAULT_PIDFILE,
 	}
-	t.Check(got, DeepEquals, expect)
+	assert.Equal(t, expect, got)
 
 	// Load a config with all options to make sure LoadConfig() hasn't missed any.
 	os.Remove(s.configFile)
@@ -514,7 +518,7 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		Keepalive:   DEFAULT_KEEPALIVE,
 		PidFile:     "pid file",
 	}
-	t.Check(got, DeepEquals, expect)
+	assert.Equal(t, expect, got)
 }
 
 func (s *AgentTestSuite) TestGetConfig(t *C) {
@@ -544,7 +548,7 @@ func (s *AgentTestSuite) TestGetConfig(t *C) {
 		},
 	}
 
-	t.Check(gotConfig, DeepEquals, expect)
+	assert.Equal(t, expect, gotConfig)
 }
 
 func (s *AgentTestSuite) TestGetAllConfigs(t *C) {
@@ -586,7 +590,7 @@ func (s *AgentTestSuite) TestGetAllConfigs(t *C) {
 			Updated: time.Time{}.UTC(),
 		},
 	}
-	t.Check(gotConfigs, DeepEquals, expectConfigs)
+	assert.Equal(t, expectConfigs, gotConfigs)
 }
 
 func (s *AgentTestSuite) TestGetVersion(t *C) {
@@ -662,7 +666,7 @@ func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
 	expect := *s.config
 	expect.ApiHostname = "http://localhost"
 	expect.Links = nil
-	t.Check(gotConfig, DeepEquals, &expect)
+	assert.Equal(t, &expect, gotConfig)
 
 	/**
 	 * Verify new agent config in API connector.
@@ -678,14 +682,14 @@ func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
 	if err := json.Unmarshal(data, gotConfig); err != nil {
 		t.Fatal(err)
 	}
-	t.Check(gotConfig, DeepEquals, &expect)
+	assert.Equal(t, &expect, gotConfig)
 
 	// After changing the API host, the agent's ws should NOT reconnect yet,
 	// but status should show that its link has changed, so sending a Reconnect
 	// cmd will cause agent to reconnect its ws.
 	gotCalled := test.WaitTrace(s.client.TraceChan)
 	expectCalled := []string{"Start", "Connect"}
-	t.Check(gotCalled, DeepEquals, expectCalled)
+	assert.Equal(t, expectCalled, gotCalled)
 
 	/**
 	 * Test Reconnect here since it's usually done after changing ApiHostname/
@@ -711,7 +715,7 @@ func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
 
 	gotCalled = test.WaitTrace(s.client.TraceChan)
 	expectCalled = []string{"Disconnect", "Connect"}
-	t.Check(gotCalled, DeepEquals, expectCalled)
+	assert.Equal(t, expectCalled, gotCalled)
 }
 
 func (s *AgentTestSuite) TestKeepalive(t *C) {
