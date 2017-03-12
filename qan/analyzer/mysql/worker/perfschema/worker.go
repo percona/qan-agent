@@ -31,7 +31,7 @@ import (
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
+	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
 // A DigestRow is a row from performance_schema.events_statements_summary_by_digest.

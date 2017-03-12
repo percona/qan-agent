@@ -25,6 +25,7 @@ import (
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
+	"time"
 )
 
 // slowlog|perf schema --> Result --> qan.Report --> data.Spooler
@@ -50,15 +51,15 @@ func (a ByQueryTime) Less(i, j int) bool {
 	return a[i].Metrics.TimeMetrics["Query_time"].Sum > a[j].Metrics.TimeMetrics["Query_time"].Sum
 }
 
-func MakeReport(config pc.QAN, interval *iter.Interval, result *Result) *qan.Report {
+func MakeReport(config pc.QAN, startTime, endTime time.Time, interval *iter.Interval, result *Result) *qan.Report {
 	// Sort classes by Query_time_sum, descending.
 	sort.Sort(ByQueryTime(result.Class))
 
 	// Make qan.Report from Result and other metadata (e.g. Interval).
 	report := &qan.Report{
 		UUID:    config.UUID,
-		StartTs: interval.StartTime,
-		EndTs:   interval.StopTime,
+		StartTs: startTime,
+		EndTs:   endTime,
 		RunTime: result.RunTime,
 		Global:  result.Global,
 		Class:   result.Class,

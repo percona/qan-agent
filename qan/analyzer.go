@@ -28,7 +28,7 @@ type AnalyzerFactory interface {
 		analyzerType string,
 		analyzerName string,
 		protoInstance proto.Instance,
-	) Analyzer
+	) (Analyzer, error)
 }
 
 // Analyzer is a daemon that collects QAN data

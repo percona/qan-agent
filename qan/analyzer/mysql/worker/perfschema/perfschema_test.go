@@ -33,7 +33,7 @@ import (
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
+	"github.com/percona/qan-agent/qan/analyzer/report"
 	"github.com/percona/qan-agent/test/mock"
 	. "github.com/percona/qan-agent/test/rootdir"
 	"github.com/stretchr/testify/assert"

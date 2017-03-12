@@ -51,7 +51,7 @@
 			"revisionTime": "2016-09-29T20:11:36Z"
 		},
 		{
-			"checksumSHA1": "zZJd4jlrwbTgskRStMWG7NI8nbE=",
+			"checksumSHA1": "1uyn4LiavAYSV5EN6JM++9JG06c=",
 			"path": "github.com/percona/go-mysql/event",
 			"revision": "d4930ec6dd5accf00a06673c2f33ca5fd448a7ef",
 			"revisionTime": "2016-09-23T14:13:10Z"

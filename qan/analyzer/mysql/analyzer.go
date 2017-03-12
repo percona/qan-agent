@@ -31,9 +31,9 @@ import (
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/util"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/worker"
+	"github.com/percona/qan-agent/qan/analyzer/report"
 	"github.com/percona/qan-agent/ticker"
 )
 
@@ -89,7 +89,7 @@ func NewRealAnalyzer(
 		spool:       spool,
 		// --
 		name:                name,
-		mysqlConfiguredChan: make(chan bool, 1),
+		mysqlConfiguredChan: make(chan bool), // note: this channel can't be buffered
 		workerDoneChan:      make(chan *iter.Interval, 1),
 		status:              pct.NewStatus([]string{name, name + "-last-interval", name + "-next-interval"}),
 		runSync:             pct.NewSyncChan(),
@@ -299,7 +299,10 @@ func (a *RealAnalyzer) run() {
 			a.iter.Stop()
 
 			a.status.Update(a.name, "Stopping QAN on MySQL")
-			a.configureMySQL("stop", 1) // try once
+			go a.configureMySQL("stop", 1) // try once
+			select {
+			case <-a.mysqlConfiguredChan:
+			}
 		} else {
 			a.logger.Debug("run:stop configureMySQL goroutine")
 			a.status.Update(a.name, "Stopping MySQL config (can take up to 10 seconds)")
@@ -456,7 +459,7 @@ func (a *RealAnalyzer) runWorker(interval *iter.Interval) {
 
 	// Translate the results into a report and spool.
 	// NOTE: "qan" here is correct; do not use a.name.
-	report := report.MakeReport(a.config, interval, result)
+	report := report.MakeReport(a.config, interval.StartTime, interval.StopTime, interval, result)
 	if err := a.spool.Write("qan", report); err != nil {
 		a.logger.Warn("Lost report:", err)
 	}

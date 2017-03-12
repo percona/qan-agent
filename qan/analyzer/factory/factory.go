@@ -44,7 +44,7 @@ type Factory struct {
 	logChan      chan proto.LogEntry
 	spool        data.Spooler
 	clock        ticker.Manager
-	mrm          mrms.Monitor
+	mrms         mrms.Monitor
 	instanceRepo *instance.Repo
 }
 
@@ -52,20 +52,20 @@ func New(
 	logChan chan proto.LogEntry,
 	spool data.Spooler,
 	clock ticker.Manager,
-	mrm mrms.Monitor,
+	mrms mrms.Monitor,
 	instanceRepo *instance.Repo,
 ) *Factory {
 	f := &Factory{
 		logChan:      logChan,
 		spool:        spool,
 		clock:        clock,
-		mrm:          mrm,
+		mrms:         mrms,
 		instanceRepo: instanceRepo,
 	}
 	return f
 }
 
-func (f *Factory) Make(analyzerType, analyzerName string, protoInstance proto.Instance) qan.Analyzer {
+func (f *Factory) Make(analyzerType, analyzerName string, protoInstance proto.Instance) (qan.Analyzer, error) {
 	logger := pct.NewLogger(f.logChan, analyzerName)
 
 	// Expose some global services to plugins
@@ -74,7 +74,7 @@ func (f *Factory) Make(analyzerType, analyzerName string, protoInstance proto.In
 		"logger": logger,
 		"spool":  f.spool,
 		"clock":  f.clock,
-		"mrm":    f.mrm,
+		"mrms":   f.mrms,
 	})
 
 	// In the future we can use here plugin approach
@@ -82,10 +82,10 @@ func (f *Factory) Make(analyzerType, analyzerName string, protoInstance proto.In
 	// for now switch is gonna be enough
 	switch analyzerType {
 	case "mongo":
-		return mongoAnalyzer.New(ctx, protoInstance)
+		return mongoAnalyzer.New(ctx, protoInstance), nil
 	case "mysql":
-		return mysqlAnalyzer.New(ctx, protoInstance)
+		return mysqlAnalyzer.New(ctx, protoInstance), nil
 	}
 
-	return UnknownTypeError(analyzerType), nil
+	return nil, UnknownTypeError(analyzerType)
 }

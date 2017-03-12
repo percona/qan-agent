@@ -35,7 +35,7 @@ import (
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
+	"github.com/percona/qan-agent/qan/analyzer/report"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	. "github.com/percona/qan-agent/test/rootdir"
@@ -737,7 +737,7 @@ func (s *WorkerTestSuite) TestResult014(t *C) {
 		StartOffset: 0,
 		EndOffset:   127118680,
 	}
-	report := report.MakeReport(config, interval, result)
+	report := report.MakeReport(config, interval.StartTime, interval.StopTime, interval, result)
 
 	t.Check(report.Global.TotalQueries, Equals, uint(4))
 	t.Check(report.Global.UniqueQueries, Equals, uint(4))

@@ -20,7 +20,7 @@ package qan_worker
 import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
+	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
 type QanWorker struct {

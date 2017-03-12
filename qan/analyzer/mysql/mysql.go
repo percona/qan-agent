@@ -150,7 +150,16 @@ func (m *MySQLAnalyzer) Start() error {
 
 // Status returns list of statuses
 func (m *MySQLAnalyzer) Status() map[string]string {
-	return m.analyzer.Status()
+	if m.analyzer != nil {
+		return m.analyzer.Status()
+	}
+
+	service := m.logger.Service()
+	status := "not running"
+
+	return map[string]string{
+		service: status,
+	}
 }
 
 // Stop stops running analyzer, waits until it stops

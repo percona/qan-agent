@@ -3,7 +3,7 @@ package worker
 import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"github.com/percona/qan-agent/qan/analyzer/mysql/report"
+	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
 // A Worker gets queries, aggregates them, and returns a Result. Workers are ran
