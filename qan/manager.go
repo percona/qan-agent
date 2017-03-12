@@ -347,11 +347,14 @@ func (m *Manager) startAnalyzer(setConfig pc.QAN) (err error) {
 	)
 
 	// Create and start a new analyzer. This should return immediately.
-	analyzer := m.analyzerFactory.Make(
+	analyzer, err := m.analyzerFactory.Make(
 		analyzerType,
 		analyzerName,
 		protoInstance,
 	)
+	if err != nil {
+		return fmt.Errorf("cannot create analyzer %s: %s", uuid, err)
+	}
 
 	// Set the configuration
 	analyzer.SetConfig(setConfig)
