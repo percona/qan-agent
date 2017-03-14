@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -9,6 +10,12 @@ import (
 	"github.com/percona/pmgo"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	MgoTailTimeout          = 1 * time.Second
+	MgoSessionSyncTimeout   = 5 * time.Second
+	MgoSessionSocketTimeout = 5 * time.Second
 )
 
 func New(dialInfo *mgo.DialInfo, dialer pmgo.Dialer) *Collector {
@@ -26,11 +33,16 @@ type Collector struct {
 	// provides
 	docsChan chan proto.SystemProfile
 
+	// status
+	pingChan chan struct{} //  ping goroutine for status
+	pongChan chan status   // receive status from goroutine
+	status   map[string]string
+
 	// state
-	sync.Mutex                 // Lock() to protect internal consistency of the service
-	running    bool            // Is this service running?
-	doneChan   chan struct{}   // close(doneChan) to notify goroutines that they should shutdown
-	wg         *sync.WaitGroup // Wait() for goroutines to stop after being notified they should shutdown
+	sync.RWMutex                 // Lock() to protect internal consistency of the service
+	running      bool            // Is this service running?
+	doneChan     chan struct{}   // close(doneChan) to notify goroutines that they should shutdown
+	wg           *sync.WaitGroup // Wait() for goroutines to stop after being notified they should shutdown
 }
 
 // Start starts but doesn't wait until it exits
@@ -47,6 +59,11 @@ func (self *Collector) Start() (<-chan proto.SystemProfile, error) {
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
 
+	// set status
+	self.pingChan = make(chan struct{})
+	self.pongChan = make(chan status)
+	self.status = map[string]string{}
+
 	// start a goroutine and Add() it to WaitGroup
 	// so we could later Wait() for it to finish
 	self.wg = &sync.WaitGroup{}
@@ -56,7 +73,17 @@ func (self *Collector) Start() (<-chan proto.SystemProfile, error) {
 	ready := sync.NewCond(&sync.Mutex{})
 	ready.L.Lock()
 	defer ready.L.Unlock()
-	go start(self.wg, self.dialInfo, self.dialer, self.docsChan, self.doneChan, ready)
+
+	go start(
+		self.wg,
+		self.dialInfo,
+		self.dialer,
+		self.docsChan,
+		self.doneChan,
+		self.pingChan,
+		self.pongChan,
+		ready,
+	)
 
 	// wait until we actually fetch data from db
 	ready.Wait()
@@ -85,12 +112,66 @@ func (self *Collector) Stop() {
 	return
 }
 
+func (self *Collector) Running() bool {
+	self.RLock()
+	defer self.RUnlock()
+	return self.running
+}
+
+func (self *Collector) Status() map[string]string {
+	if !self.Running() {
+		return nil
+	}
+
+	go self.sendPing()
+	status := self.recvPong()
+
+	self.Lock()
+	defer self.Unlock()
+	for k, v := range status {
+		self.status[k] = v
+	}
+
+	return self.status
+}
+
+func (self *Collector) Name() string {
+	return "collector"
+}
+
+func (self *Collector) sendPing() {
+	select {
+	case self.pingChan <- struct{}{}:
+	case <-time.After(1 * time.Second):
+		// timeout carry on
+	}
+}
+
+func (self *Collector) recvPong() map[string]string {
+	select {
+	case s := <-self.pongChan:
+		status := map[string]string{}
+		status["out"] = fmt.Sprintf("%d", s.In)
+		status["in"] = fmt.Sprintf("%d", s.Out)
+		if s.Errors > 0 {
+			status["errors"] = fmt.Sprintf("%d", s.Errors)
+		}
+		return status
+	case <-time.After(1 * time.Second):
+		// timeout carry on
+	}
+
+	return nil
+}
+
 func start(
 	wg *sync.WaitGroup,
 	dialInfo *mgo.DialInfo,
 	dialer pmgo.Dialer,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
+	pingChan <-chan struct{},
+	pongChan chan<- status,
 	ready *sync.Cond,
 ) {
 	// signal WaitGroup when goroutine finished
@@ -98,9 +179,19 @@ func start(
 
 	dialInfo.Timeout = 5 * time.Second
 	firstTry := true
+	status := status{}
 	for {
 		// make a connection and collect data
-		connectAndCollect(dialInfo, dialer, docsChan, doneChan, ready)
+		connectAndCollect(
+			dialInfo,
+			dialer,
+			docsChan,
+			doneChan,
+			pingChan,
+			pongChan,
+			status,
+			ready,
+		)
 
 		// After first failure in connection we signal that we are ready anyway
 		// this way service starts, and will automatically connect when db is available.
@@ -124,6 +215,9 @@ func connectAndCollect(
 	dialer pmgo.Dialer,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
+	pingChan <-chan struct{},
+	pongChan chan<- status,
+	status status,
 	ready *sync.Cond,
 ) {
 	session, err := dialer.DialWithInfo(dialInfo)
@@ -132,9 +226,9 @@ func connectAndCollect(
 	}
 	defer session.Close()
 
-	// @todo
-	//session.SetSyncTimeout(1 * time.Minute)
-	//session.SetSocketTimeout(1 * time.Minute)
+	// set timeouts or otherwise iter.Next() might hang forever
+	session.SetSyncTimeout(MgoSessionSyncTimeout)
+	session.SetSocketTimeout(MgoSessionSocketTimeout)
 
 	collection := session.DB(dialInfo.Database).C("system.profile")
 	for {
@@ -142,7 +236,16 @@ func connectAndCollect(
 			"ts": bson.M{"$gt": bson.Now()},
 			"op": bson.M{"$nin": []string{"getmore", "delete"}},
 		}
-		collect(collection, query, docsChan, doneChan, ready)
+		collect(
+			collection,
+			query,
+			docsChan,
+			doneChan,
+			pingChan,
+			pongChan,
+			status,
+			ready,
+		)
 
 		select {
 		// check if we should shutdown
@@ -159,17 +262,38 @@ func collect(
 	query bson.M,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
+	pingChan <-chan struct{},
+	pongChan chan<- status,
+	status status,
 	ready *sync.Cond,
 ) {
-	iterator := collection.Find(query).Sort("$natural").Tail(1 * time.Second)
+	iterator := collection.Find(query).Sort("$natural").Tail(MgoTailTimeout)
 	defer iterator.Close()
 
 	// we got iterator, we are ready
 	signalReady(ready)
 
 	for {
+		// check if we should shutdown
+		select {
+		case <-doneChan:
+			return
+		default:
+			// just continue if not
+		}
+
+		// check if we got ping
+		select {
+		case <-pingChan:
+			go pong(status, pongChan)
+		default:
+			// just continue if not
+		}
+
 		doc := proto.SystemProfile{}
 		for iterator.Next(&doc) {
+			status.In += 1
+
 			// check if we should shutdown
 			select {
 			case <-doneChan:
@@ -178,9 +302,18 @@ func collect(
 				// just continue if not
 			}
 
+			// check if we got ping
+			select {
+			case <-pingChan:
+				go pong(status, pongChan)
+			default:
+				// just continue if not
+			}
+
 			// try to push doc
 			select {
 			case docsChan <- doc:
+				status.Out += 1
 				// or exit if we can't push the doc and we should shutdown
 				// note that if we can push the doc then exiting is not guaranteed
 				// that's why we have separate `select <-doneChan` above
@@ -189,6 +322,7 @@ func collect(
 			}
 		}
 		if iterator.Err() != nil {
+			status.Errors += 1
 			log.Println(iterator.Err())
 			return
 		}
@@ -202,4 +336,18 @@ func signalReady(ready *sync.Cond) {
 	ready.L.Lock()
 	defer ready.L.Unlock()
 	ready.Broadcast()
+}
+
+func pong(status status, pongChan chan<- status) {
+	select {
+	case pongChan <- status:
+	case <-time.After(1 * time.Second):
+		// timeout carry on
+	}
+}
+
+type status struct {
+	In     int
+	Out    int
+	Errors int
 }

@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/percona/pmgo"
@@ -44,8 +45,8 @@ type MongoAnalyzer struct {
 	// dependency from setter SetConfig
 	config pc.QAN
 
-	// internal services to stop
-	services []stoppable
+	// internal services
+	services []services
 
 	// state
 	running bool
@@ -71,12 +72,13 @@ func (m *MongoAnalyzer) Start() error {
 	}
 
 	defer func() {
+		// if we failed to start
 		if !m.running {
-			// if we failed to start be sure that any started internal service is shutdown
+			// be sure that any started internal service is shutdown
 			for _, s := range m.services {
 				s.Stop()
 			}
-			m.services = []stoppable(nil)
+			m.services = nil
 		}
 	}()
 
@@ -84,14 +86,14 @@ func (m *MongoAnalyzer) Start() error {
 	dsn := m.protoInstance.DSN
 
 	// if dsn is incorrect we should exit immediately as this is not gonna correct itself
-	info, err := mgo.ParseURL(dsn)
+	dialInfo, err := mgo.ParseURL(dsn)
 	if err != nil {
 		return err
 	}
 	dialer := pmgo.NewDialer()
 
 	// create collector and start it
-	collector := collector.New(info, dialer)
+	collector := collector.New(dialInfo, dialer)
 	docsChan, err := collector.Start()
 	if err != nil {
 		return err
@@ -124,14 +126,21 @@ func (m *MongoAnalyzer) Status() map[string]string {
 	defer m.RUnlock()
 
 	service := m.logger.Service()
-	status := "not running"
+	status := "Not running"
 	if m.running {
-		status = "running"
+		status = "Running"
 	}
 
-	return map[string]string{
-		service: status,
+	statuses := map[string]string{}
+
+	for _, s := range m.services {
+		for k, v := range s.Status() {
+			statuses[fmt.Sprintf("%s-%s-%s", service, s.Name(), k)] = v
+		}
 	}
+
+	statuses[service] = status
+	return statuses
 }
 
 // Stop stops running analyzer, waits until it stops
@@ -146,7 +155,7 @@ func (m *MongoAnalyzer) Stop() error {
 	for _, s := range m.services {
 		s.Stop()
 	}
-	m.services = []stoppable(nil)
+	m.services = nil
 
 	m.running = false
 	return nil
@@ -161,6 +170,8 @@ func (m *MongoAnalyzer) String() string {
 	return ""
 }
 
-type stoppable interface {
+type services interface {
+	Status() map[string]string
 	Stop()
+	Name() string
 }

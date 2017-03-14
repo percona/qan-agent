@@ -56,13 +56,27 @@ func TestFactory_MakeMongo(t *testing.T) {
 	)
 	assert.Nil(t, err)
 
-	assert.Equal(t, map[string]string{serviceName: "not running"}, analyzer.Status())
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
 	err = analyzer.Start()
 	assert.Nil(t, err)
-	assert.Equal(t, map[string]string{serviceName: "running"}, analyzer.Status())
+	expect := map[string]string{
+		"plugin-collector-in":          "0",
+		"plugin-collector-out":         "1",
+		"plugin-parser-docs-in":        "0",
+		"plugin-parser-reports-out":    "0",
+		"plugin-sender-out":            "0",
+		"plugin":                       "Running",
+		"plugin-parser-interval-start": "",
+		"plugin-parser-interval-end":   "",
+		"plugin-sender-in":             "0",
+	}
+	actual := analyzer.Status()
+	actual["plugin-parser-interval-start"] = ""
+	actual["plugin-parser-interval-end"] = ""
+	assert.Equal(t, expect, actual)
 	err = analyzer.Stop()
 	assert.Nil(t, err)
-	assert.Equal(t, map[string]string{serviceName: "not running"}, analyzer.Status())
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
 }
 
 func TestFactory_MakeMySQL(t *testing.T) {
@@ -98,7 +112,7 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	}
 	analyzer.SetConfig(pcQan)
 
-	assert.Equal(t, map[string]string{serviceName: "not running"}, analyzer.Status())
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
 	err = analyzer.Start()
 	assert.Nil(t, err)
 	expected := map[string]string{
@@ -111,5 +125,5 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	assert.Equal(t, expected, analyzer.Status())
 	err = analyzer.Stop()
 	assert.Nil(t, err)
-	assert.Equal(t, map[string]string{serviceName: "not running"}, analyzer.Status())
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
 }

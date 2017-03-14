@@ -75,6 +75,12 @@
 			"revisionTime": "2016-09-23T14:13:10Z"
 		},
 		{
+			"checksumSHA1": "A/gdkluZGrwBiQcNruPZza1tbVM=",
+			"path": "github.com/percona/pmgo",
+			"revision": "7897c9b20500f615b03fef3e1bb376575fbf5485",
+			"revisionTime": "2017-03-14T03:39:35Z"
+		},
+		{
 			"checksumSHA1": "77jNwmeWSRb4ohYnXMoF6sXXR64=",
 			"path": "github.com/percona/pmm/proto",
 			"revision": "45931336321c35ad59634ee9e3211311e4fb7daa",

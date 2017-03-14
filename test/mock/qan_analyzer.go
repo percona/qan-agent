@@ -134,7 +134,10 @@ func (f *QanAnalyzerFactory) Make(
 	analyzerType string,
 	analyzerName string,
 	protoInstance proto.Instance,
-) qan.Analyzer {
+) (
+	qan.Analyzer,
+	error,
+) {
 	if f.n < len(f.analyzers) {
 		a := f.analyzers[f.n]
 		args := AnalyzerArgs{
@@ -144,7 +147,7 @@ func (f *QanAnalyzerFactory) Make(
 		}
 		f.Args = append(f.Args, args)
 		f.n++
-		return a
+		return a, nil
 	}
 	panic("Need more analyzers")
 }

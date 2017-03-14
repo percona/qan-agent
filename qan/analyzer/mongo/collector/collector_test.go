@@ -15,7 +15,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	//t.Parallel()
+	t.Parallel()
 
 	dialer := pmgo.NewDialer()
 	dialInfo, _ := mgo.ParseURL("127.0.0.1:27017")
@@ -141,40 +141,5 @@ func TestCollector(t *testing.T) {
 			collector.Stop()
 		}
 	}
-
+	assert.Len(t, actual, len(people))
 }
-
-//var Server dbtest.DBServer
-//
-//func TestMain(m *testing.M) {
-//	return
-//	// The tempdir is created so MongoDB has a location to store its files.
-//	// Contents are wiped once the server stops
-//	os.Setenv("CHECK_SESSIONS", "0")
-//	tempDir, _ := ioutil.TempDir("", "testing")
-//	Server.SetPath(tempDir)
-//
-//	dat, err := ioutil.ReadFile("test/sample/system.profile.json")
-//	if err != nil {
-//		fmt.Printf("cannot load fixtures: %s", err)
-//		os.Exit(1)
-//	}
-//
-//	var docs []proto.SystemProfile
-//	err = json.Unmarshal(dat, &docs)
-//	c := Server.Session().DB("samples").C("system_profile")
-//	for _, doc := range docs {
-//		c.Insert(doc)
-//	}
-//
-//	retCode := m.Run()
-//
-//	Server.Session().Close()
-//	Server.Session().DB("samples").DropDatabase()
-//
-//	// Stop shuts down the temporary server and removes data on disk.
-//	Server.Stop()
-//
-//	// call with result of m.Run()
-//	os.Exit(retCode)
-//}

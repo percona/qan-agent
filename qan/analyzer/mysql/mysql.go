@@ -155,7 +155,7 @@ func (m *MySQLAnalyzer) Status() map[string]string {
 	}
 
 	service := m.logger.Service()
-	status := "not running"
+	status := "Not running"
 
 	return map[string]string{
 		service: status,
