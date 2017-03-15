@@ -13,7 +13,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	reportChan := make(chan qan.Report)
+	reportChan := make(chan *qan.Report)
 	dataChan := make(chan interface{})
 	spool := mock.NewSpooler(dataChan)
 	logChan := make(chan proto.LogEntry)
@@ -21,7 +21,7 @@ func TestNew(t *testing.T) {
 	sender1 := New(reportChan, spool, logger)
 
 	type args struct {
-		reportChan <-chan qan.Report
+		reportChan <-chan *qan.Report
 		spool      data.Spooler
 		logger     *pct.Logger
 	}
@@ -50,7 +50,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestSender_Start(t *testing.T) {
-	reportChan := make(chan qan.Report)
+	reportChan := make(chan *qan.Report)
 	dataChan := make(chan interface{})
 	spool := mock.NewSpooler(dataChan)
 	logChan := make(chan proto.LogEntry)

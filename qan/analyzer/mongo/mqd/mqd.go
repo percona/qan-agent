@@ -20,6 +20,9 @@ const (
 
 var (
 	ErrCannotGetQuery = errors.New("cannot get query field from the profile document (it is not a map)")
+	ErrQueryFiltered  = errors.New("query filtered")
+	ErrNoQuery        = errors.New("no query")
+	ErrFingerprint    = errors.New("unable to create fingerprint")
 
 	// This is a regexp array to filter out the keys we don't want in the fingerprint
 	keyFilters = func() []string {
@@ -61,6 +64,10 @@ type GroupKey struct {
 	Operation   string
 	Fingerprint string
 	Namespace   string
+}
+
+func (g *GroupKey) String() string {
+	return g.Operation + g.Fingerprint + g.Namespace
 }
 
 type statistics struct {
@@ -123,19 +130,6 @@ type options struct {
 // false: the document must be skipped
 type DocsFilter func(pm.SystemProfile) bool
 
-func GetData(i iter, filters []DocsFilter) []Stat {
-	var doc pm.SystemProfile
-	stats := make(map[GroupKey]*Stat)
-
-	for i.Next(&doc) && i.Err() == nil {
-		ProcessDoc(&doc, filters, stats)
-	}
-
-	// We need to sort the data but a hash cannot be sorted so, convert the hash having
-	// the results to a slice
-	return ToStatSlice(stats)
-}
-
 func ToStatSlice(stats map[GroupKey]*Stat) []Stat {
 	sa := statsArray{}
 	for _, s := range stats {
@@ -146,22 +140,22 @@ func ToStatSlice(stats map[GroupKey]*Stat) []Stat {
 	return sa
 }
 
-func ProcessDoc(doc *pm.SystemProfile, filters []DocsFilter, stats map[GroupKey]*Stat) {
+func ProcessDoc(doc *pm.SystemProfile, filters []DocsFilter, stats map[GroupKey]*Stat) error {
 	// filter out unwanted query
 	for _, filter := range filters {
 		if filter(*doc) == false {
-			return
+			return ErrQueryFiltered
 		}
 	}
 
 	// if there is no query then there is nothing to process
 	if len(doc.Query) <= 0 {
-		return
+		return ErrNoQuery
 	}
 
 	fp, err := fingerprint(doc.Query)
 	if err != nil {
-		return
+		return ErrFingerprint
 	}
 	var s *Stat
 	var ok bool
@@ -173,7 +167,7 @@ func ProcessDoc(doc *pm.SystemProfile, filters []DocsFilter, stats map[GroupKey]
 	if s, ok = stats[key]; !ok {
 		realQuery, _ := getQueryField(doc.Query)
 		s = &Stat{
-			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fp+doc.Ns))),
+			ID:          fmt.Sprintf("%x", md5.Sum([]byte(key.String()))),
 			Operation:   doc.Op,
 			Fingerprint: fp,
 			Namespace:   doc.Ns,
@@ -194,6 +188,8 @@ func ProcessDoc(doc *pm.SystemProfile, filters []DocsFilter, stats map[GroupKey]
 	if s.LastSeen == zeroTime || s.LastSeen.Before(doc.Ts) {
 		s.LastSeen = doc.Ts
 	}
+
+	return nil
 }
 
 func CalcQueryStats(queries []Stat, uptime int64) []queryInfo {
@@ -235,42 +231,6 @@ func CalcQueryStats(queries []Stat, uptime int64) []queryInfo {
 		queryStats = append(queryStats, qi)
 	}
 	return queryStats
-}
-
-func CalcTotalQueryStats(queries []Stat, uptime int64) queryInfo {
-	qi := queryInfo{}
-	qs := Stat{}
-	_, totalScanned, totalReturned, totalQueryTime, totalBytes := calcTotals(queries)
-	for _, query := range queries {
-		qs.NScanned = append(qs.NScanned, query.NScanned...)
-		qs.NReturned = append(qs.NReturned, query.NReturned...)
-		qs.QueryTime = append(qs.QueryTime, query.QueryTime...)
-		qs.ResponseLength = append(qs.ResponseLength, query.ResponseLength...)
-		qi.Count += query.Count
-	}
-
-	qi.Scanned = calcStats(qs.NScanned)
-	qi.Returned = calcStats(qs.NReturned)
-	qi.QueryTime = calcStats(qs.QueryTime)
-	qi.ResponseLength = calcStats(qs.ResponseLength)
-
-	if totalScanned > 0 {
-		qi.Scanned.Pct = qi.Scanned.Total * 100 / totalScanned
-	}
-	if totalReturned > 0 {
-		qi.Returned.Pct = qi.Returned.Total * 100 / totalReturned
-	}
-	if totalQueryTime > 0 {
-		qi.QueryTime.Pct = qi.QueryTime.Total * 100 / totalQueryTime
-	}
-	if totalBytes > 0 {
-		qi.ResponseLength.Pct = qi.ResponseLength.Total / totalBytes
-	}
-	if qi.Returned.Total > 0 {
-		qi.Ratio = qi.Scanned.Total / qi.Returned.Total
-	}
-
-	return qi
 }
 
 func calcTotals(queries []Stat) (totalCount int, totalScanned, totalReturned, totalQueryTime, totalBytes float64) {

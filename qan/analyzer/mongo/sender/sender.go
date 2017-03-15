@@ -1,16 +1,16 @@
 package sender
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
 )
 
-func New(reportChan <-chan qan.Report, spool data.Spooler, logger *pct.Logger) *Sender {
+func New(reportChan <-chan *qan.Report, spool data.Spooler, logger *pct.Logger) *Sender {
 	return &Sender{
 		reportChan: reportChan,
 		spool:      spool,
@@ -20,7 +20,7 @@ func New(reportChan <-chan qan.Report, spool data.Spooler, logger *pct.Logger) *
 
 type Sender struct {
 	// dependencies
-	reportChan <-chan qan.Report
+	reportChan <-chan *qan.Report
 	spool      data.Spooler
 	logger     *pct.Logger
 
@@ -126,13 +126,7 @@ func (self *Sender) sendPing() {
 func (self *Sender) recvPong() map[string]string {
 	select {
 	case s := <-self.pongChan:
-		status := map[string]string{}
-		status["out"] = fmt.Sprintf("%d", s.In)
-		status["in"] = fmt.Sprintf("%d", s.Out)
-		if s.Errors > 0 {
-			status["errors"] = fmt.Sprintf("%d", s.Errors)
-		}
-		return status
+		return state.StatusToMap(s)
 	case <-time.After(2 * time.Second):
 		// timeout carry on
 	}
@@ -141,7 +135,7 @@ func (self *Sender) recvPong() map[string]string {
 
 func start(
 	wg *sync.WaitGroup,
-	reportChan <-chan qan.Report,
+	reportChan <-chan *qan.Report,
 	spool data.Spooler,
 	logger *pct.Logger,
 	pingChan <-chan struct{},
@@ -180,7 +174,7 @@ func start(
 
 			// sent report
 			if err := spool.Write("qan", report); err != nil {
-				status.Errors += 1
+				status.ErrIter += 1
 				logger.Warn("Lost report:", err)
 				continue
 			}
@@ -203,7 +197,7 @@ func pong(status status, pongChan chan<- status) {
 }
 
 type status struct {
-	In     int
-	Out    int
-	Errors int
+	In      uint `name:"in"`
+	Out     uint `name:"out"`
+	ErrIter uint `name:"err-iter"`
 }

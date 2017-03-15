@@ -2,12 +2,12 @@ package collector
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -124,6 +124,8 @@ func (self *Collector) Status() map[string]string {
 	}
 
 	go self.sendPing()
+	profile := getProfile(self.dialInfo, self.dialer)
+
 	status := self.recvPong()
 
 	self.Lock()
@@ -131,8 +133,38 @@ func (self *Collector) Status() map[string]string {
 	for k, v := range status {
 		self.status[k] = v
 	}
+	self.status["profile"] = profile
 
 	return self.status
+}
+
+func getProfile(
+	dialInfo *mgo.DialInfo,
+	dialer pmgo.Dialer,
+) string {
+	session, err := dialer.DialWithInfo(dialInfo)
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+	defer session.Close()
+	session.SetSyncTimeout(MgoSessionSyncTimeout)
+	session.SetSocketTimeout(MgoSessionSocketTimeout)
+
+	result := struct {
+		Was    int
+		Slowms int
+	}{}
+	err = session.DB(dialInfo.Database).Run(
+		bson.M{
+			"profile": -1,
+		},
+		&result,
+	)
+	if err != nil {
+		return fmt.Sprintf("%s", err)
+	}
+
+	return fmt.Sprintf("was: %d, slowms: %d", result.Was, result.Slowms)
 }
 
 func (self *Collector) Name() string {
@@ -150,13 +182,7 @@ func (self *Collector) sendPing() {
 func (self *Collector) recvPong() map[string]string {
 	select {
 	case s := <-self.pongChan:
-		status := map[string]string{}
-		status["out"] = fmt.Sprintf("%d", s.In)
-		status["in"] = fmt.Sprintf("%d", s.Out)
-		if s.Errors > 0 {
-			status["errors"] = fmt.Sprintf("%d", s.Errors)
-		}
-		return status
+		return state.StatusToMap(s)
 	case <-time.After(1 * time.Second):
 		// timeout carry on
 	}
@@ -322,8 +348,7 @@ func collect(
 			}
 		}
 		if iterator.Err() != nil {
-			status.Errors += 1
-			log.Println(iterator.Err())
+			status.ErrIter += 1
 			return
 		}
 		if iterator.Timeout() {
@@ -347,7 +372,7 @@ func pong(status status, pongChan chan<- status) {
 }
 
 type status struct {
-	In     int
-	Out    int
-	Errors int
+	In      uint `name:"in"`
+	Out     uint `name:"out"`
+	ErrIter uint `name:"err-iter"`
 }

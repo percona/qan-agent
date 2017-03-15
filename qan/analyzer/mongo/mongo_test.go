@@ -31,19 +31,13 @@ func TestMongoAnalyzer_StartStopStatus(t *testing.T) {
 	err := plugin.Start()
 	assert.Nil(t, err)
 	expect := map[string]string{
-		"plugin-collector-in":          "0",
-		"plugin-collector-out":         "1",
-		"plugin-parser-docs-in":        "0",
-		"plugin-parser-reports-out":    "0",
-		"plugin-sender-out":            "0",
-		"plugin":                       "Running",
-		"plugin-parser-interval-start": "",
-		"plugin-parser-interval-end":   "",
-		"plugin-sender-in":             "0",
+		"plugin-collector-in":      "1",
+		"plugin":                   "Running",
+		"plugin-collector-profile": "was: 2, slowms: 100",
 	}
 	actual := plugin.Status()
-	actual["plugin-parser-interval-start"] = ""
-	actual["plugin-parser-interval-end"] = ""
+	delete(actual, "plugin-parser-interval-start")
+	delete(actual, "plugin-parser-interval-end")
 	assert.Equal(t, expect, actual)
 
 	err = plugin.Stop()

@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -10,6 +9,7 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/mqd"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
@@ -30,7 +30,7 @@ type Parser struct {
 	config   pc.QAN
 
 	// provides
-	reportChan chan qan.Report
+	reportChan chan *qan.Report
 
 	// status
 	pingChan chan struct{} //  ping goroutine for status
@@ -45,7 +45,7 @@ type Parser struct {
 }
 
 // Start starts but doesn't wait until it exits
-func (self *Parser) Start() (<-chan qan.Report, error) {
+func (self *Parser) Start() (<-chan *qan.Report, error) {
 	self.Lock()
 	defer self.Unlock()
 	if self.running {
@@ -54,7 +54,7 @@ func (self *Parser) Start() (<-chan qan.Report, error) {
 
 	// create new channels over which we will communicate to...
 	// ... outside world by sending collected docs
-	self.reportChan = make(chan qan.Report)
+	self.reportChan = make(chan *qan.Report)
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
 
@@ -139,12 +139,7 @@ func (self *Parser) sendPing() {
 func (self *Parser) recvPong() map[string]string {
 	select {
 	case s := <-self.pongChan:
-		status := map[string]string{}
-		status["reports-out"] = fmt.Sprintf("%d", s.OutReports)
-		status["docs-in"] = fmt.Sprintf("%d", s.InDocs)
-		status["interval-start"] = s.IntervalStart
-		status["interval-end"] = s.IntervalEnd
-		return status
+		return state.StatusToMap(s)
 	case <-time.After(1 * time.Second):
 		// timeout carry on
 	}
@@ -155,7 +150,7 @@ func (self *Parser) recvPong() map[string]string {
 func start(
 	wg *sync.WaitGroup,
 	docsChan <-chan pm.SystemProfile,
-	reportChan chan<- qan.Report,
+	reportChan chan<- *qan.Report,
 	config pc.QAN,
 	pingChan <-chan struct{},
 	pongChan chan<- status,
@@ -215,14 +210,14 @@ func start(
 			// time to prepare data to sent
 			if ts.After(timeEnd) {
 				// create result
-				result := createResult(stats, int64(interval))
+				result := createResult(stats, int64(interval), config.ExampleQueries)
 
 				// translate result into report
-				report := report.MakeReport(config, timeStart, timeEnd, nil, result)
+				qanReport := report.MakeReport(config, timeStart, timeEnd, nil, result)
 
 				// sent report over reportChan.
 				select {
-				case reportChan <- *report:
+				case reportChan <- qanReport:
 					status.OutReports += 1
 				// or exit if we can't push over the channel and we should shutdown
 				// note that if we can push over the channel then exiting is not guaranteed
@@ -238,8 +233,20 @@ func start(
 				timeEnd = timeStart.Add(d)
 			}
 
-			mqd.ProcessDoc(&doc, filters, stats)
 			status.InDocs += 1
+			err := mqd.ProcessDoc(&doc, filters, stats)
+			switch err {
+			case nil:
+				status.OkDocs += 1
+			case mqd.ErrNoQuery:
+				status.SkippedDocs += 1
+			case mqd.ErrQueryFiltered:
+				status.SkippedDocs += 1
+			case mqd.ErrFingerprint:
+				status.ErrFingerprint += 1
+			default:
+				status.ErrParse += 1
+			}
 		// doneChan and pingChan needs to be repeated in this select as docsChan can block
 		// doneChan and pingChan needs to be also in separate select statements as docsChan
 		// could be always picked since select picks channels pseudo randomly
@@ -254,13 +261,19 @@ func start(
 
 }
 
-func createResult(stats map[mqd.GroupKey]*mqd.Stat, interval int64) *report.Result {
+func createResult(stats map[mqd.GroupKey]*mqd.Stat, interval int64, exampleQueries bool) *report.Result {
 	queries := mqd.ToStatSlice(stats)
 	global := event.NewClass("", "", false)
 	queryStats := mqd.CalcQueryStats(queries, interval)
 	classes := []*event.Class{}
 	for _, queryInfo := range queryStats {
-		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, true)
+		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, exampleQueries)
+		if exampleQueries {
+			class.Example = &event.Example{
+				QueryTime: queryInfo.QueryTime.Total,
+				Query:     queryInfo.Query,
+			}
+		}
 
 		metrics := event.NewMetrics()
 
@@ -273,6 +286,7 @@ func createResult(stats map[mqd.GroupKey]*mqd.Stat, interval int64) *report.Resu
 		}
 
 		class.Metrics = metrics
+		class.TotalQueries = uint(queryInfo.Count)
 		classes = append(classes, class)
 
 		// Add the class to the global metrics.
@@ -295,8 +309,12 @@ func pong(status status, pongChan chan<- status) {
 }
 
 type status struct {
-	InDocs        int
-	OutReports    int
-	IntervalStart string
-	IntervalEnd   string
+	InDocs         uint   `name:"docks-in"`
+	OkDocs         uint   `name:"docks-ok"`
+	OutReports     uint   `name:"reports-out"`
+	IntervalStart  string `name:"interval-start"`
+	IntervalEnd    string `name:"interval-end"`
+	ErrFingerprint uint   `name:"err-fingerprint"`
+	ErrParse       uint   `name:"err-parse"`
+	SkippedDocs    uint   `name:"skipped-docs"`
 }
