@@ -87,6 +87,12 @@
 			"revisionTime": "2016-09-23T14:13:10Z"
 		},
 		{
+			"checksumSHA1": "yYbwYX8rIhEW9GLlhWyPcUuelKw=",
+			"path": "github.com/percona/percona-toolkit/src/go/mongolib/proto",
+			"revision": "051c6706b1b3dbec328526f1a50e81b06e385882",
+			"revisionTime": "2017-02-17T18:55:05Z"
+		},
+		{
 			"checksumSHA1": "A/gdkluZGrwBiQcNruPZza1tbVM=",
 			"path": "github.com/percona/pmgo",
 			"revision": "7897c9b20500f615b03fef3e1bb376575fbf5485",
