@@ -5,7 +5,6 @@ coverage.out
 revel-build.log
 todo/
 tmp/
-vendor/
 update_dependencies.sh
 distro/
 build/percona-qan-agent*
