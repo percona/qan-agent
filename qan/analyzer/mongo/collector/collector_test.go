@@ -4,24 +4,19 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/mgo.v2"
-	//"gopkg.in/mgo.v2/dbtest"
-	//"os"
-	//"io/ioutil"
-	//"encoding/json"
-	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 )
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
 	dialer := pmgo.NewDialer()
-	dialInfo, _ := mgo.ParseURL("127.0.0.1:27017")
+	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
 
 	type args struct {
-		dialInfo *mgo.DialInfo
+		dialInfo *pmgo.DialInfo
 		dialer   pmgo.Dialer
 	}
 	tests := []struct {
@@ -54,7 +49,7 @@ func TestCollector_StartStop(t *testing.T) {
 	t.Parallel()
 
 	dialer := pmgo.NewDialer()
-	dialInfo, _ := mgo.ParseURL("127.0.0.1:27017")
+	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
 
 	collector1 := New(dialInfo, dialer)
 	docsChan, err := collector1.Start()
@@ -68,7 +63,7 @@ func TestCollector_Stop(t *testing.T) {
 	t.Parallel()
 
 	dialer := pmgo.NewDialer()
-	dialInfo, _ := mgo.ParseURL("127.0.0.1:27017")
+	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
 
 	// #1
 	notStarted := New(dialInfo, dialer)
@@ -111,7 +106,7 @@ func TestCollector(t *testing.T) {
 	t.Parallel()
 
 	dialer := pmgo.NewDialer()
-	dialInfo, _ := mgo.ParseURL("127.0.0.1:27017")
+	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
 
 	collector := New(dialInfo, dialer)
 	docsChan, err := collector.Start()

@@ -1,5 +1,5 @@
 hash: 5dd32780bac8505eb659968547796acc4e59ab7e3623ce05eaeb6434a10f2822
-updated: 2017-03-20T14:05:35.274841377+01:00
+updated: 2017-03-20T19:46:14.154366148+01:00
 imports:
 - name: github.com/fatih/structs
   version: a720dfa8df582c51dee1b36feabb906bde1588bd
@@ -26,7 +26,7 @@ imports:
   subpackages:
   - src/go/mongolib/proto
 - name: github.com/percona/pmgo
-  version: 73682ec406129659b219198f14b71d3e8a587df0
+  version: 717c9ce3810f3744d303a8ad418f84d517fde597
 - name: github.com/percona/pmm
   version: f5d2aa2c4005f78d83b91b907fac6da04a852fd3
   subpackages:

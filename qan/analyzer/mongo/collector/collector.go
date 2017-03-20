@@ -8,7 +8,6 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -18,7 +17,7 @@ const (
 	MgoSessionSocketTimeout = 5 * time.Second
 )
 
-func New(dialInfo *mgo.DialInfo, dialer pmgo.Dialer) *Collector {
+func New(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) *Collector {
 	return &Collector{
 		dialInfo: dialInfo,
 		dialer:   dialer,
@@ -27,7 +26,7 @@ func New(dialInfo *mgo.DialInfo, dialer pmgo.Dialer) *Collector {
 
 type Collector struct {
 	// dependencies
-	dialInfo *mgo.DialInfo
+	dialInfo *pmgo.DialInfo
 	dialer   pmgo.Dialer
 
 	// provides
@@ -139,7 +138,7 @@ func (self *Collector) Status() map[string]string {
 }
 
 func getProfile(
-	dialInfo *mgo.DialInfo,
+	dialInfo *pmgo.DialInfo,
 	dialer pmgo.Dialer,
 ) string {
 	session, err := dialer.DialWithInfo(dialInfo)
@@ -192,7 +191,7 @@ func (self *Collector) recvPong() map[string]string {
 
 func start(
 	wg *sync.WaitGroup,
-	dialInfo *mgo.DialInfo,
+	dialInfo *pmgo.DialInfo,
 	dialer pmgo.Dialer,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
@@ -237,7 +236,7 @@ func start(
 }
 
 func connectAndCollect(
-	dialInfo *mgo.DialInfo,
+	dialInfo *pmgo.DialInfo,
 	dialer pmgo.Dialer,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},

@@ -7,6 +7,7 @@ go:
   - 1.8.x
 
 services:
+  - mongo
   - mysql
 
 env:
@@ -23,6 +24,9 @@ addons:
 install:
   - go get -u github.com/Masterminds/glide
   - glide install
+
+before_script:
+  - mongo --eval 'db.setProfilingLevel(2)'
 
 script:
   - test/runner.sh

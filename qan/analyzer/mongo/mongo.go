@@ -14,7 +14,6 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/mongo/collector"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/parser"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/sender"
-	"gopkg.in/mgo.v2"
 )
 
 func New(ctx context.Context, protoInstance proto.Instance) qan.Analyzer {
@@ -86,7 +85,7 @@ func (m *MongoAnalyzer) Start() error {
 	dsn := m.protoInstance.DSN
 
 	// if dsn is incorrect we should exit immediately as this is not gonna correct itself
-	dialInfo, err := mgo.ParseURL(dsn)
+	dialInfo, err := pmgo.ParseURL(dsn)
 	if err != nil {
 		return err
 	}
