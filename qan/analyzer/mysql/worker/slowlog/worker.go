@@ -228,10 +228,10 @@ func (w *Worker) Run() (*report.Result, error) {
 	go w.fingerprinter()
 	defer func() { w.doneChan <- true }()
 
-	t0 := time.Now()
+	t0 := time.Now().UTC()
 EVENT_LOOP:
 	for event := range p.EventChan() {
-		runtime = time.Now().Sub(t0)
+		runtime = time.Now().UTC().Sub(t0)
 		progress = fmt.Sprintf("%.1f%% %d/%d %d %.1fs",
 			float64(event.Offset)/float64(w.job.EndOffset)*100, event.Offset, w.job.EndOffset, jobSize, runtime.Seconds())
 		w.status.Update(w.name, fmt.Sprintf("Parsing %s: %s", w.job.SlowLogFile, progress))
@@ -322,7 +322,7 @@ EVENT_LOOP:
 
 	// Zero the runtime for testing.
 	if !w.ZeroRunTime {
-		result.RunTime = time.Now().Sub(t0).Seconds()
+		result.RunTime = time.Now().UTC().Sub(t0).Seconds()
 	}
 
 	w.logger.Info(fmt.Sprintf("Parsed %s: %s", w.job, progress))

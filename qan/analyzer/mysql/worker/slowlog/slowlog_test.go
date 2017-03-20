@@ -18,6 +18,7 @@
 package slowlog
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -129,19 +130,13 @@ func (s *WorkerTestSuite) TestWorkerWithAnotherTZ(t *C) {
 	got, err := s.RunWorker(s.config, mysqlConn, i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
-	test.LoadReport(outputDir+"slow001.json", expect, got)
-
-	expect.Class[0].Example.Ts = "2007-10-15 22:45:10"
-	expect.Class[1].Example.Ts = "2007-10-15 22:43:52"
-
-	// we need to create empty maps because of `json:",omitempty"` we get nil maps
-	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[1].Metrics.BoolMetrics = map[string]*event.BoolStats{}
+	test.LoadReport(outputDir+"slow001_another_tz.json", expect, got)
 
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	assert.Equal(t, expect, got)
+	gotBytes, _ := json.MarshalIndent(got, "", "  ")
+	expectBytes, _ := json.MarshalIndent(expect, "", "  ")
+	assert.JSONEq(t, string(expectBytes), string(gotBytes))
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001(t *C) {
@@ -158,14 +153,11 @@ func (s *WorkerTestSuite) TestWorkerSlow001(t *C) {
 	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001.json", expect, got)
 
-	// we need to create empty maps because of `json:",omitempty"` we get nil maps
-	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[1].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	assert.Equal(t, expect, got)
+	gotBytes, _ := json.MarshalIndent(got, "", "  ")
+	expectBytes, _ := json.MarshalIndent(expect, "", "  ")
+	assert.JSONEq(t, string(expectBytes), string(gotBytes))
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
@@ -184,14 +176,11 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001-no-examples.json", expect, got)
 
-	// we need to create empty maps because of `json:",omitempty"` we get nil maps
-	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[1].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	assert.Equal(t, expect, got)
+	gotBytes, _ := json.MarshalIndent(got, "", "  ")
+	expectBytes, _ := json.MarshalIndent(expect, "", "  ")
+	assert.JSONEq(t, string(expectBytes), string(gotBytes))
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001Half(t *C) {
@@ -211,13 +200,11 @@ func (s *WorkerTestSuite) TestWorkerSlow001Half(t *C) {
 	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001-half.json", expect, got)
 
-	// we need to create empty maps because of `json:",omitempty"` we get nil maps
-	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	assert.Equal(t, expect, got)
+	gotBytes, _ := json.MarshalIndent(got, "", "  ")
+	expectBytes, _ := json.MarshalIndent(expect, "", "  ")
+	assert.JSONEq(t, string(expectBytes), string(gotBytes))
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow001Resume(t *C) {
@@ -237,13 +224,11 @@ func (s *WorkerTestSuite) TestWorkerSlow001Resume(t *C) {
 	expect := &report.Result{}
 	test.LoadReport(outputDir+"slow001-resume.json", expect, got)
 
-	// we need to create empty maps because of `json:",omitempty"` we get nil maps
-	expect.Global.Metrics.BoolMetrics = map[string]*event.BoolStats{}
-	expect.Class[0].Metrics.BoolMetrics = map[string]*event.BoolStats{}
-
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	assert.Equal(t, expect, got)
+	gotBytes, _ := json.MarshalIndent(got, "", "  ")
+	expectBytes, _ := json.MarshalIndent(expect, "", "  ")
+	assert.JSONEq(t, string(expectBytes), string(gotBytes))
 }
 
 func (s *WorkerTestSuite) TestWorkerSlow011(t *C) {
@@ -264,7 +249,9 @@ func (s *WorkerTestSuite) TestWorkerSlow011(t *C) {
 	}
 	sort.Sort(ByQueryId(got.Class))
 	sort.Sort(ByQueryId(expect.Class))
-	assert.Equal(t, expect, got)
+	gotBytes, _ := json.MarshalIndent(got, "", "  ")
+	expectBytes, _ := json.MarshalIndent(expect, "", "  ")
+	assert.JSONEq(t, string(expectBytes), string(gotBytes))
 }
 
 func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
