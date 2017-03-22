@@ -305,17 +305,17 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	w := f.Make("qan-worker", mysqlConn)
 
 	start := []mysql.Query{
-		mysql.Query{Verify: "performance_schema", Expect: "1"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
-		mysql.Query{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
+		{Verify: "performance_schema", Expect: "1"},
+		{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'"},
+		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
+		{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
 	}
 	if err := s.mysqlConn.Set(start); err != nil {
 		t.Fatal(err)
 	}
 	stop := []mysql.Query{
-		mysql.Query{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
+		{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'"},
+		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
 	}
 	defer func() {
 		if err := s.mysqlConn.Set(stop); err != nil {
@@ -348,6 +348,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	t.Assert(err, IsNil)
 
 	res, err = w.Run()
+	t.Assert(err, IsNil)
 	t.Assert(res, NotNil)
 	if len(res.Class) == 0 {
 		t.Fatal("Expected len(res.Class) > 0")
@@ -402,17 +403,17 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	w := f.Make("qan-worker", mysqlConn)
 
 	start := []mysql.Query{
-		mysql.Query{Verify: "performance_schema", Expect: "1"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
-		mysql.Query{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
+		{Verify: "performance_schema", Expect: "1"},
+		{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'"},
+		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
+		{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
 	}
 	if err := s.mysqlConn.Set(start); err != nil {
 		t.Fatal(err)
 	}
 	stop := []mysql.Query{
-		mysql.Query{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
+		{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'"},
+		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
 	}
 	defer func() {
 		if err := s.mysqlConn.Set(stop); err != nil {
@@ -459,6 +460,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 
 	// Now there should be a result.
 	res, err = w.Run()
+	t.Assert(err, IsNil)
 	t.Assert(res, NotNil)
 	if len(res.Class) == 0 {
 		t.Error("Expected len(res.Class) > 0")
@@ -483,17 +485,17 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 	w := f.Make("qan-worker", mysqlConn)
 
 	start := []mysql.Query{
-		mysql.Query{Verify: "performance_schema", Expect: "1"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
-		mysql.Query{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
+		{Verify: "performance_schema", Expect: "1"},
+		{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'YES' WHERE NAME = 'statements_digest'"},
+		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
+		{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
 	}
 	if err := s.mysqlConn.Set(start); err != nil {
 		t.Fatal(err)
 	}
 	stop := []mysql.Query{
-		mysql.Query{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'"},
-		mysql.Query{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
+		{Set: "UPDATE performance_schema.setup_consumers SET ENABLED = 'NO' WHERE NAME = 'statements_digest'"},
+		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
 	}
 	defer func() {
 		if err := s.mysqlConn.Set(stop); err != nil {
@@ -536,6 +538,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 
 	// Now there should be a result.
 	res, err = w.Run()
+	t.Assert(err, IsNil)
 	t.Assert(res, NotNil)
 	if len(res.Class) == 0 {
 		t.Error("Expected len(res.Class) > 0")

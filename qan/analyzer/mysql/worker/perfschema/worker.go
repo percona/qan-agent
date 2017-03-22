@@ -338,7 +338,7 @@ func (w *Worker) reset() {
 
 func (w *Worker) getQueryExamples(ticker <-chan time.Time) {
 	isRunning := false
-	for _ = range ticker {
+	for range ticker {
 		if isRunning {
 			continue
 		}
@@ -420,7 +420,7 @@ ROW_LOOP:
 				}
 				class.Rows[row.Schema] = row
 			} else {
-				// Get class digext text (fingerprint).
+				// Get class digest text (fingerprint).
 				var digestText string
 				if prevClass, havePrevClass := prev[classId]; havePrevClass {
 					// Class was in previous iter, so re-use its digest text.
