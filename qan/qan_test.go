@@ -20,12 +20,8 @@ package qan_test
 import (
 	"testing"
 
-	. "github.com/go-test/test"
 	. "gopkg.in/check.v1"
 )
 
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
-
-var inputDir = RootDir() + "/agent/test/slow-logs/"
-var outputDir = RootDir() + "/agent/test/qan/"

@@ -29,7 +29,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/data"
@@ -113,7 +112,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolData(t *C) {
 	}
 
 	// Doesn't matter what data we spool; just send some bytes...
-	now := time.Now()
+	now := time.Now().UTC()
 	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
@@ -162,10 +161,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolData(t *C) {
 	if err := json.Unmarshal(protoData.Data, &gotLogEntry); err != nil {
 		t.Fatal(err)
 	}
-	if same, diff := IsDeeply(gotLogEntry, logEntry); !same {
-		t.Logf("%#v", gotLogEntry)
-		t.Error(diff)
-	}
+	t.Check(gotLogEntry, DeepEquals, logEntry)
 
 	// Removing data from spooler should remove the file.
 	spool.Remove(gotFiles[0])
@@ -193,7 +189,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Fatal(err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
@@ -241,9 +237,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Error(err)
 	}
 
-	if same, diff := IsDeeply(gotLogEntry, logEntry); !same {
-		t.Error(diff)
-	}
+	t.Check(gotLogEntry, DeepEquals, logEntry)
 
 	/**
 	 * Do it again to test that serialize is stateless, so to speak.
@@ -295,9 +289,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Error(err)
 	}
 
-	if same, diff := IsDeeply(gotLogEntry, logEntry2); !same {
-		t.Error(diff)
-	}
+	t.Check(gotLogEntry, DeepEquals, logEntry2)
 
 	spool.Stop()
 }
@@ -318,7 +310,7 @@ func (s *DiskvSpoolerTestSuite) TestRejectData(t *C) {
 	t.Assert(ok, Equals, true)
 
 	// Spool any data...
-	now := time.Now()
+	now := time.Now().UTC()
 	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
@@ -548,9 +540,7 @@ func (s *SenderTestSuite) TestSendData(t *C) {
 	s.tickerChan <- time.Now()
 
 	data = test.WaitBytes(s.dataChan)
-	if same, diff := IsDeeply(data[0], slow001); !same {
-		t.Error(diff)
-	}
+	t.Check(data[0], DeepEquals, slow001)
 
 	t.Check(len(spool.DataOut), Equals, 1)
 
@@ -772,9 +762,7 @@ func (s *SenderTestSuite) Test500Error(t *C) {
 	s.tickerChan <- time.Now()
 
 	got := test.WaitBytes(s.dataChan)
-	if same, diff := IsDeeply(got[0], []byte("file1")); !same {
-		t.Error(diff)
-	}
+	t.Check(got[0], DeepEquals, []byte("file1"))
 
 	// 3 files before API error.
 	t.Check(len(spool.DataOut), Equals, 3)

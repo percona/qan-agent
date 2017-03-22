@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/ticker"
@@ -207,9 +206,7 @@ func (s *ManagerTestSuite) TestAddWatcher(t *check.C) {
 		t.Error("Starts ticker")
 	}
 
-	if ok, diff := IsDeeply(s.tickerFactory.Made, []uint{79}); !ok {
-		t.Errorf("Make 79s ticker, got %#v", diff)
-	}
+	t.Check(s.tickerFactory.Made, check.DeepEquals, []uint{79})
 
 	if len(s.mockTicker.Added) == 0 {
 		t.Error("Ticker added watcher")

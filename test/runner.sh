@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export PCT_TEST_MYSQL_DSN=${PCT_TEST_MYSQL_DSN:-"root:root@tcp(127.0.0.1:3306)/?parseTime=true"}
+export PCT_TEST_MYSQL_DSN=${PCT_TEST_MYSQL_DSN:-"root:@tcp(localhost:3306)/?parseTime=true"}
 
 if [ ! -d ".git" ]; then
    echo "../.git directory not found.  Run this script from the root dir of the repo." >&2
