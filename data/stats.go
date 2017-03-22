@@ -20,8 +20,9 @@ package data
 import (
 	"container/list"
 	"fmt"
-	"github.com/percona/qan-agent/pct"
 	"time"
+
+	"github.com/percona/qan-agent/pct"
 )
 
 var DebugStats = false
@@ -39,9 +40,6 @@ type SentInfo struct {
 }
 
 type SentReport struct {
-	bytes    uint64
-	sendTime float64
-	// --
 	Begin       time.Time
 	End         time.Time
 	Bytes       string // humanized bytes, e.g. 443.59 kB
@@ -132,21 +130,23 @@ func (s *SenderStats) Report() SentReport {
 		Begin: s.begin,
 		End:   s.end,
 	}
+	var bytes uint64
+	var sendTime float64
 	for e := s.sent.Back(); e != nil; e = e.Prev() {
 		info := e.Value.(SentInfo)
 
-		r.bytes += info.Bytes
-		r.sendTime += info.SendTime
+		bytes += info.Bytes
+		sendTime += info.SendTime
 		r.Files += info.Files
 		r.Errs += info.Errs
 		r.ApiErrs += info.ApiErrs
 		r.Timeouts += info.Timeouts
 		r.BadFiles += info.BadFiles
 	}
-	r.Bytes = pct.Bytes(r.bytes)
+	r.Bytes = pct.Bytes(bytes)
 	r.Duration = pct.Duration(s.end.Sub(s.begin).Seconds())
-	r.Utilization = pct.Mbps(r.bytes, s.end.Sub(s.begin).Seconds()) + " Mbps"
-	r.Throughput = pct.Mbps(r.bytes, r.sendTime) + " Mbps"
+	r.Utilization = pct.Mbps(bytes, s.end.Sub(s.begin).Seconds()) + " Mbps"
+	r.Throughput = pct.Mbps(bytes, sendTime) + " Mbps"
 	return r
 }
 
