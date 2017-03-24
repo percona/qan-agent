@@ -20,24 +20,17 @@ package installer
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
-	"regexp"
 	"strings"
 
-	_ "github.com/go-sql-driver/mysql" // MySQL driver
 	"github.com/nu7hatch/gouuid"
 	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/agent/release"
-	"github.com/percona/qan-agent/bin/percona-qan-agent-installer/term"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
 )
-
-var portNumberRe = regexp.MustCompile(`\.\d+$`)
 
 type Flags struct {
 	Bool   map[string]bool
@@ -46,53 +39,36 @@ type Flags struct {
 }
 
 type Installer struct {
-	term         *term.Terminal
 	basedir      string
 	api          pct.APIConnector
 	instanceRepo *instance.Repo
 	agentConfig  *pc.Agent
 	flags        Flags
 	// --
-	os            *proto.Instance
-	agent         *proto.Instance
-	mysql         *proto.Instance
-	dsnUser       dsn.DSN
-	dsnAgent      dsn.DSN
-	debug         bool
-	mysqlDistro   string
-	mysqlVersion  string
-	mysqlHostname string
+	os       *proto.Instance
+	agent    *proto.Instance
+	dsnAgent dsn.DSN
+	debug    bool
 }
 
-func NewUUID() string {
+func newUUID() string {
 	u4, err := uuid.NewV4()
 	if err != nil {
-		fmt.Println("Could not create UUID4: %v", err)
+		fmt.Printf("Could not create UUID4: %v", err)
 		return ""
 	}
 	return strings.Replace(u4.String(), "-", "", -1)
 }
 
-func NewInstaller(terminal *term.Terminal, basedir string, api pct.APIConnector, instanceRepo *instance.Repo, agentConfig *pc.Agent, flags Flags) (*Installer, error) {
-	dsnUser := dsn.DSN{
-		DefaultsFile: flags.String["mysql-defaults-file"],
-		Username:     flags.String["mysql-user"],
-		Password:     flags.String["mysql-pass"],
-		Hostname:     flags.String["mysql-host"],
-		Port:         flags.String["mysql-port"],
-		Socket:       flags.String["mysql-socket"],
-	}
-
+func NewInstaller(basedir string, api pct.APIConnector, instanceRepo *instance.Repo, agentConfig *pc.Agent, flags Flags) (*Installer, error) {
 	installer := &Installer{
-		term:         terminal,
 		basedir:      basedir,
 		api:          api,
 		instanceRepo: instanceRepo,
 		agentConfig:  agentConfig,
 		flags:        flags,
 		// --
-		dsnUser: dsnUser,
-		debug:   flags.Bool["debug"],
+		debug: flags.Bool["debug"],
 	}
 	return installer, nil
 }
@@ -112,14 +88,7 @@ func (i *Installer) Run() (err error) {
 		return fmt.Errorf("Failed to create agent instance: %s", err)
 	}
 
-	// Auto-detect and create MySQL instance if -mysql=true (default).
-	if i.flags.Bool["mysql"] {
-		if err = i.CreateMySQLInstance(); err != nil {
-			return fmt.Errorf("Failed to create MySQL instance: %s", err)
-		}
-	}
-
-	configs, err := i.GetDefaultConfigs(i.os, i.mysql)
+	configs, err := i.GetDefaultConfigs(i.os)
 	if err != nil {
 		return err
 	}
@@ -134,7 +103,7 @@ func (i *Installer) CreateOSInstance() error {
 	hostname, _ := os.Hostname()
 	i.os = &proto.Instance{
 		Subsystem: "os",
-		UUID:      NewUUID(),
+		UUID:      newUUID(),
 		Name:      hostname,
 	}
 	created, err := i.api.CreateInstance("/instances", i.os)
@@ -159,7 +128,7 @@ func (i *Installer) CreateOSInstance() error {
 func (i *Installer) CreateAgent() error {
 	i.agent = &proto.Instance{
 		Subsystem:  "agent",
-		UUID:       NewUUID(),
+		UUID:       newUUID(),
 		ParentUUID: i.os.UUID,
 		Name:       i.os.Name,
 		Version:    release.VERSION,
@@ -181,45 +150,7 @@ func (i *Installer) CreateAgent() error {
 	return nil
 }
 
-func (i *Installer) CreateMySQLInstance() error {
-	// Get MySQL DSN for agent to use. It is new MySQL user created just for
-	// agent, or user is asked for existing one. DSN is verified prior returning
-	// by connecting to MySQL.
-	instanceDSN, err := i.getAgentDSN()
-	if err != nil {
-		return err
-	}
-
-	i.mysql = &proto.Instance{
-		Subsystem:  "mysql",
-		ParentUUID: i.os.UUID,
-		UUID:       NewUUID(),
-		Name:       i.mysqlHostname,
-		DSN:        dsn.HidePassword(instanceDSN.String()),
-	}
-
-	created, err := i.api.CreateInstance("/instances", i.mysql)
-	if err != nil {
-		return err
-	}
-
-	// In the previous step we sent a masked password to the API.
-	// Now we need the password to be unmasked to store it into the config file.
-	i.mysql.DSN = instanceDSN.String()
-
-	if err := i.instanceRepo.Add(*i.mysql, true); err != nil {
-		return err
-	}
-
-	if created {
-		fmt.Printf("Created MySQL instance: name=%s uuid=%s\n", i.mysql.Name, i.mysql.UUID)
-	} else {
-		fmt.Printf("Using existing MySQL instance: name=%s uuid=%s\n", i.mysql.Name, i.mysql.UUID)
-	}
-	return nil
-}
-
-func (i *Installer) GetDefaultConfigs(os, mysql *proto.Instance) (configs []proto.AgentConfig, err error) {
+func (i *Installer) GetDefaultConfigs(os *proto.Instance) (configs []proto.AgentConfig, err error) {
 	agentConfig, err := i.getAgentConfig()
 	if err != nil {
 		return nil, err
@@ -227,30 +158,6 @@ func (i *Installer) GetDefaultConfigs(os, mysql *proto.Instance) (configs []prot
 	configs = append(configs, *agentConfig)
 
 	// We don't need log and data configs. They use all built-in defaults.
-
-	// QAN config with defaults
-	if mysql != nil {
-		if i.flags.String["query-source"] == "auto" {
-			// MySQL is local if the server hostname == MySQL hostname without port number.
-			mysqlHostname := portNumberRe.ReplaceAllLiteralString(mysql.Name, "")
-			if i.flags.Bool["debug"] {
-				log.Printf("Hostnames: os='%s', MySQL='%s'\n", os.Name, mysqlHostname)
-			}
-			if os.Name == mysqlHostname {
-				i.flags.String["query-source"] = "slowlog"
-			} else {
-				i.flags.String["query-source"] = "perfschema"
-			}
-		}
-		fmt.Printf("Query source: %s\n", i.flags.String["query-source"])
-		config, err := i.getQANConfig(i.flags.String["query-source"])
-		if err != nil {
-			fmt.Printf("WARNING: cannot start Query Analytics: %s\n", err)
-		} else {
-			configs = append(configs, *config)
-		}
-	}
-
 	return configs, nil
 }
 
@@ -279,25 +186,5 @@ func (i *Installer) getAgentConfig() (*proto.AgentConfig, error) {
 		Set:     string(configJson),
 	}
 
-	return agentConfig, nil
-}
-
-func (i *Installer) getQANConfig(collectFrom string) (*proto.AgentConfig, error) {
-	config := map[string]interface{}{
-		"UUID":           i.mysql.UUID,
-		"CollectFrom":    collectFrom,
-		"Interval":       qan.DEFAULT_INTERVAL,
-		"ExampleQueries": qan.DEFAULT_EXAMPLE_QUERIES,
-		// All defaults, created at runtime by qan manager
-	}
-	bytes, err := json.Marshal(config)
-	if err != nil {
-		return nil, err
-	}
-	agentConfig := &proto.AgentConfig{
-		UUID:    i.mysql.UUID,
-		Service: "qan",
-		Set:     string(bytes),
-	}
 	return agentConfig, nil
 }
