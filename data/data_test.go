@@ -23,20 +23,19 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"testing"
 	"time"
 
-	. "github.com/go-test/test"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
 
@@ -45,18 +44,12 @@ func Test(t *testing.T) { TestingT(t) }
 
 var sample = test.RootDir + "/qan/"
 
-func debug(logChan chan *proto.LogEntry) {
-	for logEntry := range logChan {
-		log.Println(logEntry)
-	}
-}
-
 /////////////////////////////////////////////////////////////////////////////
 // DiskvSpooler test suite
 /////////////////////////////////////////////////////////////////////////////
 
 type DiskvSpoolerTestSuite struct {
-	logChan  chan *proto.LogEntry
+	logChan  chan proto.LogEntry
 	logger   *pct.Logger
 	basedir  string
 	dataDir  string
@@ -67,7 +60,7 @@ type DiskvSpoolerTestSuite struct {
 var _ = Suite(&DiskvSpoolerTestSuite{})
 
 func (s *DiskvSpoolerTestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "data_test")
 
 	s.basedir, _ = ioutil.TempDir("/tmp", "percona-agent-data-spooler-test")
@@ -119,8 +112,8 @@ func (s *DiskvSpoolerTestSuite) TestSpoolData(t *C) {
 	}
 
 	// Doesn't matter what data we spool; just send some bytes...
-	now := time.Now()
-	logEntry := &proto.LogEntry{
+	now := time.Now().UTC()
+	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
 		Service: "mm",
@@ -164,14 +157,11 @@ func (s *DiskvSpoolerTestSuite) TestSpoolData(t *C) {
 	}
 
 	// The LogoEntry we get back should be identical the one we spooled.
-	gotLogEntry := &proto.LogEntry{}
-	if err := json.Unmarshal(protoData.Data, gotLogEntry); err != nil {
+	gotLogEntry := proto.LogEntry{}
+	if err := json.Unmarshal(protoData.Data, &gotLogEntry); err != nil {
 		t.Fatal(err)
 	}
-	if same, diff := IsDeeply(gotLogEntry, logEntry); !same {
-		t.Logf("%#v", gotLogEntry)
-		t.Error(diff)
-	}
+	t.Check(gotLogEntry, DeepEquals, logEntry)
 
 	// Removing data from spooler should remove the file.
 	spool.Remove(gotFiles[0])
@@ -199,8 +189,8 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Fatal(err)
 	}
 
-	now := time.Now()
-	logEntry := &proto.LogEntry{
+	now := time.Now().UTC()
+	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
 		Service: "mm",
@@ -242,21 +232,18 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Error(err)
 	}
 	d := json.NewDecoder(g)
-	gotLogEntry := &proto.LogEntry{}
-	err = d.Decode(gotLogEntry)
-	if err := d.Decode(gotLogEntry); err != io.EOF {
+	gotLogEntry := proto.LogEntry{}
+	if err := d.Decode(&gotLogEntry); err != nil {
 		t.Error(err)
 	}
 
-	if same, diff := IsDeeply(gotLogEntry, logEntry); !same {
-		t.Error(diff)
-	}
+	t.Check(gotLogEntry, DeepEquals, logEntry)
 
 	/**
 	 * Do it again to test that serialize is stateless, so to speak.
 	 */
 
-	logEntry2 := &proto.LogEntry{
+	logEntry2 := proto.LogEntry{
 		Ts:      now,
 		Level:   2,
 		Service: "mm",
@@ -297,15 +284,12 @@ func (s *DiskvSpoolerTestSuite) TestSpoolGzipData(t *C) {
 		t.Error(err)
 	}
 	d = json.NewDecoder(g)
-	gotLogEntry = &proto.LogEntry{}
-	err = d.Decode(gotLogEntry)
-	if err := d.Decode(gotLogEntry); err != io.EOF {
+	gotLogEntry = proto.LogEntry{}
+	if err := d.Decode(&gotLogEntry); err != nil {
 		t.Error(err)
 	}
 
-	if same, diff := IsDeeply(gotLogEntry, logEntry2); !same {
-		t.Error(diff)
-	}
+	t.Check(gotLogEntry, DeepEquals, logEntry2)
 
 	spool.Stop()
 }
@@ -326,8 +310,8 @@ func (s *DiskvSpoolerTestSuite) TestRejectData(t *C) {
 	t.Assert(ok, Equals, true)
 
 	// Spool any data...
-	now := time.Now()
-	logEntry := &proto.LogEntry{
+	now := time.Now().UTC()
+	logEntry := proto.LogEntry{
 		Ts:      now,
 		Level:   1,
 		Service: "mm",
@@ -402,7 +386,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolLimits(t *C) {
 
 	// Spool 3 data files (doesn't matter what, any data works).
 	now := time.Now()
-	logEntry := &proto.LogEntry{
+	logEntry := proto.LogEntry{
 		Ts:  now,
 		Msg: "1",
 	}
@@ -501,7 +485,7 @@ func (s *DiskvSpoolerTestSuite) TestSpoolLimits(t *C) {
 /////////////////////////////////////////////////////////////////////////////
 
 type SenderTestSuite struct {
-	logChan    chan *proto.LogEntry
+	logChan    chan proto.LogEntry
 	logger     *pct.Logger
 	tickerChan chan time.Time
 	// --
@@ -513,7 +497,7 @@ type SenderTestSuite struct {
 var _ = Suite(&SenderTestSuite{})
 
 func (s *SenderTestSuite) SetUpSuite(t *C) {
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "data_test")
 	s.tickerChan = make(chan time.Time, 1)
 
@@ -556,9 +540,7 @@ func (s *SenderTestSuite) TestSendData(t *C) {
 	s.tickerChan <- time.Now()
 
 	data = test.WaitBytes(s.dataChan)
-	if same, diff := IsDeeply(data[0], slow001); !same {
-		t.Error(diff)
-	}
+	t.Check(data[0], DeepEquals, slow001)
 
 	t.Check(len(spool.DataOut), Equals, 1)
 
@@ -780,9 +762,7 @@ func (s *SenderTestSuite) Test500Error(t *C) {
 	s.tickerChan <- time.Now()
 
 	got := test.WaitBytes(s.dataChan)
-	if same, diff := IsDeeply(got[0], []byte("file1")); !same {
-		t.Error(diff)
-	}
+	t.Check(got[0], DeepEquals, []byte("file1"))
 
 	// 3 files before API error.
 	t.Check(len(spool.DataOut), Equals, 3)
@@ -871,7 +851,7 @@ func (s *SenderTestSuite) TestBadFiles(t *C) {
 /////////////////////////////////////////////////////////////////////////////
 
 type ManagerTestSuite struct {
-	logChan  chan *proto.LogEntry
+	logChan  chan proto.LogEntry
 	logger   *pct.Logger
 	basedir  string
 	trashDir string
@@ -894,7 +874,7 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 	s.dataDir = pct.Basedir.Dir("data")
 	s.trashDir = path.Join(s.basedir, "trash")
 
-	s.logChan = make(chan *proto.LogEntry, 10)
+	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "data_test")
 
 	s.dataChan = make(chan []byte, 5)
@@ -918,7 +898,6 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 		Encoding:     "none",
 		SendInterval: 1,
 	}
-	bytes, _ := json.Marshal(config)
 	// Write config to disk because manager reads it on start,
 	// else it uses default config.
 	pct.Basedir.WriteConfig("data", config)
@@ -946,16 +925,44 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	if err := json.Unmarshal(reply.Data, &gotConfig); err != nil {
 		t.Fatal(err)
 	}
+	pcDataSetExpected := pc.Data{
+		Encoding:     "none",
+		SendInterval: 1,
+		Limits: pc.DataSpoolLimits{
+			MaxAge:   0,
+			MaxSize:  0,
+			MaxFiles: 0,
+		},
+	}
+	pcDataRunningExpected := pc.Data{
+		Encoding:     "none",
+		SendInterval: 1,
+		Limits: pc.DataSpoolLimits{
+			MaxAge:   86400,
+			MaxSize:  104857600,
+			MaxFiles: 1000,
+		},
+	}
+	pcDataSet := pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataSetExpected, pcDataSet)
+
+	pcDataRunning := pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
+
+	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
+	gotConfig[0].Set = ""
+	gotConfig[0].Running = ""
 	expectConfig := []proto.AgentConfig{
 		{
 			Service: "data",
-			Config:  string(bytes),
+			Updated: time.Time{}.UTC(),
 		},
 	}
-	if same, diff := IsDeeply(gotConfig, expectConfig); !same {
-		Dump(gotConfig)
-		t.Error(diff)
-	}
+	assert.Equal(t, expectConfig, gotConfig)
 
 	err = m.Stop()
 	t.Assert(err, IsNil)
@@ -966,28 +973,52 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	t.Check(status["data-spooler"], Equals, "Stopped")
 	t.Check(status["data-sender"], Equals, "Stopped")
 
-	// Config should report Running: false.
+	// Config should be the same after stopping manager
 	reply = m.Handle(cmd)
 	t.Assert(reply.Error, Equals, "")
 	t.Assert(reply.Data, NotNil)
 	if err := json.Unmarshal(reply.Data, &gotConfig); err != nil {
 		t.Fatal(err)
 	}
-	if same, diff := IsDeeply(gotConfig, expectConfig); !same {
-		Dump(gotConfig)
-		t.Error(diff)
+
+	pcDataSet = pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataSetExpected, pcDataSet)
+
+	pcDataRunning = pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
+
+	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
+	gotConfig[0].Set = ""
+	gotConfig[0].Running = ""
+	expectConfig = []proto.AgentConfig{
+		{
+			Service: "data",
+			Updated: time.Time{}.UTC(),
+		},
 	}
+	assert.Equal(t, expectConfig, gotConfig)
 }
 
 func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	m := data.NewManager(s.logger, s.dataDir, s.trashDir, "localhost", s.client)
 	t.Assert(m, NotNil)
 
-	config := &pc.Data{
+	config := pc.Data{
 		Encoding:     "none",
 		SendInterval: 1,
+		Limits: pc.DataSpoolLimits{
+			MaxAge:   3,
+			MaxSize:  7,
+			MaxFiles: 17,
+		},
 	}
-	pct.Basedir.WriteConfig("data", config)
+	pcDataSetExpected := config
+	pcDataRunningExpected := config
+	pct.Basedir.WriteConfig("data", &config)
 
 	err := m.Start()
 	t.Assert(err, IsNil)
@@ -1019,32 +1050,42 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	reply := m.Handle(cmd)
 	t.Assert(reply.Error, Equals, "")
 	t.Assert(reply.Data, NotNil)
-	gotConfigRes := []proto.AgentConfig{}
-	if err := json.Unmarshal(reply.Data, &gotConfigRes); err != nil {
+	gotConfig := []proto.AgentConfig{}
+	if err := json.Unmarshal(reply.Data, &gotConfig); err != nil {
 		t.Fatal(err)
 	}
-	expectConfigRes := []proto.AgentConfig{
+
+	pcDataSetExpected.SendInterval = 5
+	pcDataRunningExpected.SendInterval = 5
+	pcDataSet := pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataSetExpected, pcDataSet)
+
+	pcDataRunning := pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
+
+	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
+	gotConfig[0].Set = ""
+	gotConfig[0].Running = ""
+	expectConfig := []proto.AgentConfig{
 		{
 			Service: "data",
-			Config:  string(configData),
+			Updated: time.Time{}.UTC(),
 		},
 	}
-	if same, diff := IsDeeply(gotConfigRes, expectConfigRes); !same {
-		Dump(gotConfigRes)
-		t.Error(diff)
-	}
+	assert.Equal(t, expectConfig, gotConfig)
 
 	// Verify new config on disk.
 	content, err := ioutil.ReadFile(pct.Basedir.ConfigFile("data"))
 	t.Assert(err, IsNil)
-	gotConfig := &pc.Data{}
-	if err := json.Unmarshal(content, gotConfig); err != nil {
+	pcData := pc.Data{}
+	if err := json.Unmarshal(content, &pcData); err != nil {
 		t.Fatal(err)
 	}
-	if same, diff := IsDeeply(gotConfig, config); !same {
-		Dump(gotConfig)
-		t.Error(diff)
-	}
+	assert.Equal(t, config, pcData)
 
 	/**
 	 * Change Encoding
@@ -1070,31 +1111,40 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	reply = m.Handle(cmd)
 	t.Assert(reply.Error, Equals, "")
 	t.Assert(reply.Data, NotNil)
-	if err := json.Unmarshal(reply.Data, &gotConfigRes); err != nil {
+	if err := json.Unmarshal(reply.Data, &gotConfig); err != nil {
 		t.Fatal(err)
 	}
-	expectConfigRes = []proto.AgentConfig{
+	pcDataSetExpected.Encoding = "gzip"
+	pcDataRunningExpected.Encoding = "gzip"
+	pcDataSet = pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataSetExpected, pcDataSet)
+
+	pcDataRunning = pc.Data{}
+	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
+	assert.Nil(t, err)
+	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
+
+	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
+	gotConfig[0].Set = ""
+	gotConfig[0].Running = ""
+	expectConfig = []proto.AgentConfig{
 		{
 			Service: "data",
-			Config:  string(configData),
+			Updated: time.Time{}.UTC(),
 		},
 	}
-	if same, diff := IsDeeply(gotConfigRes, expectConfigRes); !same {
-		Dump(gotConfigRes)
-		t.Error(diff)
-	}
+	assert.Equal(t, expectConfig, gotConfig)
 
 	// Verify new config on disk.
 	content, err = ioutil.ReadFile(pct.Basedir.ConfigFile("data"))
 	t.Assert(err, IsNil)
-	gotConfig = &pc.Data{}
-	if err := json.Unmarshal(content, gotConfig); err != nil {
+	pcData = pc.Data{}
+	if err := json.Unmarshal(content, &pcData); err != nil {
 		t.Fatal(err)
 	}
-	if same, diff := IsDeeply(gotConfig, config); !same {
-		Dump(gotConfig)
-		t.Error(diff)
-	}
+	assert.Equal(t, config, pcData)
 }
 
 func (s *ManagerTestSuite) TestStatus(t *C) {

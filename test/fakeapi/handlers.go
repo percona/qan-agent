@@ -19,28 +19,12 @@ package fakeapi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	"github.com/percona/pmm/proto"
 )
-
-type InstanceStatus struct {
-	instance     *proto.Instance
-	status       int
-	maxInstances uint
-}
-
-func NewInstanceStatus(inst *proto.Instance, status int, maxInstances uint) *InstanceStatus {
-	return &InstanceStatus{
-		instance:     inst,
-		status:       status,
-		maxInstances: maxInstances,
-	}
-}
 
 func (f *FakeApi) AppendPing() {
 	f.Append("/ping", func(w http.ResponseWriter, r *http.Request) {
@@ -53,88 +37,37 @@ func (f *FakeApi) AppendPing() {
 	})
 }
 
-func swapHTTPScheme(url, newScheme string) string {
-	splittedUrl := strings.Split(url, "://")
-	if len(splittedUrl) != 2 {
-		return url
-	}
-	return newScheme + splittedUrl[1]
-}
-
-// Appends handler for /intances.
-// If maxAgents != 0 this method will return HTTP Forbidden and X-Percona-Agent-Limit header in case of an agent
-// instance POST request
-func (f *FakeApi) AppendInstances(treeInst *proto.Instance, postInsts []*InstanceStatus) {
-	// POST /instances will be sent more than once, handlers for URL can only be registered once, hence the need of
-	// a queue
-	f.Append("/instances", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			if treeInst == nil {
-				panic(errors.New("Tried to GET /instances but handler had no data to serve"))
-			}
-			w.WriteHeader(http.StatusOK)
-			data, _ := json.Marshal(&treeInst)
-			w.Write(data)
-		case "POST":
-			body, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				panic(err)
-			}
-			var inst *proto.Instance
-			err = json.Unmarshal(body, &inst)
-			if err != nil {
-				panic(err)
-			}
-
-			if len(postInsts) == 0 {
-				panic(errors.New("Tried to POST /instances but handler doesn't have queued instances to return a valid Location"))
-			}
-
-			// Dequeue one instance
-			instStatus := postInsts[0]
-			postInsts = postInsts[1:]
-
-			newInst := instStatus.instance
-
-			if instStatus.maxInstances != 0 {
-				w.Header().Set("X-Percona-Limit-Err", fmt.Sprintf("%d", instStatus.maxInstances))
-				w.WriteHeader(instStatus.status)
-				return
-			}
-			w.Header().Set("Location", fmt.Sprintf("%s/instances/%s", f.URL(), newInst.UUID))
-			w.WriteHeader(instStatus.status)
-		}
-	})
-}
-
-func (f *FakeApi) AppendInstancesUUID(inst *proto.Instance) {
-	f.Append(fmt.Sprintf("/instances/%s", inst.UUID), func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			w.WriteHeader(http.StatusOK)
-			data, _ := json.Marshal(inst)
-			w.Write(data)
-		case "PUT":
-			body, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				panic(err)
-			}
-			var newInst *proto.Instance
-			err = json.Unmarshal(body, &newInst)
-			if err != nil {
-				panic(err)
-			}
-			w.WriteHeader(http.StatusOK)
-		default:
-			w.WriteHeader(600)
-		}
-	})
-}
-
-func (f *FakeApi) AppendConfigsQanDefault() {
-	f.Append("/configs/qan/default", func(w http.ResponseWriter, r *http.Request) {
+func (f *FakeApi) AppendInstancesId(id uint, protoInstance *proto.Instance) {
+	f.Append(fmt.Sprintf("/instances/%d/", id), func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{ "UUID": "0", "Interval": 60}`))
+		data, _ := json.Marshal(&protoInstance)
+		w.Write(data)
+	})
+}
+
+func (f *FakeApi) AppendInstances(protoInstances []*proto.Instance) {
+	instances := map[string]*proto.Instance{}
+	for i := range protoInstances {
+		instances[protoInstances[i].Subsystem] = protoInstances[i]
+	}
+	f.Append("/instances/", func(w http.ResponseWriter, r *http.Request) {
+		gotInstance := proto.Instance{}
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(body, &gotInstance)
+		if err != nil {
+			panic(err)
+		}
+		if _, ok := instances[gotInstance.Subsystem]; !ok {
+			panic(fmt.Sprintf("Not registered instance %s", gotInstance))
+		}
+
+		gotInstance.Id = instances[gotInstance.Subsystem].Id
+		w.Header().Set("Location", fmt.Sprintf("%s/instances/%d", f.URL(), gotInstance.Id))
+		w.WriteHeader(http.StatusCreated)
+		f.AppendInstancesId(gotInstance.Id, &gotInstance)
+		*instances[gotInstance.Subsystem] = gotInstance
 	})
 }

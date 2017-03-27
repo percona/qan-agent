@@ -35,13 +35,11 @@ const (
 type Relay struct {
 	client   pct.WebsocketClient
 	logChan  chan proto.LogEntry
-	logFile  string
 	logLevel byte
 	offline  bool
 	// --
 	connected     bool
 	logLevelChan  chan byte
-	logFileChan   chan string
 	stdout        *golog.Logger
 	stderr        *golog.Logger
 	firstBuf      []*proto.LogEntry

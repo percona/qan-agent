@@ -117,7 +117,7 @@ func main() {
 	apiURL := agentConfig.ApiHostname + agentConfig.ApiPath
 	fmt.Printf("# Version: %s\n", agentVersion)
 	fmt.Printf("# Basedir: %s\n", pct.Basedir.Path())
-	fmt.Printf("# Listen:  %s\n", flagListen)
+	//fmt.Printf("# Listen:  %s\n", flagListen)
 	fmt.Printf("# PID:     %d\n", os.Getpid())
 	fmt.Printf("# API:     %s\n", apiURL)
 	fmt.Printf("# UUID:    %s\n", agentConfig.UUID)
@@ -336,9 +336,12 @@ func run(agentConfig *pc.Agent) error {
 		stopChan <- agentRouter.Run() // ----- RUN THE AGENT -----
 	}()
 
+	// We don't need agent to listen any port and its internal API in PMM.
+	// Commenting out...
+	//
 	// Run local agent API.
-	lo := agent.NewLocalInterface(flagListen, agentRouter, itManager.Repo())
-	go lo.Run()
+	//lo := agent.NewLocalInterface(flagListen, agentRouter, itManager.Repo())
+	//go lo.Run()
 
 	golog.Println("Agent is ready")
 

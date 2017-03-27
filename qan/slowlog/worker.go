@@ -416,7 +416,10 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 	}
 
 	if err := w.mysqlConn.Exec([]string{"FLUSH SLOW LOGS"}); err != nil {
-		return err
+		// MySQL 5.1 support.
+		if err := w.mysqlConn.Exec([]string{"FLUSH LOGS"}); err != nil {
+			return err
+		}
 	}
 
 	// Modify interval so worker parses the rest of the old slow log.
@@ -436,13 +439,13 @@ func (w *Worker) rotateSlowLog(interval *qan.Interval) error {
 		return nil
 	}
 	sort.Strings(filesFound)
-	for _, f := range(filesFound[:len(filesFound)-qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP]) {
+	for _, f := range filesFound[:len(filesFound)-qan.DEFAULT_OLD_SLOW_LOGS_TO_KEEP] {
 		w.status.Update(w.name, "Removing slow log "+f)
 		if err := os.Remove(f); err != nil {
 			w.logger.Warn(err)
 			continue
 		}
-		w.logger.Info("Removed old slow log "+f)
+		w.logger.Info("Removed old slow log " + f)
 	}
 
 	return nil

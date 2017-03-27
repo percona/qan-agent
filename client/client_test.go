@@ -39,7 +39,7 @@ type TestSuite struct {
 	logger    *pct.Logger
 	server    *mock.WebsocketServer
 	api       *mock.API
-	serverWss *mock.WebsocketServerWss
+	serverWss *mock.WebsocketServer
 	apiWss    *mock.API
 }
 
@@ -58,9 +58,7 @@ func (s *TestSuite) SetUpSuite(t *C) {
 	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, "ws")
 
-	mock.SendChan = make(chan interface{}, 5)
-	mock.RecvChan = make(chan interface{}, 5)
-	s.server = new(mock.WebsocketServer)
+	s.server = mock.NewWebsocketServer()
 	go s.server.Run(ADDR, ENDPOINT)
 
 	time.Sleep(1 * time.Second)
@@ -68,9 +66,7 @@ func (s *TestSuite) SetUpSuite(t *C) {
 	links := map[string]string{"agent": URL}
 	s.api = mock.NewAPI("http://localhost", ADDR, "uuid", links)
 
-	mock.SendChanWss = make(chan interface{}, 5)
-	mock.RecvChanWss = make(chan interface{}, 5)
-	s.serverWss = new(mock.WebsocketServerWss)
+	s.serverWss = mock.NewWebsocketServer()
 	go s.serverWss.RunWss(WSSADDR, WSSENDPOINT)
 
 	time.Sleep(1 * time.Second)
@@ -80,13 +76,8 @@ func (s *TestSuite) SetUpSuite(t *C) {
 }
 
 func (s *TestSuite) TearDownTest(t *C) {
-	// Disconnect all clients.
-	for _, c := range mock.Clients {
-		mock.DisconnectClient(c)
-	}
-	for _, c := range mock.ClientsWss {
-		mock.DisconnectClientWss(c)
-	}
+	s.server.Clients.DisconnectAll()
+	s.serverWss.Clients.DisconnectAll()
 }
 
 // --------------------------------------------------------------------------
@@ -108,7 +99,7 @@ func (s *TestSuite) TestSend(t *C) {
 
 	// Wait for connection in mock ws server.
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 
 	<-doneChan
 	t.Check(connected, Equals, true)
@@ -168,15 +159,16 @@ func (s *TestSuite) TestChannels(t *C) {
 	// Start send/recv chans, but idle until successful Connect.
 	ws.Start()
 	defer ws.Stop()
+	defer ws.Disconnect()
 
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 	<-ws.ConnectChan()
 
 	// API sends Cmd to client.
 	cmd := &proto.Cmd{
 		User: "daniel",
-		Ts:   time.Now(),
+		Ts:   time.Now().UTC(),
 		Cmd:  "Status",
 	}
 	c.SendChan <- cmd
@@ -198,8 +190,6 @@ func (s *TestSuite) TestChannels(t *C) {
 	m := data[0].(map[string]interface{})
 	t.Assert(m["Cmd"], Equals, "Status")
 	t.Assert(m["Error"], Equals, "")
-
-	ws.Disconnect()
 }
 
 func (s *TestSuite) TestApiDisconnect(t *C) {
@@ -209,14 +199,14 @@ func (s *TestSuite) TestApiDisconnect(t *C) {
 	t.Assert(err, IsNil)
 
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 	<-ws.ConnectChan()
 
 	// No error yet.
 	got := test.WaitErr(ws.ErrorChan())
 	t.Assert(len(got), Equals, 0)
 
-	mock.DisconnectClient(c)
+	s.server.Clients.Disconnect(c)
 
 	/**
 	 * I cannot provoke an error on websocket.Send(), only Receive().
@@ -248,7 +238,7 @@ func (s *TestSuite) TestChannelsApiDisconnect(t *C) {
 	defer ws.Disconnect()
 
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 	<-ws.ConnectChan() // connect ack
 
 	// No error yet.
@@ -258,7 +248,7 @@ func (s *TestSuite) TestChannelsApiDisconnect(t *C) {
 	default:
 	}
 
-	mock.DisconnectClient(c)
+	s.server.Clients.Disconnect(c)
 
 	// Wait for error.
 	select {
@@ -278,9 +268,10 @@ func (s *TestSuite) TestErrorChan(t *C) {
 
 	ws.Start()
 	defer ws.Stop()
+	defer ws.Disconnect()
 
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 	<-ws.ConnectChan()
 
 	// No error yet.
@@ -300,14 +291,12 @@ func (s *TestSuite) TestErrorChan(t *C) {
 	t.Assert(len(got), Equals, 0)
 
 	// Disconnect the client.
-	mock.DisconnectClient(c)
+	s.server.Clients.Disconnect(c)
 
 	// Client should send error from disconnect.
 	got = test.WaitErr(ws.ErrorChan())
 	t.Assert(len(got), Equals, 1)
 	t.Assert(got[0], NotNil)
-
-	ws.Disconnect()
 }
 
 func (s *TestSuite) TestConnectBackoff(t *C) {
@@ -317,7 +306,7 @@ func (s *TestSuite) TestConnectBackoff(t *C) {
 	t.Assert(err, IsNil)
 
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 	<-ws.ConnectChan()
 	defer ws.Disconnect()
 
@@ -326,9 +315,9 @@ func (s *TestSuite) TestConnectBackoff(t *C) {
 	// 3s wait, connect, ok
 	t0 := time.Now()
 	for i := 0; i < 2; i++ {
-		mock.DisconnectClient(c)
+		s.server.Clients.Disconnect(c)
 		ws.Connect()
-		c = <-mock.ClientConnectChan
+		c = <-s.server.ClientConnectChan
 		<-ws.ConnectChan() // connect ack
 	}
 	d := time.Now().Sub(t0)
@@ -350,7 +339,7 @@ func (s *TestSuite) TestChannelsAfterReconnect(t *C) {
 	defer ws.Disconnect()
 
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 	<-ws.ConnectChan() // connect ack
 
 	// Send cmd and wait for reply to ensure we're fully connected.
@@ -368,12 +357,12 @@ func (s *TestSuite) TestChannelsAfterReconnect(t *C) {
 	t.Assert(len(data), Equals, 1)
 
 	// Disconnect client.
-	mock.DisconnectClient(c)
+	s.server.Clients.Disconnect(c)
 	<-ws.ConnectChan() // disconnect ack
 
 	// Reconnect client and send/recv again.
 	ws.Connect()
-	c = <-mock.ClientConnectChan
+	c = <-s.server.ClientConnectChan
 	<-ws.ConnectChan() // connect ack
 
 	c.SendChan <- cmd
@@ -440,7 +429,7 @@ func (s *TestSuite) TestWssConnection(t *C) {
 
 	// Wait for connection in mock ws server.
 	ws.Connect()
-	c := <-mock.ClientConnectChanWss
+	c := <-s.serverWss.ClientConnectChan
 
 	<-doneChan
 	t.Check(connected, Equals, true)
@@ -455,7 +444,7 @@ func (s *TestSuite) TestWssConnection(t *C) {
 	t.Assert(err, IsNil)
 
 	// Recv what we just sent.
-	got := test.WaitData(c.RecvChanWss)
+	got := test.WaitData(c.RecvChan)
 	t.Assert(len(got), Equals, 1)
 
 	ws.Conn().Close()
@@ -466,7 +455,8 @@ func (s *TestSuite) TestSendBytes(t *C) {
 	t.Assert(err, IsNil)
 
 	ws.ConnectOnce(5)
-	c := <-mock.ClientConnectChan
+	defer ws.DisconnectOnce()
+	c := <-s.server.ClientConnectChan
 
 	data := []byte(`["Hello"]`)
 	err = ws.SendBytes(data, 5)
@@ -478,7 +468,6 @@ func (s *TestSuite) TestSendBytes(t *C) {
 	gotData := got[0].([]interface{})
 	t.Check(gotData[0].(string), Equals, "Hello")
 
-	ws.DisconnectOnce()
 }
 
 func (s *TestSuite) TestCloseTimeout(t *C) {
@@ -496,7 +485,7 @@ func (s *TestSuite) TestCloseTimeout(t *C) {
 
 	// Wait for connection in mock ws server.
 	ws.Connect()
-	c := <-mock.ClientConnectChan
+	c := <-s.server.ClientConnectChan
 
 	<-doneChan
 	t.Check(connected, Equals, true)

@@ -20,12 +20,12 @@ package qan_test
 import (
 	"testing"
 
-	. "github.com/go-test/test"
+	. "github.com/percona/qan-agent/test/rootdir"
 	. "gopkg.in/check.v1"
 )
 
+var inputDir = RootDir() + "/test/slow-logs/"
+var outputDir = RootDir() + "/test/qan/"
+
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
-
-var inputDir = RootDir() + "/agent/test/slow-logs/"
-var outputDir = RootDir() + "/agent/test/qan/"

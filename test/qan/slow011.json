@@ -1,10 +1,7 @@
 {
-  "StopOffset": 2152,
-  "RunTime": 0,
-  "RateLimit": 2,
   "Global": {
-    "TotalQueries": 6,
-    "UniqueQueries": 2,
+    "Id": "",
+    "Fingerprint": "",
     "Metrics": {
       "TimeMetrics": {
         "InnoDB_IO_r_wait": {
@@ -120,7 +117,9 @@
           "Sum": 0
         }
       }
-    }
+    },
+    "TotalQueries": 6,
+    "UniqueQueries": 2
   },
   "Class": [
     {
@@ -377,5 +376,8 @@
         "Query": "SELECT foo FROM bar WHERE id=2"
       }
     }
-  ]
+  ],
+  "RateLimit": 2,
+  "RunTime": 0,
+  "StopOffset": 2152
 }

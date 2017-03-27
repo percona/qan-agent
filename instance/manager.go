@@ -32,10 +32,15 @@ import (
 
 var (
 	ErrDuplicateInstance = errors.New("duplicate instance")
-	ErrInstanceNotFound  = errors.New("instance not found")
 	ErrCmdNotSupport     = errors.New("command not supported")
 	ErrNoLink            = errors.New("no instances link from API")
 )
+
+type ErrInstanceNotFound string
+
+func (e ErrInstanceNotFound) Error() string {
+	return string(e)
+}
 
 type Manager struct {
 	logger *pct.Logger

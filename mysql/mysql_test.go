@@ -71,20 +71,36 @@ func (s *MysqlTestSuite) TestMissingSocketError(t *C) {
 	t.Check(
 		fmt.Sprintf("%s", err),
 		Equals,
-		"Cannot connect to MySQL percona:***@unix(/foo/bar/my.sock)/: connect: no such file or directory: /foo/bar/my.sock",
+		"Cannot connect to MySQL percona:***@unix(/foo/bar/my.sock): connect: no such file or directory: /foo/bar/my.sock",
 	)
 }
 
-func (s *MysqlTestSuite) TestiGetGlobalNumber(t *C) {
-	// https://jira.percona.com/browse/PCT-791
+func (s *MysqlTestSuite) TestGetGlobalNumber(t *C) {
+	conn := mysql.NewConnection(s.dsn)
+	err := conn.Connect()
+	t.Assert(err, IsNil)
+
+	globalVarNumber, err := conn.GetGlobalVarNumber("connect_timeout")
+	t.Check(err, IsNil)
+	t.Check(globalVarNumber, Equals, float64(10))
+
+}
+
+func (s *MysqlTestSuite) TestGetGlobalNumberWhenNotConnected(t *C) {
 	conn := mysql.NewConnection("percona:percona@unix(/foo/bar/my.sock)/")
 	err := conn.Connect()
 	t.Check(
 		fmt.Sprintf("%s", err),
 		Equals,
-		"Cannot connect to MySQL percona:***@unix(/foo/bar/my.sock)/: connect: no such file or directory: /foo/bar/my.sock",
+		"Cannot connect to MySQL percona:***@unix(/foo/bar/my.sock): connect: no such file or directory: /foo/bar/my.sock",
 	)
-	t.Check(conn.GetGlobalVarNumber("slow_query_log_always_write_time"), Equals, 10)
+	globalVarNumber, err := conn.GetGlobalVarNumber("connect_timeout")
+	t.Check(
+		fmt.Sprintf("%s", err),
+		Equals,
+		"not connected",
+	)
+	t.Check(globalVarNumber, Equals, float64(0))
 
 }
 
