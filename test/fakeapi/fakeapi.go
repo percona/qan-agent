@@ -20,6 +20,7 @@ package fakeapi
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 )
 
 const WS_SCHEME = "wss://"
@@ -50,4 +51,12 @@ func (f *FakeApi) WSURL() string {
 
 func (f *FakeApi) Append(pattern string, handler func(http.ResponseWriter, *http.Request)) {
 	f.serveMux.HandleFunc(pattern, handler)
+}
+
+func swapHTTPScheme(url, newScheme string) string {
+	splittedUrl := strings.Split(url, "://")
+	if len(splittedUrl) != 2 {
+		return url
+	}
+	return newScheme + splittedUrl[1]
 }
