@@ -15,51 +15,21 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package mysql
+package explain
 
 import (
 	"database/sql"
+	"encoding/json"
 	"os"
+	"reflect"
+	"runtime"
 	"strings"
 	"testing"
-	"time"
 
-	"encoding/json"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/stretchr/testify/assert"
-	. "gopkg.in/check.v1"
 )
-
-func Test(t *testing.T) { TestingT(t) }
-
-type TestSuite struct {
-	dsn  string
-	conn *mysql.Connection
-	e    *QueryExecutor
-}
-
-var _ = Suite(&TestSuite{})
-
-func (s *TestSuite) SetUpSuite(t *C) {
-	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
-
-	s.conn = mysql.NewConnection(s.dsn)
-	if err := s.conn.Connect(); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func (s *TestSuite) SetUpTest(t *C) {
-	s.e = NewQueryExecutor(s.conn)
-}
-
-func (s *TestSuite) TearDownSuite(t *C) {
-	s.conn.Close()
-}
 
 // --------------------------------------------------------------------------
 
@@ -89,21 +59,51 @@ type CostInfo struct {
 	QueryCost string `json:"query_cost,omitempty"`
 }
 
-func (s *TestSuite) TestExplainWithoutQuery(t *C) {
+func TestExplain(t *testing.T) {
+	t.Parallel()
+
+	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
+	if dsn == "" {
+		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
+	}
+
+	conn := mysql.NewConnection(dsn)
+	if err := conn.Connect(); err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	tests := []func(*testing.T, mysql.Connector){
+		testExplainWithDb,
+		testExplainWithoutDb,
+		testExplainWithoutQuery,
+	}
+	t.Run("explain", func(t *testing.T) {
+		for _, f := range tests {
+			f := f // capture range variable
+			fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+			t.Run(fName, func(t *testing.T) {
+				// t.Parallel()
+				f(t, conn)
+			})
+		}
+	})
+}
+
+func testExplainWithoutQuery(t *testing.T, conn mysql.Connector) {
 	db := ""
 	query := "  "
 
-	_, err := s.e.Explain(db, query, true)
-	t.Check(err, NotNil)
+	_, err := Explain(conn, db, query, true)
+	assert.NotNil(t, err)
 
 	// This is not a good practice. We should not care about the error type but in this case, this is
 	// the only way to check we catched an empty query when calling 'explain'
 	isEmptyMessage := strings.Contains(err.Error(), "cannot run EXPLAIN on an empty query example")
-	t.Check(isEmptyMessage, Equals, true)
+	assert.Equal(t, true, isEmptyMessage)
 
 }
 
-func (s *TestSuite) TestExplainWithoutDb(t *C) {
+func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 	db := ""
 	query := "SELECT 1"
 
@@ -113,7 +113,7 @@ func (s *TestSuite) TestExplainWithoutDb(t *C) {
 		},
 	}
 
-	mysql57, err := s.conn.AtLeastVersion("5.7")
+	mysql57, err := conn.AtLeastVersion("5.7")
 	assert.Nil(t, err)
 	if mysql57 {
 		expectedJsonQuery.QueryBlock.Message = "No tables used"
@@ -123,7 +123,7 @@ func (s *TestSuite) TestExplainWithoutDb(t *C) {
 		}
 	}
 	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
-	t.Check(err, IsNil)
+	assert.Nil(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
 		Classic: []*proto.ExplainRow{
@@ -193,10 +193,10 @@ func (s *TestSuite) TestExplainWithoutDb(t *C) {
 		JSON: string(expectedJSON),
 	}
 
-	gotExplainResult, err := s.e.Explain(db, query, true)
-	t.Check(err, IsNil)
+	gotExplainResult, err := Explain(conn, db, query, true)
+	assert.Nil(t, err)
 	// Check the json first but only if supported...
-	jsonSupported, err := s.conn.AtLeastVersion("5.6.5")
+	jsonSupported, err := conn.AtLeastVersion("5.6.5")
 	if jsonSupported {
 		assert.JSONEq(t, string(expectedJSON), gotExplainResult.JSON)
 	}
@@ -204,10 +204,10 @@ func (s *TestSuite) TestExplainWithoutDb(t *C) {
 	// you can't compare json as string because properties in json are in undefined order
 	expectedExplainResult.JSON = ""
 	gotExplainResult.JSON = ""
-	t.Check(gotExplainResult, DeepEquals, expectedExplainResult)
+	assert.Equal(t, expectedExplainResult, gotExplainResult)
 }
 
-func (s *TestSuite) TestExplainWithDb(t *C) {
+func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	db := "information_schema"
 	query := "SELECT table_name FROM tables WHERE table_name='tables'"
 
@@ -225,7 +225,7 @@ func (s *TestSuite) TestExplainWithDb(t *C) {
 		},
 	}
 
-	mysql57, err := s.conn.AtLeastVersion("5.7")
+	mysql57, err := conn.AtLeastVersion("5.7")
 	assert.Nil(t, err)
 	if mysql57 {
 		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
@@ -257,7 +257,7 @@ func (s *TestSuite) TestExplainWithDb(t *C) {
 	}
 
 	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
-	t.Check(err, IsNil)
+	assert.Nil(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
 		Classic: []*proto.ExplainRow{
@@ -327,10 +327,10 @@ func (s *TestSuite) TestExplainWithDb(t *C) {
 		JSON: string(expectedJSON),
 	}
 
-	gotExplainResult, err := s.e.Explain(db, query, true)
+	gotExplainResult, err := Explain(conn, db, query, true)
 	assert.Nil(t, err)
 	// Check the json first but only if supported...
-	jsonSupported, err := s.conn.AtLeastVersion("5.6.5")
+	jsonSupported, err := conn.AtLeastVersion("5.6.5")
 	if jsonSupported {
 		assert.JSONEq(t, string(expectedJSON), gotExplainResult.JSON)
 	}
@@ -339,127 +339,4 @@ func (s *TestSuite) TestExplainWithDb(t *C) {
 	expectedExplainResult.JSON = ""
 	gotExplainResult.JSON = ""
 	assert.Equal(t, expectedExplainResult, gotExplainResult)
-}
-
-func (s *TestSuite) TestDMLToSelect(t *C) {
-	q := DMLToSelect(`update ignore tabla set nombre = "carlos" where id = 0 limit 2`)
-	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
-
-	q = DMLToSelect(`update ignore tabla set nombre = "carlos" where id = 0`)
-	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
-
-	q = DMLToSelect(`update ignore tabla set nombre = "carlos" limit 1`)
-	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla`)
-
-	q = DMLToSelect(`update tabla set nombre = "carlos" where id = 0 limit 2`)
-	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
-
-	q = DMLToSelect(`update tabla set nombre = "carlos" where id = 0`)
-	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla WHERE id = 0`)
-
-	q = DMLToSelect(`update tabla set nombre = "carlos" limit 1`)
-	t.Check(q, Equals, `SELECT nombre = "carlos" FROM tabla`)
-
-	q = DMLToSelect(`delete from tabla`)
-	t.Check(q, Equals, `SELECT * FROM tabla`)
-
-	q = DMLToSelect(`delete from tabla join tabla2 on tabla.id = tabla2.tabla2_id`)
-	t.Check(q, Equals, `SELECT 1 FROM tabla join tabla2 on tabla.id = tabla2.tabla2_id`)
-
-	q = DMLToSelect(`insert into tabla (f1, f2, f3) values (1,2,3)`)
-	t.Check(q, Equals, `SELECT * FROM tabla  WHERE f1=1 and f2=2 and f3=3`)
-
-	q = DMLToSelect(`insert into tabla (f1, f2, f3) values (1,2)`)
-	t.Check(q, Equals, `SELECT * FROM tabla  LIMIT 1`)
-
-	q = DMLToSelect(`insert into tabla set f1="A1", f2="A2"`)
-	t.Check(q, Equals, `SELECT * FROM tabla WHERE f1="A1" AND  f2="A2"`)
-
-	q = DMLToSelect(`replace into tabla set f1="A1", f2="A2"`)
-	t.Check(q, Equals, `SELECT * FROM tabla WHERE f1="A1" AND  f2="A2"`)
-
-	q = DMLToSelect("insert into `tabla-1` values(12)")
-	t.Check(q, Equals, "SELECT * FROM `tabla-1` LIMIT 1")
-}
-
-func (s *TestSuite) TestFullTableInfo(t *C) {
-	db := "mysql"
-	table := "user"
-	tables := &proto.TableInfoQuery{
-		Create: []proto.Table{proto.Table{db, table}},
-		Index:  []proto.Table{proto.Table{db, table}},
-		Status: []proto.Table{proto.Table{db, table}},
-	}
-
-	got, err := s.e.TableInfo(tables)
-	t.Assert(err, IsNil)
-
-	tableInfo, ok := got[db+"."+table]
-	t.Assert(ok, Equals, true)
-
-	t.Logf("%+v\n", tableInfo)
-
-	t.Assert(len(tableInfo.Errors), Equals, 0)
-
-	t.Check(strings.HasPrefix(tableInfo.Create, "CREATE TABLE `user` ("), Equals, true)
-
-	t.Assert(tableInfo.Status, NotNil)
-	t.Check(tableInfo.Status.Name, Equals, table)
-
-	// Indexes are grouped by name (KeyName), so all the index parts of the
-	// PRIMARY key should be together.
-	t.Assert(tableInfo.Index, Not(HasLen), 0)
-	index, ok := tableInfo.Index["PRIMARY"]
-	t.Assert(ok, Equals, true)
-	t.Check(index, HasLen, 2)
-	t.Check(index[0].ColumnName, Equals, "Host")
-	t.Check(index[1].ColumnName, Equals, "User")
-}
-
-func (s *TestSuite) TestStatusTimes(t *C) {
-	err := s.conn.DB().QueryRow("SELECT 1 FROM mysql.slow_log").Scan()
-	if err != nil && err != sql.ErrNoRows {
-		t.Log(err)
-		t.Skip("mysql.slow_log table does not exist")
-	}
-
-	db := "mysql"
-	table := "slow_log"
-	tables := &proto.TableInfoQuery{
-		Status: []proto.Table{proto.Table{db, table}},
-	}
-
-	got, err := s.e.TableInfo(tables)
-	t.Assert(err, IsNil)
-
-	tableInfo, ok := got[db+"."+table]
-	t.Assert(ok, Equals, true)
-
-	t.Logf("%+v\n", tableInfo)
-
-	t.Assert(len(tableInfo.Errors), Equals, 0)
-
-	t.Assert(tableInfo.Status, NotNil)
-	t.Check(tableInfo.Status.Name, Equals, table)
-
-	var zeroTime time.Time
-	t.Check(tableInfo.Status.CreateTime.Time, Equals, zeroTime)
-	t.Check(tableInfo.Status.UpdateTime.Time, Equals, zeroTime)
-	t.Check(tableInfo.Status.CheckTime.Time, Equals, zeroTime)
-}
-
-func (s *TestSuite) TestEscapeString(t *C) {
-	in := []struct {
-		in  string
-		out string
-	}{
-		{`"dbname"`, `\"dbname\"`},
-		{"`dbname`", "`dbname`"},
-		{`\"dbname\"`, `\\\"dbname\\\"`},
-	}
-
-	for _, i := range in {
-		got := escapeString(i.in)
-		t.Check(got, Equals, i.out)
-	}
 }

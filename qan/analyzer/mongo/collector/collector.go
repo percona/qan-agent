@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	MgoTailTimeout          = 1 * time.Second
-	MgoSessionSyncTimeout   = 5 * time.Second
-	MgoSessionSocketTimeout = 5 * time.Second
+	MgoTimeoutDialInfo      = 1 * time.Second
+	MgoTimeoutTail          = 1 * time.Second
+	MgoTimeoutSessionSync   = 1 * time.Second
+	MgoTimeoutSessionSocket = 1 * time.Second
 )
 
 func New(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) *Collector {
@@ -146,8 +147,8 @@ func getProfile(
 		return fmt.Sprintf("%s", err)
 	}
 	defer session.Close()
-	session.SetSyncTimeout(MgoSessionSyncTimeout)
-	session.SetSocketTimeout(MgoSessionSocketTimeout)
+	session.SetSyncTimeout(MgoTimeoutSessionSync)
+	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
 	result := struct {
 		Was    int
@@ -202,7 +203,7 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	dialInfo.Timeout = 5 * time.Second
+	dialInfo.Timeout = MgoTimeoutDialInfo
 	firstTry := true
 	status := status{}
 	for {
@@ -252,8 +253,8 @@ func connectAndCollect(
 	defer session.Close()
 
 	// set timeouts or otherwise iter.Next() might hang forever
-	session.SetSyncTimeout(MgoSessionSyncTimeout)
-	session.SetSocketTimeout(MgoSessionSocketTimeout)
+	session.SetSyncTimeout(MgoTimeoutSessionSync)
+	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
 	collection := session.DB(dialInfo.Database).C("system.profile")
 	for {
@@ -292,7 +293,7 @@ func collect(
 	status status,
 	ready *sync.Cond,
 ) {
-	iterator := collection.Find(query).Sort("$natural").Tail(MgoTailTimeout)
+	iterator := collection.Find(query).Sort("$natural").Tail(MgoTimeoutTail)
 	defer iterator.Close()
 
 	// we got iterator, we are ready

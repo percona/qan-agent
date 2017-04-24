@@ -107,6 +107,7 @@ func TestParser_running(t *testing.T) {
 		}
 		assert.Equal(t, expected.StartTs, actual.StartTs)
 		assert.Equal(t, expected.EndTs, actual.EndTs)
+		assert.Equal(t, "", actual)
 	case <-time.After(d + 5*time.Second):
 		t.Error("test timeout")
 	}

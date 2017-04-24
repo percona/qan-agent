@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package mysql
+package explain
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ var (
 	insertSetRe      = regexp.MustCompile(`(?i)(?:insert(?:\s+ignore)?|replace)\s+(?:.*?\binto)\s+(.*?)\s*set\s+(.*?)\s*(?:\blimit\b|on\s+duplicate\s+key.*)?\s*$`)
 )
 
-func IsDMLQuery(query string) bool {
+func isDMLQuery(query string) bool {
 	query = strings.ToLower(strings.TrimSpace(query))
 	for _, verb := range dmlVerbs {
 		if strings.HasPrefix(query, verb) {
@@ -52,7 +52,7 @@ func IsDMLQuery(query string) bool {
   This function converts DML queries to the equivalent SELECT to make
   it able to explain DML queries on older MySQL versions
 */
-func DMLToSelect(query string) string {
+func dmlToSelect(query string) string {
 	m := updateRe.FindStringSubmatch(query)
 	// > 2 because we need at least a table name and a list of fields
 	if len(m) > 2 {
@@ -123,22 +123,4 @@ func insertToSelectNoFields(matches []string) string {
 
 func insertWithSetToSelect(matches []string) string {
 	return fmt.Sprintf("SELECT * FROM %s WHERE %s", matches[1], strings.Replace(matches[2], ",", " AND ", -1))
-}
-
-func Ident(db, table string) string {
-	// Wrap the idents in ` to handle space and weird chars.
-	if db != "" {
-		db = "`" + db + "`"
-	}
-	if table != "" {
-		table = "`" + table + "`"
-	}
-	// Join the idents if there's two, else return whichever was given.
-	if db != "" && table != "" {
-		return db + "." + table
-	} else if table != "" {
-		return table
-	} else {
-		return db
-	}
 }

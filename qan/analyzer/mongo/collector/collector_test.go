@@ -7,6 +7,9 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/stretchr/testify/assert"
+	"fmt"
+	"gopkg.in/mgo.v2/bson"
+	"time"
 )
 
 func TestNew(t *testing.T) {
@@ -101,7 +104,12 @@ func TestCollector_Stop(t *testing.T) {
 		})
 	}
 }
-
+type Person struct {
+	ID        bson.ObjectId `bson:"_id,omitempty"`
+	Name      string
+	Phone     string
+	Timestamp time.Time
+}
 func TestCollector(t *testing.T) {
 	t.Parallel()
 
@@ -120,16 +128,19 @@ func TestCollector(t *testing.T) {
 	go func() {
 		session, err := dialer.DialWithInfo(dialInfo)
 		assert.Nil(t, err)
-		for _, person := range people {
-			err = session.DB("test").C("people").Insert(&person)
+		for range people {
+			result := Person{}
+			err = session.DB("test").C("people").Find(bson.M{"name": "Ale"}).Select(bson.M{"phone": 0}).One(&result)
 			assert.Nil(t, err)
 		}
 	}()
 
 	actual := []proto.SystemProfile{}
 	for doc := range docsChan {
-		if doc.Ns == "test.people" && doc.Query["insert"] == "people" {
+		if doc.Ns == "test.people" {
 			actual = append(actual, doc)
+			j, _ := bson.Marshal(doc.Query)
+			fmt.Println(string(j))
 		}
 		if len(actual) == len(people) {
 			// stopping collector should also close docsChan
@@ -137,4 +148,5 @@ func TestCollector(t *testing.T) {
 		}
 	}
 	assert.Len(t, actual, len(people))
+	assert.Equal(t, "", actual[0].Query)
 }

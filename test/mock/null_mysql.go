@@ -74,12 +74,12 @@ func (n *NullMySQL) Close() {
 	return
 }
 
-func (n *NullMySQL) Explain(query string, db string) (explain *proto.ExplainResult, err error) {
-	return n.explain[query], nil
+func (n *NullMySQL) Explain(db, query string, convert bool) (*proto.ExplainResult, error) {
+	return nil, nil
 }
 
-func (n *NullMySQL) SetExplain(query string, explain *proto.ExplainResult) {
-	n.explain[query] = explain
+func (n *NullMySQL) TableInfo(tables *proto.TableInfoQuery) (proto.TableInfoResult, error) {
+	return proto.TableInfoResult{}, nil
 }
 
 func (n *NullMySQL) Set(queries []mysql.Query) error {

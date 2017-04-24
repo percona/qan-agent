@@ -12,6 +12,7 @@ import (
 
 	"github.com/montanaflynn/stats"
 	pm "github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -47,7 +48,7 @@ type Stat struct {
 	Operation      string
 	Fingerprint    string
 	Namespace      string
-	Query          map[string]interface{}
+	Query          bson.D
 	Count          int
 	TableScan      bool
 	NScanned       []float64
@@ -85,6 +86,7 @@ type queryInfo struct {
 	Count          int
 	Operation      string
 	Query          string
+	Explain          string
 	Fingerprint    string
 	FirstSeen      time.Time
 	ID             string
@@ -153,6 +155,7 @@ func ProcessDoc(doc *pm.SystemProfile, filters []DocsFilter, stats map[GroupKey]
 		return ErrNoQuery
 	}
 
+query := doc.Query
 	fp, err := fingerprint(doc.Query)
 	if err != nil {
 		return ErrFingerprint
@@ -173,6 +176,7 @@ func ProcessDoc(doc *pm.SystemProfile, filters []DocsFilter, stats map[GroupKey]
 			Namespace:   doc.Ns,
 			TableScan:   false,
 			Query:       realQuery,
+			Example:       doc.Query,
 		}
 		stats[key] = s
 	}
