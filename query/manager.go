@@ -26,7 +26,6 @@ import (
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	mongoExecutor "github.com/percona/qan-agent/query/executor/mongo"
 	mysqlExecutor "github.com/percona/qan-agent/query/executor/mysql"
 )
 
@@ -150,7 +149,6 @@ func (m *Manager) loadPlugins() error {
 	}
 
 	m.executors["mysql"] = mysqlExecutor.New()
-	m.executors["mongo"] = mongoExecutor.New()
 	return nil
 }
 
