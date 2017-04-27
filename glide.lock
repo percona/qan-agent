@@ -1,6 +1,8 @@
-hash: 5dd32780bac8505eb659968547796acc4e59ab7e3623ce05eaeb6434a10f2822
-updated: 2017-03-20T19:46:14.154366148+01:00
+hash: 7874744e660c0c02a0662fcccb710c3782b751889443c804d7af2f201b9ebee0
+updated: 2017-04-27T13:35:07.827133516+02:00
 imports:
+- name: github.com/bradfitz/slice
+  version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/fatih/structs
   version: a720dfa8df582c51dee1b36feabb906bde1588bd
 - name: github.com/go-sql-driver/mysql
@@ -10,7 +12,7 @@ imports:
 - name: github.com/hashicorp/go-version
   version: 03c5bf6be031b6dd45afec16b1cf94fc8938bc77
 - name: github.com/montanaflynn/stats
-  version: f8cd06f93c6c1b06028caafb88b540fc820f77c1
+  version: eeaced052adbcfeea372c749c281099ed7fdaa38
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/percona/go-mysql
@@ -22,13 +24,16 @@ imports:
   - log/slow
   - query
 - name: github.com/percona/percona-toolkit
-  version: d2c801eb2612527d591911b467cbbb3275269219
+  version: 52427dedcadc0da5e8d4daf05d55b49eb28e5a31
   subpackages:
+  - src/go/mongolib/fingerprinter
   - src/go/mongolib/proto
+  - src/go/mongolib/stats
+  - src/go/mongolib/util
 - name: github.com/percona/pmgo
-  version: 717c9ce3810f3744d303a8ad418f84d517fde597
+  version: 9566dc76df319b856a12f24a3b6852a0c6463eff
 - name: github.com/percona/pmm
-  version: f5d2aa2c4005f78d83b91b907fac6da04a852fd3
+  version: 0af8c6479067bf89905f881e6b118d340f719d6d
   subpackages:
   - proto
   - proto/config
@@ -37,8 +42,14 @@ imports:
   - proto/query
 - name: github.com/peterbourgon/diskv
   version: 5dfcb07a075adbaaa4094cddfd160b1e1c77a043
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: go4.org
+  version: 7ce08ca145dbe0e66a127c447b80ee7914f3e4f9
+  subpackages:
+  - reflectutil
 - name: golang.org/x/net
-  version: 6b27048ae5e6ad1ef927e72e437531493de612fe
+  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
   subpackages:
   - context
   - websocket
@@ -60,7 +71,7 @@ testImports:
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: 599cba5e7b6137d46ddf58fb1765f5d928e69604
+  version: 4c1c3952b7d9d0a061a3fa7b36fd373ba0398ebc
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:

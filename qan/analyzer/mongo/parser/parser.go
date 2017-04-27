@@ -5,10 +5,11 @@ import (
 	"time"
 
 	"github.com/percona/go-mysql/event"
-	pm "github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
+	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
+	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/mqd"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
@@ -17,7 +18,7 @@ const (
 	defaultInterval = 60 // in seconds
 )
 
-func New(docsChan <-chan pm.SystemProfile, config pc.QAN) *Parser {
+func New(docsChan <-chan proto.SystemProfile, config pc.QAN) *Parser {
 	return &Parser{
 		docsChan: docsChan,
 		config:   config,
@@ -26,7 +27,7 @@ func New(docsChan <-chan pm.SystemProfile, config pc.QAN) *Parser {
 
 type Parser struct {
 	// dependencies
-	docsChan <-chan pm.SystemProfile
+	docsChan <-chan proto.SystemProfile
 	config   pc.QAN
 
 	// provides
@@ -149,7 +150,7 @@ func (self *Parser) recvPong() map[string]string {
 
 func start(
 	wg *sync.WaitGroup,
-	docsChan <-chan pm.SystemProfile,
+	docsChan <-chan proto.SystemProfile,
 	reportChan chan<- *qan.Report,
 	config pc.QAN,
 	pingChan <-chan struct{},
@@ -159,8 +160,8 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	stats := map[mqd.GroupKey]*mqd.Stat{}
-	filters := []mqd.DocsFilter{}
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	s := stats.New(fp)
 
 	interval := config.Interval
 	if interval == 0 {
@@ -210,7 +211,7 @@ func start(
 			// time to prepare data to sent
 			if ts.After(timeEnd) {
 				// create result
-				result := createResult(stats, int64(interval), config.ExampleQueries)
+				result := createResult(s, int64(interval), config.ExampleQueries)
 
 				// translate result into report
 				qanReport := report.MakeReport(config, timeStart, timeEnd, nil, result)
@@ -227,23 +228,26 @@ func start(
 				}
 
 				// reset stats
-				stats = map[mqd.GroupKey]*mqd.Stat{}
+				s.Reset()
 				// update time intervals
 				timeStart = ts.Truncate(d)
 				timeEnd = timeStart.Add(d)
 			}
 
 			status.InDocs += 1
-			err := mqd.ProcessDoc(&doc, filters, stats)
-			switch err {
+			if len(doc.Query) == 0 {
+				status.SkippedDocs += 1
+				continue
+			}
+
+			err := s.Add(doc)
+			switch err.(type) {
 			case nil:
 				status.OkDocs += 1
-			case mqd.ErrNoQuery:
-				status.SkippedDocs += 1
-			case mqd.ErrQueryFiltered:
-				status.SkippedDocs += 1
-			case mqd.ErrFingerprint:
+			case *stats.StatsFingerprintError:
 				status.ErrFingerprint += 1
+			case *stats.StatsGetQueryFieldError:
+				status.ErrGetQuery += 1
 			default:
 				status.ErrParse += 1
 			}
@@ -261,10 +265,10 @@ func start(
 
 }
 
-func createResult(stats map[mqd.GroupKey]*mqd.Stat, interval int64, exampleQueries bool) *report.Result {
-	queries := mqd.ToStatSlice(stats)
+func createResult(s *stats.Stats, interval int64, exampleQueries bool) *report.Result {
+	queries := s.Queries()
 	global := event.NewClass("", "", false)
-	queryStats := mqd.CalcQueryStats(queries, interval)
+	queryStats := queries.CalcQueriesStats(interval)
 	classes := []*event.Class{}
 	for _, queryInfo := range queryStats {
 		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, exampleQueries)
@@ -316,5 +320,6 @@ type status struct {
 	IntervalEnd    string `name:"interval-end"`
 	ErrFingerprint uint   `name:"err-fingerprint"`
 	ErrParse       uint   `name:"err-parse"`
+	ErrGetQuery    uint   `name:"err-get-query"`
 	SkippedDocs    uint   `name:"skipped-docs"`
 }
