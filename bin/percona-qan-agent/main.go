@@ -329,13 +329,6 @@ func run(agentConfig *pc.Agent) error {
 		stopChan <- agentRouter.Run() // ----- RUN THE AGENT -----
 	}()
 
-	// We don't need agent to listen any port and its internal API in PMM.
-	// Commenting out...
-	//
-	// Run local agent API.
-	//lo := agent.NewLocalInterface(flagListen, agentRouter, itManager.Repo())
-	//go lo.Run()
-
 	golog.Println("Agent is ready")
 
 	// //////////////////////////////////////////////////////////////////////
