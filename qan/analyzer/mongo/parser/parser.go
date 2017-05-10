@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	defaultInterval = 60 // in seconds
+	DefaultInterval       = 60 // in seconds
+	DefaultExampleQueries = true
 )
 
 func New(docsChan <-chan proto.SystemProfile, config pc.QAN) *Parser {
@@ -58,6 +59,12 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 	self.reportChan = make(chan *qan.Report)
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
+
+	// verify config
+	if self.config.Interval == 0 {
+		self.config.Interval = DefaultInterval
+		self.config.ExampleQueries = DefaultExampleQueries
+	}
 
 	// set status
 	self.pingChan = make(chan struct{})
@@ -163,11 +170,7 @@ func start(
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	s := stats.New(fp)
 
-	interval := config.Interval
-	if interval == 0 {
-		interval = defaultInterval
-	}
-	d := time.Duration(interval) * time.Second
+	d := time.Duration(config.Interval) * time.Second
 
 	// truncate to the interval e.g 12:15:35 with 1 minute interval is gonna be 12:15:00
 	timeStart := time.Now().UTC().Truncate(d)
@@ -211,7 +214,7 @@ func start(
 			// time to prepare data to sent
 			if ts.After(timeEnd) {
 				// create result
-				result := createResult(s, int64(interval), config.ExampleQueries)
+				result := createResult(s, int64(config.Interval), config.ExampleQueries)
 
 				// translate result into report
 				qanReport := report.MakeReport(config, timeStart, timeEnd, nil, result)

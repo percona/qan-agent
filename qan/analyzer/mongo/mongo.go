@@ -161,7 +161,16 @@ func (m *MongoAnalyzer) Stop() error {
 }
 
 func (m *MongoAnalyzer) GetDefaults(uuid string) map[string]interface{} {
-	return map[string]interface{}{}
+	// verify config
+	if m.config.Interval == 0 {
+		m.config.Interval = parser.DefaultInterval
+		m.config.ExampleQueries = parser.DefaultExampleQueries
+	}
+
+	return map[string]interface{}{
+		"Interval":       m.config.Interval,
+		"ExampleQueries": m.config.ExampleQueries,
+	}
 }
 
 // String returns human readable identification of Analyzer
