@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package query
+package executor
 
 import (
 	"github.com/percona/pmm/proto"

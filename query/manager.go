@@ -26,6 +26,8 @@ import (
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/query/executor"
+	mongoExecutor "github.com/percona/qan-agent/query/executor/mongo"
 	mysqlExecutor "github.com/percona/qan-agent/query/executor/mysql"
 )
 
@@ -38,7 +40,7 @@ type Manager struct {
 	instanceRepo *instance.Repo
 	connFactory  mysql.ConnectionFactory
 	// --
-	executors map[string]Executor
+	executors map[string]executor.Executor
 	running   bool
 	sync.Mutex
 	status *pct.Status
@@ -120,12 +122,12 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 		return cmd.Reply(nil, err)
 	}
 
-	executor, ok := m.executors[in.Subsystem]
+	e, ok := m.executors[in.Subsystem]
 	if !ok {
 		return cmd.Reply(nil, fmt.Errorf("can't execute %s queries", in.Subsystem))
 	}
 
-	return executor.Handle(cmd, in)
+	return e.Handle(cmd, in)
 }
 
 func (m *Manager) Status() map[string]string {
@@ -149,10 +151,11 @@ func (m *Manager) loadPlugins() error {
 	}
 
 	m.executors["mysql"] = mysqlExecutor.New()
+	m.executors["mongo"] = mongoExecutor.New()
 	return nil
 }
 
 func (m *Manager) unloadPlugins() error {
-	m.executors = map[string]Executor{}
+	m.executors = map[string]executor.Executor{}
 	return nil
 }

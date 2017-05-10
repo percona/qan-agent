@@ -275,6 +275,7 @@ func createResult(s *stats.Stats, interval int64, exampleQueries bool) *report.R
 		if exampleQueries {
 			class.Example = &event.Example{
 				QueryTime: queryInfo.QueryTime.Total,
+				Db:        queryInfo.Namespace,
 				Query:     queryInfo.Query,
 			}
 		}
