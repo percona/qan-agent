@@ -70,7 +70,7 @@ func TestParser_StartStop(t *testing.T) {
 func TestParser_running(t *testing.T) {
 	docsChan := make(chan pm.SystemProfile)
 	pcQan := pc.QAN{
-		Interval: 60,
+		Interval: 1,
 	}
 	d := time.Duration(pcQan.Interval) * time.Second
 
@@ -86,15 +86,23 @@ func TestParser_running(t *testing.T) {
 	select {
 	case docsChan <- pm.SystemProfile{
 		Ts: timeStart,
+		Query: map[string]interface{}{
+			"query": "",
+		},
+		ResponseLength: 100,
+		DocsExamined:   200,
+		Nreturned:      300,
+		Millis:         4000,
 	}:
 	case <-time.After(5 * time.Second):
 		t.Error("test timeout")
 	}
 
-	select {
-	case docsChan <- pm.SystemProfile{
+	sp := pm.SystemProfile{
 		Ts: timeEnd.Add(1 * time.Second),
-	}:
+	}
+	select {
+	case docsChan <- sp:
 	case <-time.After(5 * time.Second):
 		t.Error("test timeout")
 	}
@@ -107,6 +115,21 @@ func TestParser_running(t *testing.T) {
 		}
 		assert.Equal(t, expected.StartTs, actual.StartTs)
 		assert.Equal(t, expected.EndTs, actual.EndTs)
+		assert.EqualValues(t, actual.Global.TotalQueries, 1)
+		assert.EqualValues(t, actual.Global.UniqueQueries, 1)
+
+		// verify time metrics
+		assert.Len(t, actual.Global.Metrics.TimeMetrics, 1)
+		assert.NotEmpty(t, actual.Global.Metrics.TimeMetrics["Query_time"])
+
+		// verify number metrics
+		assert.Len(t, actual.Global.Metrics.NumberMetrics, 3)
+		assert.NotEmpty(t, actual.Global.Metrics.NumberMetrics["Rows_sent"])
+		assert.NotEmpty(t, actual.Global.Metrics.NumberMetrics["Rows_examined"])
+		assert.NotEmpty(t, actual.Global.Metrics.NumberMetrics["Bytes_sent"])
+
+		// verify bool metrics
+		assert.Len(t, actual.Global.Metrics.BoolMetrics, 0)
 	case <-time.After(d + 5*time.Second):
 		t.Error("test timeout")
 	}

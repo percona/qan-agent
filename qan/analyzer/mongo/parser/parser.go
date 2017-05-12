@@ -286,12 +286,11 @@ func createResult(s *stats.Stats, interval int64, exampleQueries bool) *report.R
 		metrics := event.NewMetrics()
 
 		// Time metrics are in picoseconds, so multiply by 10^-12 to convert to seconds.
-		metrics.TimeMetrics["Query_time"] = &event.TimeStats{
-			Sum: queryInfo.QueryTime.Total,
-			Min: queryInfo.QueryTime.Min,
-			Avg: queryInfo.QueryTime.Avg,
-			Max: queryInfo.QueryTime.Max,
-		}
+		metrics.TimeMetrics["Query_time"] = newEventTimeStats(queryInfo.QueryTime)
+
+		metrics.NumberMetrics["Bytes_sent"] = newEventNumberStats(queryInfo.ResponseLength)
+		metrics.NumberMetrics["Rows_sent"] = newEventNumberStats(queryInfo.Returned)
+		metrics.NumberMetrics["Rows_examined"] = newEventNumberStats(queryInfo.Scanned)
 
 		class.Metrics = metrics
 		class.TotalQueries = uint(queryInfo.Count)
@@ -326,4 +325,26 @@ type status struct {
 	ErrParse       uint   `name:"err-parse"`
 	ErrGetQuery    uint   `name:"err-get-query"`
 	SkippedDocs    uint   `name:"skipped-docs"`
+}
+
+func newEventNumberStats(s stats.Statistics) *event.NumberStats {
+	return &event.NumberStats{
+		Sum: uint64(s.Total),
+		Min: uint64(s.Min),
+		Avg: uint64(s.Avg),
+		Med: uint64(s.Median),
+		P95: uint64(s.Pct95),
+		Max: uint64(s.Max),
+	}
+}
+
+func newEventTimeStats(s stats.Statistics) *event.TimeStats {
+	return &event.TimeStats{
+		Sum: s.Total,
+		Min: s.Min,
+		Avg: s.Avg,
+		Med: s.Median,
+		P95: s.Pct95,
+		Max: s.Max,
+	}
 }
