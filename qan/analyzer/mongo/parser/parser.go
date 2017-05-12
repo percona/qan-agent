@@ -285,9 +285,9 @@ func createResult(s *stats.Stats, interval int64, exampleQueries bool) *report.R
 
 		metrics := event.NewMetrics()
 
-		// Time metrics are in picoseconds, so multiply by 10^-12 to convert to seconds.
 		metrics.TimeMetrics["Query_time"] = newEventTimeStats(queryInfo.QueryTime)
 
+		// @todo we map below metrics to MySQL equivalents according to PMM-830
 		metrics.NumberMetrics["Bytes_sent"] = newEventNumberStats(queryInfo.ResponseLength)
 		metrics.NumberMetrics["Rows_sent"] = newEventNumberStats(queryInfo.Returned)
 		metrics.NumberMetrics["Rows_examined"] = newEventNumberStats(queryInfo.Scanned)
