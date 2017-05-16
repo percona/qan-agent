@@ -463,6 +463,8 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 		data, errs = agent.handleGetServerSummary()
 	case "GetMySQLSummary":
 		data, errs = agent.handleGetMySQLSummary()
+	case "GetMongoSummary":
+		data, errs = agent.handleGetMongoSummary()
 	default:
 		errs = append(errs, pct.UnknownCmdError{Cmd: cmd.Cmd})
 	}
@@ -641,24 +643,24 @@ func (agent *Agent) handleVersion(cmd *proto.Cmd) (interface{}, []error) {
 	return v, nil
 }
 
-func (agent *Agent) handleGetServerSummary() (interface{}, []error) {
-	ptSummary := pctCmd.NewRealCmd("pt-summary")
-	output, err := ptSummary.Run()
-
+func runRealCmd(name string, args ...string) (interface{}, []error) {
+	output, err := pctCmd.NewRealCmd(name, args...).Run()
 	if err != nil {
 		return nil, []error{err}
 	}
 	return output, nil
 }
 
-func (agent *Agent) handleGetMySQLSummary() (interface{}, []error) {
-	ptMySQLSummary := pctCmd.NewRealCmd("pt-mysql-summary", "--sleep", "1")
-	output, err := ptMySQLSummary.Run()
+func (agent *Agent) handleGetServerSummary() (interface{}, []error) {
+	return runRealCmd("pt-summary")
+}
 
-	if err != nil {
-		return nil, []error{err}
-	}
-	return output, nil
+func (agent *Agent) handleGetMySQLSummary() (interface{}, []error) {
+	return runRealCmd("pt-mysql-summary", "--sleep", "1")
+}
+
+func (agent *Agent) handleGetMongoSummary() (interface{}, []error) {
+	return runRealCmd("pt-mongodb-summary")
 }
 
 //---------------------------------------------------------------------------
