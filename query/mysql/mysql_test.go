@@ -386,9 +386,9 @@ func (s *TestSuite) TestFullTableInfo(t *C) {
 	db := "mysql"
 	table := "user"
 	tables := &proto.TableInfoQuery{
-		Create: []proto.Table{proto.Table{db, table}},
-		Index:  []proto.Table{proto.Table{db, table}},
-		Status: []proto.Table{proto.Table{db, table}},
+		Create: []proto.Table{{db, table}},
+		Index:  []proto.Table{{db, table}},
+		Status: []proto.Table{{db, table}},
 	}
 
 	got, err := s.e.TableInfo(tables)
@@ -426,7 +426,7 @@ func (s *TestSuite) TestStatusTimes(t *C) {
 	db := "mysql"
 	table := "slow_log"
 	tables := &proto.TableInfoQuery{
-		Status: []proto.Table{proto.Table{db, table}},
+		Status: []proto.Table{{db, table}},
 	}
 
 	got, err := s.e.TableInfo(tables)

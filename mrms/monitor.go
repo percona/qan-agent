@@ -66,7 +66,7 @@ type RealMonitor struct {
 
 func NewRealMonitor(logger *pct.Logger, mysqlConnFactory mysql.ConnectionFactory) *RealMonitor {
 	instances := map[string]*instance{
-		"": &instance{
+		"": {
 			listeners: map[chan proto.Instance]bool{},
 		},
 	}
