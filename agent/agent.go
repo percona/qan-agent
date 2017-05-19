@@ -238,7 +238,7 @@ func (agent *Agent) Run() error {
 				statusHandlerErrors = 0
 			} else {
 				// websocket closed/crashed/err
-				logger.Warn("Lost connection to API")
+				logger.Warn("Lost connection to API, reconnecting")
 				go agent.connect()
 			}
 		case <-agent.keepalive.C:
