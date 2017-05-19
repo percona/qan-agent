@@ -337,7 +337,7 @@ func (w *Worker) reset() {
 
 func (w *Worker) getQueryExamples(ticker <-chan time.Time) {
 	isRunning := false
-	for _ = range ticker {
+	for range ticker {
 		if isRunning {
 			continue
 		}

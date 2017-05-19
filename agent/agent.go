@@ -565,11 +565,11 @@ func (agent *Agent) GetDefaults(cmd *proto.Cmd) (interface{}, []error) {
 	}
 
 	defaults := map[string]map[string]interface{}{
-		"bin": map[string]interface{}{
+		"bin": {
 			"pid-file": DEFAULT_PIDFILE,
 			"basedir":  pct.DEFAULT_BASEDIR,
 		},
-		"agent": map[string]interface{}{
+		"agent": {
 			"KeepAlive": DEFAULT_KEEPALIVE,
 			"Listen":    DEFAULT_LISTEN,
 		},
