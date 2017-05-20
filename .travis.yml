@@ -11,7 +11,11 @@ services:
   - mysql
 
 env:
-  - "PCT_TEST_MYSQL_DSN=\"root:travis@tcp(localhost:3306)/?parseTime=true\""
+  - MYSQL_USER="root"
+  - MYSQL_PASS="travis"
+  - MYSQL_HOST="localhost"
+  - MYSQL_PORT="3306"
+  - PCT_TEST_MYSQL_DSN="root:travis@tcp(localhost:3306)/?parseTime=true"
 
 addons:
   apt:
@@ -24,6 +28,14 @@ addons:
 install:
   - go get -u github.com/Masterminds/glide
   - glide install
+
+before_script:
+  - until mysql -u${MYSQL_USER} -p${MYSQL_PASS} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -e 'SELECT 1' > /dev/null; do
+      >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} for user ${MYSQL_USER} is unavailable - sleeping"
+      sleep 1
+    done
+
+    >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} is up"
 
 script:
   - test/runner.sh
