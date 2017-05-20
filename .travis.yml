@@ -13,7 +13,7 @@ env:
     - MYSQL_USER="root"
     - MYSQL_HOST="localhost"
     - MYSQL_PORT="3306"
-    - PCT_TEST_MYSQL_DSN="root@tcp(localhost:3306)/?parseTime=true"
+    - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
 
 addons:
   apt:
