@@ -11,11 +11,12 @@ services:
   - mysql
 
 env:
-  - MYSQL_USER="root"
-  - MYSQL_PASS="travis"
-  - MYSQL_HOST="localhost"
-  - MYSQL_PORT="3306"
-  - PCT_TEST_MYSQL_DSN="root:travis@tcp(localhost:3306)/?parseTime=true"
+  global:
+    - MYSQL_USER="root"
+    - MYSQL_PASS="travis"
+    - MYSQL_HOST="localhost"
+    - MYSQL_PORT="3306"
+    - PCT_TEST_MYSQL_DSN="root:travis@tcp(localhost:3306)/?parseTime=true"
 
 addons:
   apt:
