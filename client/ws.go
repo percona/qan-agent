@@ -385,11 +385,6 @@ func (c *WebsocketClient) recv() {
 			c.recvChan <- cmd
 		}
 
-		if err := conn.Close(); err != nil {
-			// Since there's nothing we can do about errors here, we ignore them.
-			c.logger.DebugOffline("disconnect:websocket.Conn.Close:err:" + err.Error())
-		}
-
 		c.logger.DebugOffline("recv:Disconnect")
 		c.disconnect(conn, true)
 	}
