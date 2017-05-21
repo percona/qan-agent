@@ -652,7 +652,9 @@ func (s *AgentTestSuite) TestGetMongoSummary(t *C) {
 	got := test.WaitReplyCmd(s.recvChan, "GetMongoSummary")
 	t.Assert(len(got), Equals, 1)
 	t.Assert(got[0].Error, Equals, "")
-	t.Assert(string(got[0].Data), Matches, ".*# Mongo Executable.*")
+	// in new version:
+	// t.Assert(string(got[0].Data), Matches, ".*# Mongo Executable.*")
+	t.Assert(string(got[0].Data), Matches, ".*# Instances.*")
 }
 
 func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
