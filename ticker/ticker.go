@@ -122,7 +122,7 @@ func (et *EvenTicker) ETA(nowNanosecond int64) float64 {
 func (et *EvenTicker) tick(t time.Time) {
 	et.watcherMux.Lock()
 	defer et.watcherMux.Unlock()
-	for c, _ := range et.watcher {
+	for c := range et.watcher {
 		select {
 		case c <- t:
 		case <-time.After(20 * time.Millisecond):

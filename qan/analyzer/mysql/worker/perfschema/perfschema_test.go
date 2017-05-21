@@ -124,7 +124,7 @@ func makeGetRowsFunc(iters [][]*DigestRow) GetDigestRowsFunc {
 			return fmt.Errorf("No more iters")
 		}
 		rows := iters[0]
-		iters = iters[1:len(iters)]
+		iters = iters[1:]
 		go func() {
 			defer func() {
 				done <- nil
@@ -143,7 +143,7 @@ func makeGetTextFunc(texts ...string) GetDigestTextFunc {
 			return "", fmt.Errorf("No more texts")
 		}
 		text := texts[0]
-		texts = texts[1:len(texts)]
+		texts = texts[1:]
 		return text, nil
 	}
 }

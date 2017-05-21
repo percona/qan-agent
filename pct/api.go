@@ -473,7 +473,7 @@ func (a *API) CreateInstance(url string, in interface{}) (bool, error) {
 	}
 
 	if err := json.Unmarshal(data, in); err != nil {
-		return created, fmt.Errorf("GET %s (get instance) returned invalid data: %s", err)
+		return created, fmt.Errorf("GET %s (get instance) returned invalid data: %s", uri, err)
 	}
 
 	return created, nil

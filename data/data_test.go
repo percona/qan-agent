@@ -603,7 +603,7 @@ func (s *SenderTestSuite) TestSendEmptyFile(t *C) {
 	// for that file.
 	spool := mock.NewSpooler(nil)
 	spool.FilesOut = []string{"empty.json"}
-	spool.DataOut = map[string][]byte{"empty.json": []byte{}}
+	spool.DataOut = map[string][]byte{"empty.json": {}}
 
 	// Start the sender.
 	sender := data.NewSender(s.logger, s.client)

@@ -399,10 +399,10 @@ func (s *DiskvSpooler) purge(now time.Time, limits pc.DataSpoolLimits) (int, map
 	}
 
 	removed := map[string][]string{
-		"age":    []string{},
-		"size":   []string{},
-		"files":  []string{},
-		"purged": []string{},
+		"age":    {},
+		"size":   {},
+		"files":  {},
+		"purged": {},
 	}
 	n := 0
 	nowNano := now.UnixNano()
