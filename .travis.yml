@@ -23,7 +23,7 @@ addons:
       - mongodb-3.2-precise
     packages:
       - percona-toolkit
-      - mongodb-org-server
+      - mongodb-org
 
 install:
   - go get -u github.com/Masterminds/glide
