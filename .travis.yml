@@ -20,8 +20,10 @@ addons:
     sources:
       - sourceline: 'deb http://repo.percona.com/apt precise testing'
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0x8507EFA5'
+      - mongodb-3.4-precise
     packages:
       - percona-toolkit
+      - mongodb-org-server
 
 install:
   - go get -u github.com/Masterminds/glide
