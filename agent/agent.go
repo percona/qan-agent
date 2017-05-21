@@ -342,10 +342,12 @@ func (agent *Agent) GetConfig() ([]proto.AgentConfig, []error) {
 // --------------------------------------------------------------------------
 
 func (agent *Agent) cmdHandler() {
+	wg := sync.WaitGroup{}
 	defer func() {
 		if err := recover(); err != nil {
 			agent.logger.Error("Agent command handler crashed: ", err)
 		}
+		wg.Wait()
 		agent.status.Update("agent-cmd-handler", "Stopped")
 		agent.cmdHandlerSync.Done()
 	}()
@@ -355,15 +357,26 @@ func (agent *Agent) cmdHandler() {
 	queue := make(chan bool, limit)
 
 	for {
-		agent.status.Update("agent-cmd-handler", "Idle")
-
 		select {
 		case cmd := <-agent.cmdChan:
 			select {
 			case queue <- true:
+				wg.Add(1)
 				go func() {
+					defer func() {
+						<-queue
+						wg.Done()
+
+						// check if there is anything on the queue, if not, mark agent as idle
+						select {
+						case <-queue:
+							queue <- true
+						default:
+							agent.status.Update("agent-cmd-handler", "Idle")
+						}
+					}()
+
 					agent.handleCmd(cmd)
-					<-queue
 				}()
 			case <-agent.cmdHandlerSync.StopChan:
 				agent.cmdHandlerSync.Graceful()
@@ -377,6 +390,11 @@ func (agent *Agent) cmdHandler() {
 }
 
 func (agent *Agent) handleCmd(cmd *proto.Cmd) {
+	defer func() {
+		if err := recover(); err != nil {
+			agent.logger.Error("Agent command handler crashed: ", err)
+		}
+	}()
 	agent.status.UpdateRe("agent-cmd-handler", "Handling", cmd)
 	agent.logger.Info("Cmd begin:", cmd)
 
