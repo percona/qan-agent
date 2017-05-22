@@ -24,7 +24,8 @@ addons:
       - percona-toolkit
 
 install:
-  - go get -u github.com/Masterminds/glide
+  - mkdir $GOPATH/bin
+  - curl https://glide.sh/get | sh
   - glide install
 
 before_script:
