@@ -42,9 +42,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	pctCmd "github.com/percona/qan-agent/pct/cmd"
 	"github.com/percona/qan-agent/qan"
-	qanFactory "github.com/percona/qan-agent/qan/factory"
-	"github.com/percona/qan-agent/qan/perfschema"
-	"github.com/percona/qan-agent/qan/slowlog"
+	qanAnalyzerFactory "github.com/percona/qan-agent/qan/analyzer/factory"
 	"github.com/percona/qan-agent/query"
 	"github.com/percona/qan-agent/ticker"
 )
@@ -174,7 +172,6 @@ func run(agentConfig *pc.Agent) error {
 	// Internal services, factories, and other dependencies
 	// //////////////////////////////////////////////////////////////////////
 	pctCmd.Factory = &pctCmd.RealCmdFactory{}
-	connFactory := &mysql.RealConnectionFactory{}
 	nowFunc := func() int64 { return time.Now().UTC().UnixNano() }
 	clock := ticker.NewClock(&ticker.RealTickerFactory{}, nowFunc)
 
@@ -281,17 +278,13 @@ func run(agentConfig *pc.Agent) error {
 	// Query Analytics
 	qanManager := qan.NewManager(
 		pct.NewLogger(logChan, "qan"),
-		clock,
 		itManager.Repo(),
-		mrmsMonitor,
-		connFactory,
-		qanFactory.NewRealAnalyzerFactory(
+		qanAnalyzerFactory.New(
 			logChan,
-			qanFactory.NewRealIntervalIterFactory(logChan),
-			slowlog.NewRealWorkerFactory(logChan),
-			perfschema.NewRealWorkerFactory(logChan),
 			dataManager.Spooler(),
 			clock,
+			mrmsMonitor,
+			itManager.Repo(),
 		),
 	)
 	if err := qanManager.Start(); err != nil {
@@ -335,13 +328,6 @@ func run(agentConfig *pc.Agent) error {
 		}()
 		stopChan <- agentRouter.Run() // ----- RUN THE AGENT -----
 	}()
-
-	// We don't need agent to listen any port and its internal API in PMM.
-	// Commenting out...
-	//
-	// Run local agent API.
-	//lo := agent.NewLocalInterface(flagListen, agentRouter, itManager.Repo())
-	//go lo.Run()
 
 	golog.Println("Agent is ready")
 

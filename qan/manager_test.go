@@ -36,29 +36,21 @@ import (
 )
 
 type ManagerTestSuite struct {
-	nullmysql    *mock.NullMySQL
-	mrmsMonitor  *mock.MrmsMonitor
-	logChan      chan proto.LogEntry
-	logger       *pct.Logger
-	intervalChan chan *qan.Interval
-	dataChan     chan interface{}
-	spool        *mock.Spooler
-	//workerFactory qan.WorkerFactory
-	clock         *mock.Clock
+	logChan       chan proto.LogEntry
+	logger        *pct.Logger
+	dataChan      chan interface{}
+	spool         *mock.Spooler
 	tmpDir        string
 	configDir     string
 	im            *instance.Repo
 	api           *mock.API
-	mysqlUUID     string
-	mysqlInstance proto.Instance
+	protoInstance proto.Instance
+	instanceUUID  string
 }
 
 var _ = Suite(&ManagerTestSuite{})
 
 func (s *ManagerTestSuite) SetUpSuite(t *C) {
-
-	s.nullmysql = mock.NewNullMySQL()
-	s.mrmsMonitor = mock.NewMrmsMonitor()
 
 	s.logChan = make(chan proto.LogEntry, 1000)
 	s.logger = pct.NewLogger(s.logChan, "qan-test")
@@ -81,10 +73,10 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 	}
 	s.configDir = pct.Basedir.Dir("config")
 	s.im = instance.NewRepo(pct.NewLogger(s.logChan, "manager-test"), s.configDir, s.api)
-	s.mysqlUUID = "3130000000000000"
-	s.mysqlInstance = proto.Instance{
+	s.instanceUUID = "3130000000000000"
+	s.protoInstance = proto.Instance{
 		Subsystem: "mysql",
-		UUID:      s.mysqlUUID,
+		UUID:      s.instanceUUID,
 		Name:      "db01",
 		DSN:       "user:pass@tcp(localhost)/",
 	}
@@ -93,39 +85,14 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 	t.Assert(err, IsNil)
 }
 
-func (s *ManagerTestSuite) TestGetDefaults(t *C) {
-	uuid := "12345ABCDE"
-	instance := proto.Instance{
-		Subsystem: "mysql",
-		UUID:      uuid,
-		Name:      "db01",
-		DSN:       "user:pass@tcp(localhost)/",
-	}
-	s.nullmysql.SetGlobalVarNumber("long_query_time", 998)
-	s.nullmysql.SetGlobalVarString("log_slow_verbosity", "minimal")
-	s.im.Add(instance, true)
-
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
-	a := mock.NewQanAnalyzer("qan-analizer-1")
-	f := mock.NewQanAnalyzerFactory(a)
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
-	t.Assert(m, NotNil)
-
-	d := m.GetDefaults(uuid)
-	t.Assert(d["LongQueryTime"].(float64), Equals, float64(998))
-	t.Assert(d["SlowLogVerbosity"].(string), Equals, "minimal")
-}
-
 func (s *ManagerTestSuite) SetUpTest(t *C) {
-	s.nullmysql.Reset()
-	s.clock = mock.NewClock()
 	if err := test.ClearDir(pct.Basedir.Dir("config"), "*"); err != nil {
 		t.Fatal(err)
 	}
 	for _, in := range s.im.List("mysql") {
 		s.im.Remove(in.UUID)
 	}
-	err := s.im.Add(s.mysqlInstance, true)
+	err := s.im.Add(s.protoInstance, true)
 	t.Assert(err, IsNil)
 }
 
@@ -139,10 +106,9 @@ func (s *ManagerTestSuite) TearDownSuite(t *C) {
 
 func (s *ManagerTestSuite) TestStarNoConfig(t *C) {
 	// Make a qan.Manager with mock factories.
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	a := mock.NewQanAnalyzer("qan-analizer-1")
 	f := mock.NewQanAnalyzerFactory(a)
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 
 	// qan.Manager should be able to start without a qan.conf, i.e. no analyzer.
@@ -176,14 +142,14 @@ func (s *ManagerTestSuite) TestStarNoConfig(t *C) {
 }
 
 func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
-	mi2 := s.mysqlInstance
+	mi2 := s.protoInstance
 	mi2.UUID = "2220000000000000"
 	mi2.Name = "db02"
 	err := s.im.Add(mi2, false)
 	t.Assert(err, IsNil)
 	defer s.im.Remove(mi2.UUID)
 
-	// Get MYySQL instances
+	// Get MySQL instances
 	mysqlInstances := s.im.List("mysql")
 	t.Assert(len(mysqlInstances), Equals, 2)
 
@@ -191,8 +157,7 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 	a1 := mock.NewQanAnalyzer(fmt.Sprintf("qan-analyzer-%s", mysqlInstances[0].Name))
 	a2 := mock.NewQanAnalyzer(fmt.Sprintf("qan-analyzer-%s", mysqlInstances[1].Name))
 	f := mock.NewQanAnalyzerFactory(a1, a2)
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 	configs := make([]pc.QAN, 0)
 	for i, analyzerType := range []string{"slowlog", "perfschema"} {
@@ -205,9 +170,8 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 			CollectFrom:    analyzerType,
 			Interval:       300,
 			WorkerRunTime:  270,
-			MaxSlowLogSize: 1073741824, // specify optional args
-			ExampleQueries: true,       // specify optional args
-			ReportLimit:    200,        // specify optional args
+			ExampleQueries: true, // specify optional args
+			ReportLimit:    200,  // specify optional args
 		}
 		err := pct.Basedir.WriteConfig("qan-"+mysqlInstance.UUID, &config)
 		t.Assert(err, IsNil)
@@ -237,10 +201,13 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 	} else {
 		t.Check(f.Args, HasLen, 2)
 
-		argConfigs := []pc.QAN{f.Args[0].Config, f.Args[1].Config}
+		argConfigs := []pc.QAN{
+			a1.Config(),
+			a2.Config(),
+		}
 		assert.Equal(t, configs, argConfigs)
-		t.Check(f.Args[0].Name, Equals, "qan-analyzer-22200000")
-		t.Check(f.Args[1].Name, Equals, "qan-analyzer-31300000")
+		t.Check(f.Args[0].Name, Equals, "qan-analyzer-mysql-22200000")
+		t.Check(f.Args[1].Name, Equals, "qan-analyzer-mysql-31300000")
 	}
 
 	// qan.Stop() stops the analyzer and leaves qan.conf on disk.
@@ -269,7 +236,7 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 }
 
 func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
-	mi2 := s.mysqlInstance
+	mi2 := s.protoInstance
 	mi2.UUID = "2220000000000000"
 	mi2.Name = "db02"
 	err := s.im.Add(mi2, false)
@@ -281,11 +248,10 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 	t.Assert(len(mysqlInstances), Equals, 2)
 
 	// Make a qan.Manager with mock factories.
-	a1 := mock.NewQanAnalyzer(fmt.Sprintf("qan-analyzer-%s", mysqlInstances[0].Name))
-	a2 := mock.NewQanAnalyzer(fmt.Sprintf("qan-analyzer-%s", mysqlInstances[1].Name))
+	a1 := mock.NewQanAnalyzer(fmt.Sprintf("qan-analyzer-mysql-%s", mysqlInstances[0].Name))
+	a2 := mock.NewQanAnalyzer(fmt.Sprintf("qan-analyzer-mysql-%s", mysqlInstances[1].Name))
 	f := mock.NewQanAnalyzerFactory(a1, a2)
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 	configs := make([]pc.QAN, 0)
 	for _, mysqlInstance := range mysqlInstances {
@@ -295,9 +261,8 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 			CollectFrom:    "perfschema",
 			Interval:       300,
 			WorkerRunTime:  270,
-			MaxSlowLogSize: 1073741824, // specify optional args
-			ExampleQueries: true,       // specify optional args
-			ReportLimit:    200,        // specify optional args
+			ExampleQueries: true, // specify optional args
+			ReportLimit:    200,  // specify optional args
 		}
 		err := pct.Basedir.WriteConfig("qan-"+mysqlInstance.UUID, &config)
 		t.Assert(err, IsNil)
@@ -327,10 +292,13 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 	} else {
 		t.Check(f.Args, HasLen, 2)
 
-		argConfigs := []pc.QAN{f.Args[0].Config, f.Args[1].Config}
+		argConfigs := []pc.QAN{
+			a1.Config(),
+			a2.Config(),
+		}
 		assert.Equal(t, configs, argConfigs)
-		t.Check(f.Args[0].Name, Equals, "qan-analyzer-22200000")
-		t.Check(f.Args[1].Name, Equals, "qan-analyzer-31300000")
+		t.Check(f.Args[0].Name, Equals, "qan-analyzer-mysql-22200000")
+		t.Check(f.Args[1].Name, Equals, "qan-analyzer-mysql-31300000")
 	}
 
 	// qan.Stop() stops the analyzer and leaves qan.conf on disk.
@@ -362,10 +330,9 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	// Make a qan.Manager with mock factories.
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	a := mock.NewQanAnalyzer("qan-analizer-1")
 	f := mock.NewQanAnalyzerFactory(a)
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 
 	mysqlInstances := s.im.List("mysql")
@@ -382,14 +349,18 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	err := pct.Basedir.WriteConfig("qan-"+mysqlUUID, &pcQANSetExpected)
 	t.Assert(err, IsNil)
 
-	pcQANRunningExpected := pcQANSetExpected
-	pcQANRunningExpected.ReportLimit = qan.DEFAULT_REPORT_LIMIT
-	pcQANRunningExpected.ExampleQueries = qan.DEFAULT_EXAMPLE_QUERIES
-
 	// Start the manager and analyzer.
 	err = m.Start()
 	t.Check(err, IsNil)
 	test.WaitStatus(1, m, "qan", "Running")
+
+	// Set different config in an Analyzer mock
+	// to emulate that config changed after running manager
+	// This tests that manager can return initial setConfig and runningConfig
+	pcQANRunningExpected := pcQANSetExpected
+	pcQANRunningExpected.ReportLimit = 10
+	pcQANRunningExpected.ExampleQueries = true
+	a.SetConfig(pcQANRunningExpected)
 
 	// Get the manager config which should be just the analyzer config.
 	gotConfig, errs := m.GetConfig()
@@ -423,23 +394,6 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	t.Assert(err, IsNil)
 }
 
-func (s *ManagerTestSuite) TestValidateConfig(t *C) {
-	mysqlInstances := s.im.List("mysql")
-	t.Assert(len(mysqlInstances), Equals, 1)
-	mysqlUUID := mysqlInstances[0].UUID
-
-	config := pc.QAN{
-		UUID:           mysqlUUID,
-		Interval:       300,        // 5 min
-		MaxSlowLogSize: 1073741824, // 1 GiB
-		ExampleQueries: true,
-		WorkerRunTime:  600, // 10 min
-		CollectFrom:    "slowlog",
-	}
-	_, err := qan.ValidateConfig(config)
-	t.Check(err, IsNil)
-}
-
 func (s *ManagerTestSuite) TestAddInstance(t *C) {
 	// FAIL: manager_test.go:446: ManagerTestSuite.TestAddInstance
 	// manager_test.go:494:
@@ -449,10 +403,9 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	// Make and start a qan.Manager with mock factories, no analyzer yet.
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	a := mock.NewQanAnalyzer("qan-analizer-1")
 	f := mock.NewQanAnalyzerFactory(a)
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 	err := m.Start()
 	t.Check(err, IsNil)
@@ -563,10 +516,9 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
 	// Make and start a qan.Manager with mock factories, no analyzer yet.
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	a := mock.NewQanAnalyzer("qan-analizer-1")
 	f := mock.NewQanAnalyzerFactory(a)
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 	err := m.Start()
 	t.Check(err, IsNil)
@@ -658,10 +610,9 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 }
 
 func (s *ManagerTestSuite) TestBadCmd(t *C) {
-	mockConnFactory := &mock.ConnectionFactory{Conn: s.nullmysql}
 	a := mock.NewQanAnalyzer("qan-analizer-1")
 	f := mock.NewQanAnalyzerFactory(a)
-	m := qan.NewManager(s.logger, s.clock, s.im, s.mrmsMonitor, mockConnFactory, f)
+	m := qan.NewManager(s.logger, s.im, f)
 	t.Assert(m, NotNil)
 	err := m.Start()
 	t.Check(err, IsNil)
