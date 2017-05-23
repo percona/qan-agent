@@ -221,7 +221,7 @@ func (s *TestSuite) TestApiDisconnect(t *C) {
 }
 
 func (s *TestSuite) TestChannelsApiDisconnect(t *C) {
-	// If using chnanel interface, ErrorChan() should return error if API disconnects.
+	// If using channel interface, ErrorChan() should return error if API disconnects.
 
 	ws, err := client.NewWebsocketClient(s.logger, s.api, "agent", nil)
 	t.Assert(err, IsNil)
