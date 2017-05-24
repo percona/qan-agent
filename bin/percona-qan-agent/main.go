@@ -269,7 +269,6 @@ func run(agentConfig *pc.Agent) error {
 	queryManager := query.NewManager(
 		pct.NewLogger(logChan, "query"),
 		itManager.Repo(),
-		&mysql.RealConnectionFactory{},
 	)
 	if err := queryManager.Start(); err != nil {
 		return fmt.Errorf("Error starting query manager: %s", err)

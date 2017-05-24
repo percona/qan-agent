@@ -15,41 +15,12 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package mongo
+package plugin
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/percona/pmm/proto"
-	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/query/executor/mongo/explain"
 )
 
-type MongoExecutor struct {
-}
-
-func New() *MongoExecutor {
-	e := &MongoExecutor{}
-	return e
-}
-
-func (e *MongoExecutor) Handle(cmd *proto.Cmd, in proto.Instance) *proto.Reply {
-	// get the dsn from instance
-	dsn := in.DSN
-
-	switch cmd.Cmd {
-	case "Explain":
-		q := &proto.ExplainQuery{}
-		if err := json.Unmarshal(cmd.Data, q); err != nil {
-			return cmd.Reply(nil, err)
-		}
-		res, err := explain.Explain(dsn, q.Db, q.Query)
-		if err != nil {
-			return cmd.Reply(nil, fmt.Errorf("EXPLAIN failed: %s", err))
-		}
-		return cmd.Reply(res, nil)
-	default:
-		return cmd.Reply(nil, pct.UnknownCmdError{Cmd: cmd.Cmd})
-	}
+type Plugin interface {
+	Handle(cmd *proto.Cmd, in proto.Instance) (interface{}, error)
 }
