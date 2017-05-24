@@ -26,8 +26,7 @@ addons:
       - mongodb-org
 
 install:
-  - mkdir $GOPATH/bin
-  - curl https://glide.sh/get | sh
+  - go get -u github.com/Masterminds/glide
   - glide install
 
 before_script:
