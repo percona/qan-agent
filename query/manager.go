@@ -24,11 +24,11 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/instance"
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/query/executor"
-	mongoExecutor "github.com/percona/qan-agent/query/executor/mongo"
-	mysqlExecutor "github.com/percona/qan-agent/query/executor/mysql"
+	"github.com/percona/qan-agent/query/plugin"
+	"github.com/percona/qan-agent/query/plugin/mongo"
+	"github.com/percona/qan-agent/query/plugin/mysql"
+	"github.com/percona/qan-agent/query/plugin/os"
 )
 
 const (
@@ -38,19 +38,17 @@ const (
 type Manager struct {
 	logger       *pct.Logger
 	instanceRepo *instance.Repo
-	connFactory  mysql.ConnectionFactory
 	// --
-	executors map[string]executor.Executor
-	running   bool
+	plugins map[string]plugin.Plugin
+	running bool
 	sync.Mutex
 	status *pct.Status
 }
 
-func NewManager(logger *pct.Logger, instanceRepo *instance.Repo, connFactory mysql.ConnectionFactory) *Manager {
+func NewManager(logger *pct.Logger, instanceRepo *instance.Repo) *Manager {
 	m := &Manager{
 		logger:       logger,
 		instanceRepo: instanceRepo,
-		connFactory:  connFactory,
 		// --
 		status: pct.NewStatus([]string{SERVICE_NAME}),
 	}
@@ -122,12 +120,21 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 		return cmd.Reply(nil, err)
 	}
 
-	e, ok := m.executors[in.Subsystem]
+	p, ok := m.plugins[in.Subsystem]
 	if !ok {
-		return cmd.Reply(nil, fmt.Errorf("can't execute %s queries", in.Subsystem))
+		return cmd.Reply(nil, fmt.Errorf("can't query %s", in.Subsystem))
 	}
 
-	return e.Handle(cmd, in)
+	data, err := p.Handle(cmd, in)
+	if err != nil {
+		switch err.(type) {
+		case plugin.UnknownCmdError:
+			return cmd.Reply(nil, err)
+		}
+		return cmd.Reply(nil, fmt.Errorf("cmd '%s' for subsystem '%s' failed: %s", cmd.Cmd, in.Subsystem, err))
+	}
+
+	return cmd.Reply(data)
 }
 
 func (m *Manager) Status() map[string]string {
@@ -150,12 +157,13 @@ func (m *Manager) loadPlugins() error {
 		return err
 	}
 
-	m.executors["mysql"] = mysqlExecutor.New()
-	m.executors["mongo"] = mongoExecutor.New()
+	m.plugins["mysql"] = mysql.New()
+	m.plugins["mongo"] = mongo.New()
+	m.plugins["os"] = os.New()
 	return nil
 }
 
 func (m *Manager) unloadPlugins() error {
-	m.executors = map[string]executor.Executor{}
+	m.plugins = map[string]plugin.Plugin{}
 	return nil
 }

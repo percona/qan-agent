@@ -15,12 +15,10 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package executor
+package plugin
 
-import (
-	"github.com/percona/pmm/proto"
-)
+type UnknownCmdError string
 
-type Executor interface {
-	Handle(cmd *proto.Cmd, in proto.Instance) *proto.Reply
+func (e UnknownCmdError) Error() string {
+	return "Unknown command: " + string(e)
 }
