@@ -493,13 +493,13 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 		*/
 		agent.client.Disconnect()
 		return nil // no reply
-	// @obsolete by query/plugin/os/summary
+	// TODO @obsolete by query/plugin/os/summary
 	case "GetServerSummary":
 		data, errs = agent.handleGetServerSummary()
-	// @obsolete by query/plugin/mysql/summary
+	// TODO @obsolete by query/plugin/mysql/summary
 	case "GetMySQLSummary":
 		data, errs = agent.handleGetMySQLSummary()
-	// @obsolete by query/plugin/mongo/summary
+	// TODO @obsolete by query/plugin/mongo/summary
 	case "GetMongoSummary":
 		data, errs = agent.handleGetMongoSummary()
 	default:
