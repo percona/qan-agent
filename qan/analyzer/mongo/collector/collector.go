@@ -7,7 +7,7 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -34,9 +34,7 @@ type Collector struct {
 	docsChan chan proto.SystemProfile
 
 	// status
-	pingChan chan struct{} //  ping goroutine for status
-	pongChan chan status   // receive status from goroutine
-	status   map[string]string
+	status *status.Status
 
 	// state
 	sync.RWMutex                 // Lock() to protect internal consistency of the service
@@ -60,9 +58,8 @@ func (self *Collector) Start() (<-chan proto.SystemProfile, error) {
 	self.doneChan = make(chan struct{})
 
 	// set status
-	self.pingChan = make(chan struct{})
-	self.pongChan = make(chan status)
-	self.status = map[string]string{}
+	stats := &stats{}
+	self.status = status.New(stats)
 
 	// start a goroutine and Add() it to WaitGroup
 	// so we could later Wait() for it to finish
@@ -80,8 +77,7 @@ func (self *Collector) Start() (<-chan proto.SystemProfile, error) {
 		self.dialer,
 		self.docsChan,
 		self.doneChan,
-		self.pingChan,
-		self.pongChan,
+		stats,
 		ready,
 	)
 
@@ -123,19 +119,10 @@ func (self *Collector) Status() map[string]string {
 		return nil
 	}
 
-	go self.sendPing()
-	profile := getProfile(self.dialInfo, self.dialer)
+	s := self.status.Map()
+	s["profile"] = getProfile(self.dialInfo, self.dialer)
 
-	status := self.recvPong()
-
-	self.Lock()
-	defer self.Unlock()
-	for k, v := range status {
-		self.status[k] = v
-	}
-	self.status["profile"] = profile
-
-	return self.status
+	return s
 }
 
 func getProfile(
@@ -151,8 +138,9 @@ func getProfile(
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
 	result := struct {
-		Was    int
-		Slowms int
+		Was       int
+		Slowms    int
+		Ratelimit int
 	}{}
 	err = session.DB(dialInfo.Database).Run(
 		bson.M{
@@ -164,30 +152,27 @@ func getProfile(
 		return fmt.Sprintf("%s", err)
 	}
 
-	return fmt.Sprintf("was: %d, slowms: %d", result.Was, result.Slowms)
+	if result.Was == 0 {
+		return "Profiling disabled. Please enable profiling with `db.setProfilingLevel(2)` (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/)."
+	}
+
+	if result.Was == 1 {
+		return fmt.Sprintf("Profiling enabled for slow queries only (slowms: %d)", result.Slowms)
+	}
+
+	if result.Was == 2 {
+		// if result.Ratelimit == 0 we assume ratelimit is not supported
+		// so all queries have ratelimit = 1 (log all queries)
+		if result.Ratelimit == 0 {
+			result.Ratelimit = 1
+		}
+		return fmt.Sprintf("Profiling enabled for all queries (ratelimit: %d)", result.Ratelimit)
+	}
+	return fmt.Sprintf("Unknown profiling state: %d", result.Was)
 }
 
 func (self *Collector) Name() string {
 	return "collector"
-}
-
-func (self *Collector) sendPing() {
-	select {
-	case self.pingChan <- struct{}{}:
-	case <-time.After(1 * time.Second):
-		// timeout carry on
-	}
-}
-
-func (self *Collector) recvPong() map[string]string {
-	select {
-	case s := <-self.pongChan:
-		return state.StatusToMap(s)
-	case <-time.After(1 * time.Second):
-		// timeout carry on
-	}
-
-	return nil
 }
 
 func start(
@@ -196,8 +181,7 @@ func start(
 	dialer pmgo.Dialer,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
-	pingChan <-chan struct{},
-	pongChan chan<- status,
+	stats *stats,
 	ready *sync.Cond,
 ) {
 	// signal WaitGroup when goroutine finished
@@ -205,7 +189,6 @@ func start(
 
 	dialInfo.Timeout = MgoTimeoutDialInfo
 	firstTry := true
-	status := status{}
 	for {
 		// make a connection and collect data
 		connectAndCollect(
@@ -213,18 +196,9 @@ func start(
 			dialer,
 			docsChan,
 			doneChan,
-			pingChan,
-			pongChan,
-			status,
+			stats,
 			ready,
 		)
-
-		// After first failure in connection we signal that we are ready anyway
-		// this way service starts, and will automatically connect when db is available.
-		if firstTry {
-			signalReady(ready)
-			firstTry = false
-		}
 
 		select {
 		// check if we should shutdown
@@ -232,6 +206,13 @@ func start(
 			return
 		// wait some time before reconnecting
 		case <-time.After(1 * time.Second):
+		}
+
+		// After first failure in connection we signal that we are ready anyway
+		// this way service starts, and will automatically connect when db is available.
+		if firstTry {
+			signalReady(ready)
+			firstTry = false
 		}
 	}
 }
@@ -241,9 +222,7 @@ func connectAndCollect(
 	dialer pmgo.Dialer,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
-	pingChan <-chan struct{},
-	pongChan chan<- status,
-	status status,
+	stats *stats,
 	ready *sync.Cond,
 ) {
 	session, err := dialer.DialWithInfo(dialInfo)
@@ -256,10 +235,13 @@ func connectAndCollect(
 	session.SetSyncTimeout(MgoTimeoutSessionSync)
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
+	now := bson.Now()
+	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
+
 	collection := session.DB(dialInfo.Database).C("system.profile")
 	for {
 		query := bson.M{
-			"ts": bson.M{"$gt": bson.Now()},
+			"ts": bson.M{"$gt": now},
 			"op": bson.M{"$nin": []string{"getmore", "delete"}},
 		}
 		collect(
@@ -267,9 +249,7 @@ func connectAndCollect(
 			query,
 			docsChan,
 			doneChan,
-			pingChan,
-			pongChan,
-			status,
+			stats,
 			ready,
 		)
 
@@ -288,13 +268,14 @@ func collect(
 	query bson.M,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
-	pingChan <-chan struct{},
-	pongChan chan<- status,
-	status status,
+	stats *stats,
 	ready *sync.Cond,
 ) {
 	iterator := collection.Find(query).Sort("$natural").Tail(MgoTimeoutTail)
 	defer iterator.Close()
+
+	stats.IteratorCreated.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
+	stats.IteratorCounter.Add(1)
 
 	// we got iterator, we are ready
 	signalReady(ready)
@@ -308,17 +289,9 @@ func collect(
 			// just continue if not
 		}
 
-		// check if we got ping
-		select {
-		case <-pingChan:
-			go pong(status, pongChan)
-		default:
-			// just continue if not
-		}
-
 		doc := proto.SystemProfile{}
 		for iterator.Next(&doc) {
-			status.In += 1
+			stats.In.Add(1)
 
 			// check if we should shutdown
 			select {
@@ -328,30 +301,28 @@ func collect(
 				// just continue if not
 			}
 
-			// check if we got ping
-			select {
-			case <-pingChan:
-				go pong(status, pongChan)
-			default:
-				// just continue if not
-			}
-
-			// try to push doc
-			select {
-			case docsChan <- doc:
-				status.Out += 1
+		FOR:
+			for {
+				// try to push doc
+				select {
+				case docsChan <- doc:
+					stats.Out.Add(1)
+					break FOR
 				// or exit if we can't push the doc and we should shutdown
 				// note that if we can push the doc then exiting is not guaranteed
 				// that's why we have separate `select <-doneChan` above
-			case <-doneChan:
-				return
+				case <-doneChan:
+					return
+				}
 			}
 		}
-		if iterator.Err() != nil {
-			status.ErrIter += 1
+		if err := iterator.Err(); err != nil {
+			stats.IteratorErrCounter.Add(1)
+			stats.IteratorErrLast.Set(err.Error())
 			return
 		}
 		if iterator.Timeout() {
+			stats.IteratorTimeout.Add(1)
 			continue
 		}
 	}
@@ -361,18 +332,4 @@ func signalReady(ready *sync.Cond) {
 	ready.L.Lock()
 	defer ready.L.Unlock()
 	ready.Broadcast()
-}
-
-func pong(status status, pongChan chan<- status) {
-	select {
-	case pongChan <- status:
-	case <-time.After(1 * time.Second):
-		// timeout carry on
-	}
-}
-
-type status struct {
-	In      uint `name:"in"`
-	Out     uint `name:"out"`
-	ErrIter uint `name:"err-iter"`
 }

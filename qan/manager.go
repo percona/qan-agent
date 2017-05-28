@@ -184,7 +184,7 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 			switch err {
 			case ErrAlreadyRunning:
 				// App reports this error message to user.
-				err = fmt.Errorf("Query Analytics is already running on instance %s."+
+				err = fmt.Errorf("Query Analytics is already running on instance %s. "+
 					"To reconfigure or restart Query Analytics, stop then start it again.",
 					uuid)
 				return cmd.Reply(nil, err)
@@ -322,6 +322,7 @@ func (m *Manager) startAnalyzer(setConfig pc.QAN) (err error) {
 	m.logger.Debug("startAnalyzer:call")
 	defer m.logger.Debug("startAnalyzer:return")
 
+	m.logger.Info(fmt.Sprintf("%#v", setConfig))
 	uuid := setConfig.UUID
 
 	// Check if an analyzer for this instance already exists.
@@ -335,13 +336,19 @@ func (m *Manager) startAnalyzer(setConfig pc.QAN) (err error) {
 		return fmt.Errorf("cannot get instance %s: %s", uuid, err)
 	}
 
+	uuidMinLen := 8
+	if len(protoInstance.UUID) < uuidMinLen {
+		return fmt.Errorf("Instance UUID '%s' has %d chars, min %d chars required", protoInstance.UUID, len(protoInstance.UUID), uuidMinLen)
+	}
+	shortInstanceUUID := protoInstance.UUID[0:8]
+
 	analyzerType := protoInstance.Subsystem
 	analyzerName := strings.Join(
 		[]string{
 			pkg,
 			"analyzer",
 			analyzerType,
-			protoInstance.UUID[0:8],
+			shortInstanceUUID,
 		},
 		"-",
 	)
