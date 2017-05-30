@@ -8,6 +8,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -147,6 +148,7 @@ func getProfile(
 		return fmt.Sprintf("%s", err)
 	}
 	defer session.Close()
+	session.SetMode(mgo.Eventual, true)
 	session.SetSyncTimeout(MgoTimeoutSessionSync)
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
@@ -251,8 +253,7 @@ func connectAndCollect(
 		return
 	}
 	defer session.Close()
-
-	// set timeouts or otherwise iter.Next() might hang forever
+	session.SetMode(mgo.Eventual, true)
 	session.SetSyncTimeout(MgoTimeoutSessionSync)
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
