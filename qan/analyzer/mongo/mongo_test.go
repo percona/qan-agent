@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMongoAnalyzer_StartStopStatus(t *testing.T) {
+func TestMongo_StartStopStatus(t *testing.T) {
 	dataChan := make(chan interface{})
 	logChan := make(chan proto.LogEntry)
 
@@ -30,14 +30,28 @@ func TestMongoAnalyzer_StartStopStatus(t *testing.T) {
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 	err := plugin.Start()
 	assert.Nil(t, err)
+	// some values are unpredictable, e.g. time but they should exist
+	shouldExist := "<should exist>"
 	expect := map[string]string{
-		"plugin":                   "Running",
-		"plugin-collector-profile": "was: 2, slowms: 100",
+		"plugin":                            "Running",
+		"plugin-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
+		"plugin-collector-iterator-counter": "1",
+		"plugin-collector-iterator-created": shouldExist,
+		"plugin-collector-started":          shouldExist,
+		"plugin-parser-started":             shouldExist,
+		"plugin-parser-interval-start":      shouldExist,
+		"plugin-parser-interval-end":        shouldExist,
+		"plugin-sender-started":             shouldExist,
 	}
+
 	actual := plugin.Status()
-	delete(actual, "plugin-collector-in")
-	delete(actual, "plugin-parser-interval-start")
-	delete(actual, "plugin-parser-interval-end")
+	for k, v := range expect {
+		if v == shouldExist {
+			assert.Contains(t, actual, k)
+			delete(actual, k)
+			delete(expect, k)
+		}
+	}
 	assert.Equal(t, expect, actual)
 
 	err = plugin.Stop()

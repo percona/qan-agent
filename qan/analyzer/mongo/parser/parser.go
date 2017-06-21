@@ -7,10 +7,10 @@ import (
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
+	mstats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/state"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
@@ -35,9 +35,7 @@ type Parser struct {
 	reportChan chan *qan.Report
 
 	// status
-	pingChan chan struct{} //  ping goroutine for status
-	pongChan chan status   // receive status from goroutine
-	status   map[string]string
+	status *status.Status
 
 	// state
 	sync.RWMutex                 // Lock() to protect internal consistency of the service
@@ -67,9 +65,8 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 	}
 
 	// set status
-	self.pingChan = make(chan struct{})
-	self.pongChan = make(chan status)
-	self.status = map[string]string{}
+	stats := &stats{}
+	self.status = status.New(stats)
 
 	// start a goroutine and Add() it to WaitGroup
 	// so we could later Wait() for it to finish
@@ -80,9 +77,8 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 		self.docsChan,
 		self.reportChan,
 		self.config,
-		self.pingChan,
-		self.pongChan,
 		self.doneChan,
+		stats,
 	)
 
 	self.running = true
@@ -120,39 +116,11 @@ func (self *Parser) Status() map[string]string {
 		return nil
 	}
 
-	go self.sendPing()
-	status := self.recvPong()
-
-	self.Lock()
-	defer self.Unlock()
-	for k, v := range status {
-		self.status[k] = v
-	}
-
-	return self.status
+	return self.status.Map()
 }
 
 func (self *Parser) Name() string {
 	return "parser"
-}
-
-func (self *Parser) sendPing() {
-	select {
-	case self.pingChan <- struct{}{}:
-	case <-time.After(1 * time.Second):
-		// timeout carry on
-	}
-}
-
-func (self *Parser) recvPong() map[string]string {
-	select {
-	case s := <-self.pongChan:
-		return state.StatusToMap(s)
-	case <-time.After(1 * time.Second):
-		// timeout carry on
-	}
-
-	return nil
 }
 
 func start(
@@ -160,15 +128,14 @@ func start(
 	docsChan <-chan proto.SystemProfile,
 	reportChan chan<- *qan.Report,
 	config pc.QAN,
-	pingChan <-chan struct{},
-	pongChan chan<- status,
 	doneChan <-chan struct{},
+	stats *stats,
 ) {
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := stats.New(fp)
+	s := mstats.New(fp)
 
 	d := time.Duration(config.Interval) * time.Second
 
@@ -179,22 +146,15 @@ func start(
 	// create ending time by adding interval
 	timeEnd := timeStart.Add(d)
 
-	status := status{}
+	// update stats
+	stats.IntervalStart.Set(timeStart.Format("2006-01-02 15:04:05"))
+	stats.IntervalEnd.Set(timeEnd.Format("2006-01-02 15:04:05"))
+	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
 	for {
 		// check if we should shutdown
 		select {
 		case <-doneChan:
 			return
-		default:
-			// just continue if not
-		}
-
-		// check if we got ping
-		select {
-		case <-pingChan:
-			status.IntervalStart = timeStart.Format("2006-01-02 15:04:05")
-			status.IntervalEnd = timeEnd.Format("2006-01-02 15:04:05")
-			go pong(status, pongChan)
 		default:
 			// just continue if not
 		}
@@ -222,7 +182,7 @@ func start(
 				// sent report over reportChan.
 				select {
 				case reportChan <- qanReport:
-					status.OutReports += 1
+					stats.OutReports.Add(1)
 				// or exit if we can't push over the channel and we should shutdown
 				// note that if we can push over the channel then exiting is not guaranteed
 				// that's why we have separate `select <-doneChan`
@@ -235,40 +195,39 @@ func start(
 				// update time intervals
 				timeStart = ts.Truncate(d)
 				timeEnd = timeStart.Add(d)
+				// update stats
+				stats.IntervalStart.Set(timeStart.Format("2006-01-02 15:04:05"))
+				stats.IntervalEnd.Set(timeEnd.Format("2006-01-02 15:04:05"))
 			}
 
-			status.InDocs += 1
+			stats.InDocs.Add(1)
 			if len(doc.Query) == 0 {
-				status.SkippedDocs += 1
+				stats.SkippedDocs.Add(1)
 				continue
 			}
 
 			err := s.Add(doc)
 			switch err.(type) {
 			case nil:
-				status.OkDocs += 1
-			case *stats.StatsFingerprintError:
-				status.ErrFingerprint += 1
-			case *stats.StatsGetQueryFieldError:
-				status.ErrGetQuery += 1
+				stats.OkDocs.Add(1)
+			case *mstats.StatsFingerprintError:
+				stats.ErrFingerprint.Add(1)
+			case *mstats.StatsGetQueryFieldError:
+				stats.ErrGetQuery.Add(1)
 			default:
-				status.ErrParse += 1
+				stats.ErrParse.Add(1)
 			}
-		// doneChan and pingChan needs to be repeated in this select as docsChan can block
-		// doneChan and pingChan needs to be also in separate select statements as docsChan
-		// could be always picked since select picks channels pseudo randomly
+		// doneChan needs to be repeated in this select as docsChan can block
+		// doneChan needs to be also in separate select statement
+		// as docsChan could be always picked since select picks channels pseudo randomly
 		case <-doneChan:
 			return
-		case <-pingChan:
-			status.IntervalStart = timeStart.Format("2006-01-02 15:04:05")
-			status.IntervalEnd = timeEnd.Format("2006-01-02 15:04:05")
-			go pong(status, pongChan)
 		}
 	}
 
 }
 
-func createResult(s *stats.Stats, interval int64, exampleQueries bool) *report.Result {
+func createResult(s *mstats.Stats, interval int64, exampleQueries bool) *report.Result {
 	queries := s.Queries()
 	global := event.NewClass("", "", false)
 	queryStats := queries.CalcQueriesStats(interval)
@@ -307,27 +266,7 @@ func createResult(s *stats.Stats, interval int64, exampleQueries bool) *report.R
 
 }
 
-func pong(status status, pongChan chan<- status) {
-	select {
-	case pongChan <- status:
-	case <-time.After(1 * time.Second):
-		// timeout carry on
-	}
-}
-
-type status struct {
-	InDocs         uint   `name:"docks-in"`
-	OkDocs         uint   `name:"docks-ok"`
-	OutReports     uint   `name:"reports-out"`
-	IntervalStart  string `name:"interval-start"`
-	IntervalEnd    string `name:"interval-end"`
-	ErrFingerprint uint   `name:"err-fingerprint"`
-	ErrParse       uint   `name:"err-parse"`
-	ErrGetQuery    uint   `name:"err-get-query"`
-	SkippedDocs    uint   `name:"skipped-docs"`
-}
-
-func newEventNumberStats(s stats.Statistics) *event.NumberStats {
+func newEventNumberStats(s mstats.Statistics) *event.NumberStats {
 	return &event.NumberStats{
 		Sum: uint64(s.Total),
 		Min: uint64(s.Min),
@@ -338,7 +277,7 @@ func newEventNumberStats(s stats.Statistics) *event.NumberStats {
 	}
 }
 
-func newEventTimeStats(s stats.Statistics) *event.TimeStats {
+func newEventTimeStats(s mstats.Statistics) *event.TimeStats {
 	return &event.TimeStats{
 		Sum: s.Total,
 		Min: s.Min,

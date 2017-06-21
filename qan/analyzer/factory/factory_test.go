@@ -49,28 +49,42 @@ func TestFactory_MakeMongo(t *testing.T) {
 	)
 	protoInstance := proto.Instance{}
 	serviceName := "plugin"
-	analyzer, err := factory.Make(
+	plugin, err := factory.Make(
 		"mongo",
 		serviceName,
 		protoInstance,
 	)
 	assert.Nil(t, err)
 
-	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
-	err = analyzer.Start()
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
+	err = plugin.Start()
 	assert.Nil(t, err)
+	// some values are unpredictable, e.g. time but they should exist
+	shouldExist := "<should exist>"
 	expect := map[string]string{
-		"plugin":                   "Running",
-		"plugin-collector-profile": "was: 2, slowms: 100",
+		"plugin":                            "Running",
+		"plugin-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
+		"plugin-collector-iterator-counter": "1",
+		"plugin-collector-iterator-created": shouldExist,
+		"plugin-collector-started":          shouldExist,
+		"plugin-parser-started":             shouldExist,
+		"plugin-parser-interval-start":      shouldExist,
+		"plugin-parser-interval-end":        shouldExist,
+		"plugin-sender-started":             shouldExist,
 	}
-	actual := analyzer.Status()
-	delete(actual, "plugin-collector-in")
-	delete(actual, "plugin-parser-interval-start")
-	delete(actual, "plugin-parser-interval-end")
+
+	actual := plugin.Status()
+	for k, v := range expect {
+		if v == shouldExist {
+			assert.Contains(t, actual, k)
+			delete(actual, k)
+			delete(expect, k)
+		}
+	}
 	assert.Equal(t, expect, actual)
-	err = analyzer.Stop()
+	err = plugin.Stop()
 	assert.Nil(t, err)
-	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 }
 
 func TestFactory_MakeMySQL(t *testing.T) {
@@ -94,7 +108,7 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	)
 	protoInstance := proto.Instance{}
 	serviceName := "plugin"
-	analyzer, err := factory.Make(
+	plugin, err := factory.Make(
 		"mysql",
 		serviceName,
 		protoInstance,
@@ -104,10 +118,10 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	pcQan := pc.QAN{
 		CollectFrom: "perfschema",
 	}
-	analyzer.SetConfig(pcQan)
+	plugin.SetConfig(pcQan)
 
-	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
-	err = analyzer.Start()
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
+	err = plugin.Start()
 	assert.Nil(t, err)
 	expected := map[string]string{
 		"plugin":               "",
@@ -116,8 +130,8 @@ func TestFactory_MakeMySQL(t *testing.T) {
 		"plugin-worker":        "",
 		"plugin-worker-last":   "",
 	}
-	assert.Equal(t, expected, analyzer.Status())
-	err = analyzer.Stop()
+	assert.Equal(t, expected, plugin.Status())
+	err = plugin.Stop()
 	assert.Nil(t, err)
-	assert.Equal(t, map[string]string{serviceName: "Not running"}, analyzer.Status())
+	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 }
