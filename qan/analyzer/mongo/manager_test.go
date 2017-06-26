@@ -87,6 +87,8 @@ func TestRealStartTool(t *testing.T) {
 		"qan-analyzer-mongo-12345678-parser-started":             shouldExist,
 		"qan-analyzer-mongo-12345678-parser-interval-start":      shouldExist,
 		"qan-analyzer-mongo-12345678-parser-interval-end":        shouldExist,
+		"qan-analyzer-mongo-12345678-parser-docs-in":             "1",
+		"qan-analyzer-mongo-12345678-parser-docs-ok":             "1",
 		"qan-analyzer-mongo-12345678-sender-started":             shouldExist,
 	}
 	for k, v := range expect {

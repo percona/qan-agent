@@ -41,6 +41,8 @@ func TestMongo_StartStopStatus(t *testing.T) {
 		"plugin-parser-started":             shouldExist,
 		"plugin-parser-interval-start":      shouldExist,
 		"plugin-parser-interval-end":        shouldExist,
+		"plugin-parser-docs-in":             "1",
+		"plugin-parser-docs-ok":             "1",
 		"plugin-sender-started":             shouldExist,
 	}
 
