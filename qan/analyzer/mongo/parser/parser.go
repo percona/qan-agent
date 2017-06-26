@@ -4,14 +4,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/percona/go-mysql/event"
-	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	mstats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/aggregator"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
-	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
 const (
@@ -134,21 +132,12 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := mstats.New(fp)
-
-	d := time.Duration(config.Interval) * time.Second
-
-	// truncate to the interval e.g 12:15:35 with 1 minute interval is gonna be 12:15:00
-	timeStart := time.Now().UTC().Truncate(d)
-	// skip first interval as it is partial
-	timeStart = timeStart.Add(d)
-	// create ending time by adding interval
-	timeEnd := timeStart.Add(d)
+	// create aggregator which collects documents and aggregates them into qan report
+	a := aggregator.New(config)
 
 	// update stats
-	stats.IntervalStart.Set(timeStart.Format("2006-01-02 15:04:05"))
-	stats.IntervalEnd.Set(timeEnd.Format("2006-01-02 15:04:05"))
+	stats.IntervalStart.Set(a.TimeStart().Format("2006-01-02 15:04:05"))
+	stats.IntervalEnd.Set(a.TimeEnd().Format("2006-01-02 15:04:05"))
 	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
 	for {
 		// check if we should shutdown
@@ -166,47 +155,11 @@ func start(
 				return
 			}
 
-			ts := doc.Ts.UTC()
-			if ts.Before(timeStart) {
-				continue
-			}
-
-			// time to prepare data to sent
-			if ts.After(timeEnd) {
-				// create result
-				result := createResult(s, int64(config.Interval), config.ExampleQueries)
-
-				// translate result into report
-				qanReport := report.MakeReport(config, timeStart, timeEnd, nil, result)
-
-				// sent report over reportChan.
-				select {
-				case reportChan <- qanReport:
-					stats.OutReports.Add(1)
-				// or exit if we can't push over the channel and we should shutdown
-				// note that if we can push over the channel then exiting is not guaranteed
-				// that's why we have separate `select <-doneChan`
-				case <-doneChan:
-					return
-				}
-
-				// reset stats
-				s.Reset()
-				// update time intervals
-				timeStart = ts.Truncate(d)
-				timeEnd = timeStart.Add(d)
-				// update stats
-				stats.IntervalStart.Set(timeStart.Format("2006-01-02 15:04:05"))
-				stats.IntervalEnd.Set(timeEnd.Format("2006-01-02 15:04:05"))
-			}
-
+			// we got new doc, increase stats
 			stats.InDocs.Add(1)
-			if len(doc.Query) == 0 {
-				stats.SkippedDocs.Add(1)
-				continue
-			}
 
-			err := s.Add(doc)
+			// aggregate the doc
+			report, err := a.Add(doc)
 			switch err.(type) {
 			case nil:
 				stats.OkDocs.Add(1)
@@ -217,6 +170,24 @@ func start(
 			default:
 				stats.ErrParse.Add(1)
 			}
+
+			// check if we have new report
+			if report != nil {
+				// sent report over reportChan.
+				select {
+				case reportChan <- report:
+					stats.OutReports.Add(1)
+				// or exit if we can't push over the channel and we should shutdown
+				// note that if we can push over the channel then exiting is not guaranteed
+				// that's why we have separate `select <-doneChan`
+				case <-doneChan:
+					return
+				}
+				// update stats
+				stats.IntervalStart.Set(a.TimeStart().Format("2006-01-02 15:04:05"))
+				stats.IntervalEnd.Set(a.TimeEnd().Format("2006-01-02 15:04:05"))
+			}
+
 		// doneChan needs to be repeated in this select as docsChan can block
 		// doneChan needs to be also in separate select statement
 		// as docsChan could be always picked since select picks channels pseudo randomly
@@ -225,65 +196,4 @@ func start(
 		}
 	}
 
-}
-
-func createResult(s *mstats.Stats, interval int64, exampleQueries bool) *report.Result {
-	queries := s.Queries()
-	global := event.NewClass("", "", false)
-	queryStats := queries.CalcQueriesStats(interval)
-	classes := []*event.Class{}
-	for _, queryInfo := range queryStats {
-		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, exampleQueries)
-		if exampleQueries {
-			class.Example = &event.Example{
-				QueryTime: queryInfo.QueryTime.Total,
-				Db:        queryInfo.Namespace,
-				Query:     queryInfo.Query,
-			}
-		}
-
-		metrics := event.NewMetrics()
-
-		metrics.TimeMetrics["Query_time"] = newEventTimeStats(queryInfo.QueryTime)
-
-		// @todo we map below metrics to MySQL equivalents according to PMM-830
-		metrics.NumberMetrics["Bytes_sent"] = newEventNumberStats(queryInfo.ResponseLength)
-		metrics.NumberMetrics["Rows_sent"] = newEventNumberStats(queryInfo.Returned)
-		metrics.NumberMetrics["Rows_examined"] = newEventNumberStats(queryInfo.Scanned)
-
-		class.Metrics = metrics
-		class.TotalQueries = uint(queryInfo.Count)
-		classes = append(classes, class)
-
-		// Add the class to the global metrics.
-		global.AddClass(class)
-	}
-
-	return &report.Result{
-		Global: global,
-		Class:  classes,
-	}
-
-}
-
-func newEventNumberStats(s mstats.Statistics) *event.NumberStats {
-	return &event.NumberStats{
-		Sum: uint64(s.Total),
-		Min: uint64(s.Min),
-		Avg: uint64(s.Avg),
-		Med: uint64(s.Median),
-		P95: uint64(s.Pct95),
-		Max: uint64(s.Max),
-	}
-}
-
-func newEventTimeStats(s mstats.Statistics) *event.TimeStats {
-	return &event.TimeStats{
-		Sum: s.Total,
-		Min: s.Min,
-		Avg: s.Avg,
-		Med: s.Median,
-		P95: s.Pct95,
-		Max: s.Max,
-	}
 }
