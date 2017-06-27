@@ -1,7 +1,6 @@
 package aggregator
 
 import (
-	"sync"
 	"time"
 
 	"github.com/percona/go-mysql/event"
@@ -13,29 +12,26 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
+// New returns configured *Aggregator
 func New(timeStart time.Time, config pc.QAN) *Aggregator {
-	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	s := stats.New(fp)
-
-	d := time.Duration(config.Interval) * time.Second
-
-	// truncate to the interval e.g 12:15:35 with 1 minute interval it will be 12:15:00
-	timeStart = timeStart.UTC().Truncate(d)
-	// create ending time by adding interval
-	timeEnd := timeStart.Add(d)
-
-	return &Aggregator{
-		// dependencies
-		timeStart: timeStart,
-		config:    config,
-
-		// internal
-		timeEnd: timeEnd,
-		d:       d,
-		stats:   s,
+	aggregator := &Aggregator{
+		config: config,
 	}
+
+	// create duration from interval
+	aggregator.d = time.Duration(config.Interval) * time.Second
+
+	// create mongolib stats
+	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
+	aggregator.stats = stats.New(fp)
+
+	// create new interval
+	aggregator.newInterval(timeStart)
+
+	return aggregator
 }
 
+// Aggregator aggregates system.profile document
 type Aggregator struct {
 	// dependencies
 	config pc.QAN
@@ -44,13 +40,10 @@ type Aggregator struct {
 	timeStart time.Time
 	timeEnd   time.Time
 	d         time.Duration
-
-	stats *stats.Stats
-
-	// state
-	sync.RWMutex // Lock() to protect internal consistency of the service
+	stats     *stats.Stats
 }
 
+// Add aggregates new system.profile document and returns report if it's ready
 func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
 	ts := doc.Ts.UTC()
 
@@ -59,47 +52,49 @@ func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
 		return nil, nil
 	}
 
-	return self.NextReport(ts), self.stats.Add(doc)
+	return self.Interval(ts), self.stats.Add(doc)
 }
 
-func (self *Aggregator) NextReport(ts time.Time) *qan.Report {
-	// if time is greater than interval then we are done with this interval
-	if !ts.Before(self.timeEnd) {
-		// reset stats
-		defer self.resetStats(ts)
-
-		// let's check if we have anything to send
-		if len(self.stats.Queries()) > 0 {
-			// create result
-			result := self.createResult()
-
-			// translate result into report
-			return report.MakeReport(self.config, self.timeStart, self.timeEnd, nil, result)
-		}
+// Interval sets interval if necessary and returns *qan.Report for old interval if not empty
+func (self *Aggregator) Interval(ts time.Time) *qan.Report {
+	// if time is before interval end then we are still in the same interval, nothing to do
+	if ts.Before(self.timeEnd) {
+		return nil
 	}
 
-	// we are not done with the interval so no report yet
-	return nil
+	// create new interval
+	defer self.newInterval(ts)
+
+	// let's check if we have anything to send for current interval
+	if len(self.stats.Queries()) == 0 {
+		// if there are no queries then we don't create report #PMM-927
+		return nil
+	}
+
+	// create result
+	result := self.createResult()
+
+	// translate result into report and return it
+	return report.MakeReport(self.config, self.timeStart, self.timeEnd, nil, result)
 }
 
+// TimeStart returns start time for current interval
 func (self *Aggregator) TimeStart() time.Time {
-	self.RLock()
-	defer self.RUnlock()
 	return self.timeStart
 }
 
+// TimeEnd returns end time for current interval
 func (self *Aggregator) TimeEnd() time.Time {
-	self.RLock()
-	defer self.RUnlock()
 	return self.timeEnd
 }
 
-func (self *Aggregator) resetStats(ts time.Time) {
+func (self *Aggregator) newInterval(ts time.Time) {
 	// reset stats
 	self.stats.Reset()
 
-	// update time intervals
-	self.timeStart = ts.Truncate(self.d)
+	// truncate to the duration e.g 12:15:35 with 1 minute duration it will be 12:15:00
+	self.timeStart = ts.UTC().Truncate(self.d)
+	// create ending time by adding interval
 	self.timeEnd = self.timeStart.Add(self.d)
 }
 
