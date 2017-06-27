@@ -133,7 +133,7 @@ func start(
 	defer wg.Done()
 
 	// create aggregator which collects documents and aggregates them into qan report
-	a := aggregator.New(config)
+	a := aggregator.New(time.Now(), config)
 
 	// update stats
 	stats.IntervalStart.Set(a.TimeStart().Format("2006-01-02 15:04:05"))
