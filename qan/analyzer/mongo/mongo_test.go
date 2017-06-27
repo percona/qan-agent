@@ -4,13 +4,52 @@ import (
 	"context"
 	"testing"
 
+	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestMongo_StartStopStatus(t *testing.T) {
+	{
+		dialInfo, err := pmgo.ParseURL("")
+		assert.Nil(t, err)
+		dialer := pmgo.NewDialer()
+
+		session, err := dialer.DialWithInfo(dialInfo)
+		assert.Nil(t, err)
+		defer session.Close()
+
+		session.SetMode(mgo.Eventual, true)
+
+		result := struct {
+			Was       int
+			Slowms    int
+			Ratelimit int
+		}{}
+		err = session.DB(dialInfo.Database).Run(
+			bson.M{
+				"profile": 0,
+			},
+			&result,
+		)
+		assert.Nil(t, err)
+
+		err = session.DB(dialInfo.Database).C("system.profile").DropCollection()
+		assert.Nil(t, err)
+
+		err = session.DB(dialInfo.Database).Run(
+			bson.M{
+				"profile": 2,
+			},
+			&result,
+		)
+		assert.Nil(t, err)
+	}
+
 	dataChan := make(chan interface{})
 	logChan := make(chan proto.LogEntry)
 
@@ -41,8 +80,6 @@ func TestMongo_StartStopStatus(t *testing.T) {
 		"plugin-parser-started":             shouldExist,
 		"plugin-parser-interval-start":      shouldExist,
 		"plugin-parser-interval-end":        shouldExist,
-		"plugin-parser-docs-in":             "1",
-		"plugin-parser-docs-ok":             "1",
 		"plugin-sender-started":             shouldExist,
 	}
 
