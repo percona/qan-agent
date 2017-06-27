@@ -84,7 +84,7 @@ func TestAggregator_Add(t *testing.T) {
 	}
 }
 
-// TestAggregator_Add_EmptyInterval verifies that no report is returned if there were no samples in interval
+// TestAggregator_Add_EmptyInterval verifies that no report is returned if there were no samples in interval #PMM-927
 func TestAggregator_Add_EmptyInterval(t *testing.T) {
 	t.Parallel()
 
