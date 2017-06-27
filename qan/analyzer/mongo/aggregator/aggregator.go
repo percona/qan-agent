@@ -13,25 +13,26 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
-func New(config pc.QAN) *Aggregator {
+func New(timeStart time.Time, config pc.QAN) *Aggregator {
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
 	s := stats.New(fp)
 
 	d := time.Duration(config.Interval) * time.Second
 
 	// truncate to the interval e.g 12:15:35 with 1 minute interval it will be 12:15:00
-	timeStart := time.Now().UTC().Truncate(d)
-	// skip first interval as it is partial
-	timeStart = timeStart.Add(d)
+	timeStart = timeStart.UTC().Truncate(d)
 	// create ending time by adding interval
 	timeEnd := timeStart.Add(d)
 
 	return &Aggregator{
+		// dependencies
 		timeStart: timeStart,
-		timeEnd:   timeEnd,
-		d:         d,
 		config:    config,
-		stats:     s,
+
+		// internal
+		timeEnd: timeEnd,
+		d:       d,
+		stats:   s,
 	}
 }
 
@@ -63,7 +64,7 @@ func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
 
 func (self *Aggregator) NextReport(ts time.Time) *qan.Report {
 	// if time is greater than interval then we are done with this interval
-	if ts.After(self.timeEnd) {
+	if !ts.Before(self.timeEnd) {
 		// reset stats
 		defer self.resetStats(ts)
 
@@ -128,6 +129,7 @@ func (self *Aggregator) createResult() *report.Result {
 
 		class.Metrics = metrics
 		class.TotalQueries = uint(queryInfo.Count)
+		class.UniqueQueries = 1
 		classes = append(classes, class)
 
 		// Add the class to the global metrics.
