@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+
+use warnings FATAL => 'all';
+use English;
+
+# This script checks if all modules necessary for testing Percona Toolkit
+# are installed.  It exits 0 if all modules are installed, else it exits
+# non-zero.
+#
+# This check is just for testing Percona Toolkit.  Other dev tasks, like
+# building release packages, require other modules and programs.
+
+my @required_modules = qw(
+   Data::Dumper
+   DBD::mysql
+   DBI
+   Digest::MD5
+   File::Basename
+   File::Find
+   File::Spec
+   File::Temp
+   File::Slurp
+   Getopt::Long
+   IO::File
+   List::Util
+   POSIX
+   Socket 
+   Test::More
+   Time::HiRes
+   Time::Local
+   JSON
+);
+
+# CentOS doesn't seem to have this in its repo.
+my @optional_modules = qw(
+   IO::Uncompress::Inflate
+   Net::Address::IP::Local
+);
+
+my $exit_status = 0;
+my $fmt         = "%-23s %8s\n";
+
+# Not a module but we want to know the Perl version.
+printf $fmt, "Perl", `perl -v | perl -ne '/v([\\d\\.]+)/ && print \$1'`, "";
+
+foreach my $module (@required_modules) {
+   my $version = "NA";
+   eval "require $module";
+   if ( $EVAL_ERROR ) { 
+      $exit_status = 1;
+   }
+   else {
+      $version = ${"${module}::VERSION"};
+   }
+   printf $fmt, $module, $version;
+}
+
+foreach my $module (@optional_modules) {
+   my $version = "NA";
+   eval "require $module";
+   if ( !$EVAL_ERROR ) { 
+      $version = ${"${module}::VERSION"};
+   }
+   printf $fmt, $module, $version;
+}
+
+exit $exit_status;
