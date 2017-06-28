@@ -27,9 +27,13 @@ addons:
 
 install:
   - go get -u github.com/Masterminds/glide
+  # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
+  - rm -rf vendor/
   - glide install
 
 before_script:
+  # check if vendor dir is correct
+  - git diff --exit-code
   # turn on profiling on mongo instance
   - mongo --eval 'db.setProfilingLevel(2)'
   # wait for MySQL to become available
