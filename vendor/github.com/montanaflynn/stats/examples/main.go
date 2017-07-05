@@ -2,14 +2,18 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/montanaflynn/stats"
 )
 
 func main() {
-	a, _ := stats.Min([]float64{1.1, 2, 3, 4, 5})
+
+	d := stats.LoadRawData([]interface{}{1.1, "2", 3.0, 4, "5"})
+
+	a, _ := stats.Min(d)
 	fmt.Println(a) // 1.1
 
-	a, _ = stats.Max([]float64{1.1, 2, 3, 4, 5})
+	a, _ = stats.Max(d)
 	fmt.Println(a) // 5
 
 	a, _ = stats.Sum([]float64{1.1, 2.2, 3.3})
@@ -29,6 +33,9 @@ func main() {
 
 	a, _ = stats.SampleVariance([]float64{1, 2, 3, 4, 5})
 	fmt.Println(a) // 2.5
+
+	a, _ = stats.MedianAbsoluteDeviationPopulation([]float64{1, 2, 3})
+	fmt.Println(a) // 1
 
 	a, _ = stats.StandardDeviationPopulation([]float64{1, 2, 3})
 	fmt.Println(a) // 0.816496580927726
