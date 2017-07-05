@@ -302,19 +302,15 @@ func collect(
 				// just continue if not
 			}
 
-		FOR:
-			for {
-				// try to push doc
-				select {
-				case docsChan <- doc:
-					stats.Out.Add(1)
-					break FOR
-				// or exit if we can't push the doc and we should shutdown
-				// note that if we can push the doc then exiting is not guaranteed
-				// that's why we have separate `select <-doneChan` above
-				case <-doneChan:
-					return
-				}
+			// try to push doc
+			select {
+			case docsChan <- doc:
+				stats.Out.Add(1)
+			// or exit if we can't push the doc and we should shutdown
+			// note that if we can push the doc then exiting is not guaranteed
+			// that's why we have separate `select <-doneChan` above
+			case <-doneChan:
+				return
 			}
 		}
 		if err := iterator.Err(); err != nil {

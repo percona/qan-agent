@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
@@ -15,9 +16,47 @@ import (
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestRealStartTool(t *testing.T) {
+	{
+		dialInfo, err := pmgo.ParseURL("")
+		assert.Nil(t, err)
+		dialer := pmgo.NewDialer()
+
+		session, err := dialer.DialWithInfo(dialInfo)
+		assert.Nil(t, err)
+		defer session.Close()
+
+		session.SetMode(mgo.Eventual, true)
+
+		result := struct {
+			Was       int
+			Slowms    int
+			Ratelimit int
+		}{}
+		err = session.DB(dialInfo.Database).Run(
+			bson.M{
+				"profile": 0,
+			},
+			&result,
+		)
+		assert.Nil(t, err)
+
+		err = session.DB(dialInfo.Database).C("system.profile").DropCollection()
+		assert.Nil(t, err)
+
+		err = session.DB(dialInfo.Database).Run(
+			bson.M{
+				"profile": 2,
+			},
+			&result,
+		)
+		assert.Nil(t, err)
+	}
+
 	logChan := make(chan proto.LogEntry)
 	dataChan := make(chan interface{})
 	spool := mock.NewSpooler(dataChan)
