@@ -19,13 +19,13 @@ package report
 
 import (
 	"sort"
+	"time"
 
 	"github.com/percona/go-mysql/event"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
-	"time"
 )
 
 // slowlog|perf schema --> Result --> qan.Report --> data.Spooler

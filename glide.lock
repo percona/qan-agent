@@ -1,5 +1,5 @@
-hash: 7874744e660c0c02a0662fcccb710c3782b751889443c804d7af2f201b9ebee0
-updated: 2017-04-27T13:35:07.827133516+02:00
+hash: d69d3799ec76b5bbe1c1aab353c6c155439ef51d6c693adf08c6dee7ae290005
+updated: 2017-06-27T12:58:56.579023741+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -31,7 +31,7 @@ imports:
   - src/go/mongolib/stats
   - src/go/mongolib/util
 - name: github.com/percona/pmgo
-  version: 9566dc76df319b856a12f24a3b6852a0c6463eff
+  version: 411337976b1ab0eeaa634fd2c9b2321a9d056fec
 - name: github.com/percona/pmm
   version: 0af8c6479067bf89905f881e6b118d340f719d6d
   subpackages:
@@ -49,7 +49,7 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
+  version: 6b27048ae5e6ad1ef927e72e437531493de612fe
   subpackages:
   - context
   - websocket
