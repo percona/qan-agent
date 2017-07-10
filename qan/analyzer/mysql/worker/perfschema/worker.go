@@ -92,8 +92,6 @@ type perfSchemaExample struct {
 	LastSeen time.Time
 }
 
-const MAX_EXAMPLES = 1000
-
 func NewRealWorkerFactory(logChan chan proto.LogEntry) *RealWorkerFactory {
 	f := &RealWorkerFactory{
 		logChan: logChan,
@@ -403,18 +401,12 @@ ROW_LOOP:
 				class.Rows[row.Schema] = row
 			} else {
 				// Get class digest text (fingerprint).
-				var digestText string
-				if prevClass, havePrevClass := prev[classId]; havePrevClass {
-					// Class was in previous iter, so re-use its digest text.
-					digestText = prevClass.DigestText
-				} else {
-					// Have never seen class before, so get digext text from perf schema.
-					digestText = row.DigestText
-					if classId == "2" && digestText == "" {
-						// To make explains works
-						digestText = `-- performance_schema.events_statements_summary_by_digest is full`
-					}
+				digestText := row.DigestText
+				if classId == "2" && digestText == "" {
+					// To make explains works
+					digestText = `-- performance_schema.events_statements_summary_by_digest is full`
 				}
+
 				// Create the class and init with this schema and row.
 				curr[classId] = Class{
 					DigestText: digestText,

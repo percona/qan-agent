@@ -137,17 +137,6 @@ func makeGetRowsFunc(iters [][]*DigestRow) GetDigestRowsFunc {
 	}
 }
 
-func makeGetTextFunc(texts ...string) GetDigestTextFunc {
-	return func(digest string) (string, error) {
-		if len(texts) == 0 {
-			return "", fmt.Errorf("No more texts")
-		}
-		text := texts[0]
-		texts = texts[1:]
-		return text, nil
-	}
-}
-
 type ByClassId []*event.Class
 
 func (a ByClassId) Len() int      { return len(a) }

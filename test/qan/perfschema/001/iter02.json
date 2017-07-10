@@ -2,7 +2,7 @@
 	{
 		"Schema": "db1",
 		"Digest": "4fadbbec94239d89c40318bfc3888aed",
-        "DigestText": "zapp brannigan",
+		"DigestText": "select 1",
 		"CountStar": 2,
 		"SumTimerWait": 874610000,
 		"MinTimerWait": 804610000,

@@ -2,6 +2,7 @@
 	{
 		"Schema": "db1",
 		"Digest": "11111111111111111111111111111111",
+		"DigestText": "select 1",
 		"CountStar": 3,
 		"SumTimerWait": 808610000,
 		"MinTimerWait": 804610000,
@@ -30,6 +31,7 @@
 	{
 		"Schema": "db2",
 		"Digest": "22222222222222222222222222222222",
+		"DigestText": "select 2",
 		"CountStar": 3,
 		"SumTimerWait": 199990000,
 		"MinTimerWait": 100630000,
@@ -58,6 +60,7 @@
 	{
 		"Schema": "db3",
 		"Digest": "33333333333333333333333333333333",
+		"DigestText": "select 3",
 		"CountStar": 1,
 		"SumTimerWait": 199510000,
 		"MinTimerWait": 100830000,
@@ -86,6 +89,7 @@
 	{
 		"Schema": "db4",
 		"Digest": "44444444444444444444444444444444",
+		"DigestText": "select 4",
 		"CountStar": 1,
 		"SumTimerWait": 100100000,
 		"MinTimerWait": 100100000,

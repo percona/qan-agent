@@ -2,6 +2,7 @@
 	{
 		"Schema": "db1",
 		"Digest": "",
+		"DigestText": "select 1",
 		"CountStar": 1,
 		"SumTimerWait": 804610000,
 		"MinTimerWait": 804610000,
