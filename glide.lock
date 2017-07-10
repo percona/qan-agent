@@ -1,20 +1,22 @@
-hash: 5dd32780bac8505eb659968547796acc4e59ab7e3623ce05eaeb6434a10f2822
-updated: 2017-03-20T19:46:14.154366148+01:00
+hash: 7874744e660c0c02a0662fcccb710c3782b751889443c804d7af2f201b9ebee0
+updated: 2017-07-05T15:18:08.417621306+02:00
 imports:
+- name: github.com/bradfitz/slice
+  version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/fatih/structs
-  version: a720dfa8df582c51dee1b36feabb906bde1588bd
+  version: 7e5a8eef611ee84dd359503f3969f80df4c50723
 - name: github.com/go-sql-driver/mysql
-  version: 2e00b5cd70399450106cec6431c2e2ce3cae5034
+  version: bf7f34fef176d890dfcc6e94319ac747291bc09a
 - name: github.com/google/btree
   version: 316fb6d3f031ae8f4d457c6c5186b9e3ded70435
 - name: github.com/hashicorp/go-version
   version: 03c5bf6be031b6dd45afec16b1cf94fc8938bc77
 - name: github.com/montanaflynn/stats
-  version: f8cd06f93c6c1b06028caafb88b540fc820f77c1
+  version: 41c34e4914ec3c05d485e564d9028d8861d5d9ad
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/percona/go-mysql
-  version: 2a6037d7d809b18ebd6d735b397f2321879af611
+  version: b561fedcb9dd988e592a6fb88bdf05596e598af1
   subpackages:
   - dsn
   - event
@@ -22,13 +24,16 @@ imports:
   - log/slow
   - query
 - name: github.com/percona/percona-toolkit
-  version: d2c801eb2612527d591911b467cbbb3275269219
+  version: 52427dedcadc0da5e8d4daf05d55b49eb28e5a31
   subpackages:
+  - src/go/mongolib/fingerprinter
   - src/go/mongolib/proto
+  - src/go/mongolib/stats
+  - src/go/mongolib/util
 - name: github.com/percona/pmgo
-  version: 717c9ce3810f3744d303a8ad418f84d517fde597
+  version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
 - name: github.com/percona/pmm
-  version: f5d2aa2c4005f78d83b91b907fac6da04a852fd3
+  version: afd64bde4b5e52da70dafc32cca72600b7b94972
   subpackages:
   - proto
   - proto/config
@@ -37,8 +42,14 @@ imports:
   - proto/query
 - name: github.com/peterbourgon/diskv
   version: 5dfcb07a075adbaaa4094cddfd160b1e1c77a043
+- name: github.com/pkg/errors
+  version: c605e284fe17294bda444b34710735b29d1a9d90
+- name: go4.org
+  version: 034d17a462f7b2dcd1a4a73553ec5357ff6e6c6e
+  subpackages:
+  - reflectutil
 - name: golang.org/x/net
-  version: 6b27048ae5e6ad1ef927e72e437531493de612fe
+  version: 570fa1c91359c1869590e9cedf3b53162a51a167
   subpackages:
   - context
   - websocket
@@ -60,13 +71,13 @@ testImports:
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: 599cba5e7b6137d46ddf58fb1765f5d928e69604
+  version: ac112f7d75a0714af1bd86ab17749b31f7809640
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
+  version: f6abca593680b2315d2075e0f5e2a9751e3f431a
   subpackages:
   - assert
   - require

@@ -1,0 +1,40 @@
+#!/bin/sh
+
+die() {
+   echo
+   for msg; do
+      echo $msg
+   done
+   exit 1
+}
+
+# ###########################################################################
+# Sanity check the cmd line options.
+# ###########################################################################
+if [ $# -lt 1 ]; then
+   die "Usage: load-sakila-db PORT"
+fi
+
+PORT=$1
+
+if [ ! -d "/tmp/$PORT" ]; then
+   die "MySQL test server does not exist: /tmp/$PORT"
+fi
+
+# ###########################################################################
+# Sanity check the environment.
+# ###########################################################################
+if [ -z "$PERCONA_TOOLKIT_BRANCH" ]; then
+   die "PERCONA_TOOLKIT_BRANCH environment variable is not set."
+fi
+
+if [ ! -d "$PERCONA_TOOLKIT_BRANCH" ]; then
+   die "Invalid PERCONA_TOOLKIT_BRANCH directory: $PERCONA_TOOLKIT_BRANCH"
+fi
+
+/tmp/$PORT/use < $PERCONA_TOOLKIT_BRANCH/sandbox/sakila.sql
+exit_status=$?
+
+/tmp/$PORT/use sakila -e "ANALYZE TABLE actor, address, category, city, country, customer, film, film_actor, film_category, film_text, inventory, language, payment, rental, staff, store" >/dev/null
+
+exit $exit_status

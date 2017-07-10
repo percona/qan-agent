@@ -28,15 +28,6 @@ type NullClient struct {
 	errChan     chan error
 }
 
-func NewNullClient() *NullClient {
-	c := &NullClient{
-		conn:        new(websocket.Conn),
-		connectChan: make(chan bool),
-		errChan:     make(chan error),
-	}
-	return c
-}
-
 func (c *NullClient) Connect() {
 }
 

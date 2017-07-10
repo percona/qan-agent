@@ -13,8 +13,10 @@ import:
   - log/slow
   - query
 - package: github.com/percona/percona-toolkit
+  version: 52427dedcadc0da5e8d4daf05d55b49eb28e5a31
   subpackages:
   - src/go/mongolib/proto
+  - src/go/mongolib/stats
 - package: github.com/percona/pmgo
 - package: github.com/percona/pmm
   subpackages:

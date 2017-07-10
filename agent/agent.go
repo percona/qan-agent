@@ -238,7 +238,7 @@ func (agent *Agent) Run() error {
 				statusHandlerErrors = 0
 			} else {
 				// websocket closed/crashed/err
-				logger.Warn("Lost connection to API")
+				logger.Warn("Lost connection to API, reconnecting")
 				go agent.connect()
 			}
 		case <-agent.keepalive.C:
@@ -342,76 +342,110 @@ func (agent *Agent) GetConfig() ([]proto.AgentConfig, []error) {
 // --------------------------------------------------------------------------
 
 func (agent *Agent) cmdHandler() {
-	cmdReply := make(chan *proto.Reply, 1)
-
+	wg := sync.WaitGroup{}
 	defer func() {
 		if err := recover(); err != nil {
 			agent.logger.Error("Agent command handler crashed: ", err)
 		}
+		wg.Wait()
 		agent.status.Update("agent-cmd-handler", "Stopped")
 		agent.cmdHandlerSync.Done()
 	}()
 
-	for {
-		agent.status.Update("agent-cmd-handler", "Idle")
+	// maximum number of parallel cmds executing at the same time
+	limit := 20
+	queue := make(chan bool, limit)
 
+	for {
 		select {
 		case cmd := <-agent.cmdChan:
-			agent.status.UpdateRe("agent-cmd-handler", "Handling", cmd)
-			agent.logger.Info("Cmd begin:", cmd)
-
-			// Handle the cmd in a separate goroutine so if it gets stuck it won't affect us.
-			go func() {
-				var reply *proto.Reply
-				defer func() {
-					if err := recover(); err != nil {
-						agent.logger.Error("Cmd crash:", cmd, err)
-						reply = cmd.Reply(nil, fmt.Errorf("%s", err)) // err is type interface{}, not error
-					}
-					cmdReply <- reply
-				}()
-				if cmd.Service == "agent" {
-					reply = agent.Handle(cmd)
-				} else {
-					if manager, ok := agent.services[cmd.Service]; ok {
-						reply = manager.Handle(cmd)
-					} else {
-						reply = cmd.Reply(nil, pct.UnknownServiceError{Service: cmd.Service})
-					}
-				}
-			}()
-
-			// Wait for the cmd to complete.
-			var timeout <-chan time.Time
-			if cmd.Cmd == "Update" {
-				timeout = time.After(5 * time.Minute)
-			} else {
-				timeout = time.After(20 * time.Second)
-			}
-			var reply *proto.Reply
 			select {
-			case reply = <-cmdReply:
-				// todo: instrument cmd exec time
-			case <-timeout:
-				reply = cmd.Reply(nil, pct.CmdTimeoutError{Cmd: cmd.Cmd})
-			}
+			case queue <- true:
+				wg.Add(1)
+				go func() {
+					defer func() {
+						<-queue
+						wg.Done()
 
-			if reply.Error == "" {
-				agent.logger.Info("Cmd ok:", reply)
-			} else {
-				agent.logger.Warn("Cmd fail:", reply)
-			}
+						// check if there is anything on the queue, if not, mark agent as idle
+						select {
+						case <-queue:
+							queue <- true
+						default:
+							agent.status.Update("agent-cmd-handler", "Idle")
+						}
+					}()
 
-			// Reply to cmd.
-			if reply != nil {
-				agent.reply(reply)
-			} else {
-				agent.logger.Info(cmd, "executed, no reply")
+					agent.handleCmd(cmd)
+				}()
+			case <-agent.cmdHandlerSync.StopChan:
+				agent.cmdHandlerSync.Graceful()
+				return
 			}
 		case <-agent.cmdHandlerSync.StopChan: // from stop()
 			agent.cmdHandlerSync.Graceful()
 			return
 		}
+	}
+}
+
+func (agent *Agent) handleCmd(cmd *proto.Cmd) {
+	defer func() {
+		if err := recover(); err != nil {
+			agent.logger.Error("Agent command handler crashed: ", err)
+		}
+	}()
+	agent.status.UpdateRe("agent-cmd-handler", "Handling", cmd)
+	agent.logger.Info("Cmd begin:", cmd)
+
+	cmdReply := make(chan *proto.Reply, 1)
+	// Handle the cmd in a separate goroutine so if it gets stuck it won't affect us.
+	go func() {
+		var reply *proto.Reply
+		defer func() {
+			if err := recover(); err != nil {
+				agent.logger.Error("Cmd crash:", cmd, err)
+				reply = cmd.Reply(nil, fmt.Errorf("%s", err)) // err is type interface{}, not error
+			}
+			cmdReply <- reply
+		}()
+		if cmd.Service == "agent" {
+			reply = agent.Handle(cmd)
+		} else {
+			if manager, ok := agent.services[cmd.Service]; ok {
+				reply = manager.Handle(cmd)
+			} else {
+				reply = cmd.Reply(nil, pct.UnknownServiceError{Service: cmd.Service})
+			}
+		}
+	}()
+
+	// Wait for the cmd to complete.
+	var timeout <-chan time.Time
+	if cmd.Cmd == "Update" {
+		timeout = time.After(5 * time.Minute)
+	} else {
+		timeout = time.After(1 * time.Minute)
+	}
+	var reply *proto.Reply
+	select {
+	case reply = <-cmdReply:
+	// todo: instrument cmd exec time
+	case <-timeout:
+		reply = cmd.Reply(nil, pct.CmdTimeoutError{Cmd: cmd.Cmd})
+	}
+
+	if reply.Error == "" {
+		agent.logger.Info("Cmd ok:", reply)
+	} else {
+		agent.logger.Warn("Cmd fail:", reply)
+	}
+
+	// Reply to cmd.
+	if reply != nil {
+		agent.reply(reply)
+	} else {
+		agent.logger.Info(cmd, "executed, no reply")
 	}
 }
 
@@ -459,10 +493,15 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 		*/
 		agent.client.Disconnect()
 		return nil // no reply
+	// TODO @obsolete by query/plugin/os/summary
 	case "GetServerSummary":
 		data, errs = agent.handleGetServerSummary()
+	// TODO @obsolete by query/plugin/mysql/summary
 	case "GetMySQLSummary":
 		data, errs = agent.handleGetMySQLSummary()
+	// TODO @obsolete by query/plugin/mongo/summary
+	case "GetMongoSummary":
+		data, errs = agent.handleGetMongoSummary()
 	default:
 		errs = append(errs, pct.UnknownCmdError{Cmd: cmd.Cmd})
 	}
@@ -565,11 +604,11 @@ func (agent *Agent) GetDefaults(cmd *proto.Cmd) (interface{}, []error) {
 	}
 
 	defaults := map[string]map[string]interface{}{
-		"bin": map[string]interface{}{
+		"bin": {
 			"pid-file": DEFAULT_PIDFILE,
 			"basedir":  pct.DEFAULT_BASEDIR,
 		},
-		"agent": map[string]interface{}{
+		"agent": {
 			"KeepAlive": DEFAULT_KEEPALIVE,
 			"Listen":    DEFAULT_LISTEN,
 		},
@@ -641,24 +680,24 @@ func (agent *Agent) handleVersion(cmd *proto.Cmd) (interface{}, []error) {
 	return v, nil
 }
 
-func (agent *Agent) handleGetServerSummary() (interface{}, []error) {
-	ptSummary := pctCmd.NewRealCmd("pt-summary")
-	output, err := ptSummary.Run()
-
+func runRealCmd(name string, args ...string) (interface{}, []error) {
+	output, err := pctCmd.NewRealCmd(name, args...).Run()
 	if err != nil {
 		return nil, []error{err}
 	}
 	return output, nil
 }
 
-func (agent *Agent) handleGetMySQLSummary() (interface{}, []error) {
-	ptMySQLSummary := pctCmd.NewRealCmd("pt-mysql-summary", "--sleep", "1")
-	output, err := ptMySQLSummary.Run()
+func (agent *Agent) handleGetServerSummary() (interface{}, []error) {
+	return runRealCmd("pt-summary")
+}
 
-	if err != nil {
-		return nil, []error{err}
-	}
-	return output, nil
+func (agent *Agent) handleGetMySQLSummary() (interface{}, []error) {
+	return runRealCmd("pt-mysql-summary", "--sleep", "1")
+}
+
+func (agent *Agent) handleGetMongoSummary() (interface{}, []error) {
+	return runRealCmd("pt-mongodb-summary")
 }
 
 //---------------------------------------------------------------------------

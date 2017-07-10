@@ -27,7 +27,6 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/instance"
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/query"
 	"github.com/percona/qan-agent/test/mock"
@@ -113,7 +112,7 @@ func (s *ManagerTestSuite) TestStartStop(t *C) {
 	var err error
 
 	// Create query manager
-	m := query.NewManager(s.logger, s.repo, &mysql.RealConnectionFactory{})
+	m := query.NewManager(s.logger, s.repo)
 	t.Assert(m, NotNil)
 
 	// The agent calls mm.Start().
@@ -145,7 +144,7 @@ func (s *ManagerTestSuite) TestHandleExplain(t *C) {
 	var err error
 
 	// Create query manager
-	m := query.NewManager(s.logger, s.repo, &mysql.RealConnectionFactory{})
+	m := query.NewManager(s.logger, s.repo)
 	t.Assert(m, NotNil)
 
 	// The agent calls mm.Start().

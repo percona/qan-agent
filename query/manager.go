@@ -24,9 +24,11 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/instance"
-	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	mysqlExec "github.com/percona/qan-agent/query/mysql"
+	"github.com/percona/qan-agent/query/plugin"
+	"github.com/percona/qan-agent/query/plugin/mongo"
+	"github.com/percona/qan-agent/query/plugin/mysql"
+	"github.com/percona/qan-agent/query/plugin/os"
 )
 
 const (
@@ -36,18 +38,17 @@ const (
 type Manager struct {
 	logger       *pct.Logger
 	instanceRepo *instance.Repo
-	connFactory  mysql.ConnectionFactory
 	// --
+	plugins map[string]plugin.Plugin
 	running bool
 	sync.Mutex
 	status *pct.Status
 }
 
-func NewManager(logger *pct.Logger, instanceRepo *instance.Repo, connFactory mysql.ConnectionFactory) *Manager {
+func NewManager(logger *pct.Logger, instanceRepo *instance.Repo) *Manager {
 	m := &Manager{
 		logger:       logger,
 		instanceRepo: instanceRepo,
-		connFactory:  connFactory,
 		// --
 		status: pct.NewStatus([]string{SERVICE_NAME}),
 	}
@@ -64,6 +65,12 @@ func (m *Manager) Start() error {
 	if m.running {
 		return pct.ServiceIsRunningError{Service: SERVICE_NAME}
 	}
+
+	err := m.loadPlugins()
+	if err != nil {
+		return err
+	}
+
 	m.running = true
 	m.logger.Info("Started")
 	m.status.Update(SERVICE_NAME, "Idle")
@@ -77,6 +84,12 @@ func (m *Manager) Stop() error {
 	if !m.running {
 		return nil
 	}
+
+	err := m.unloadPlugins()
+	if err != nil {
+		return err
+	}
+
 	m.running = false
 	m.logger.Info("Stopped")
 	m.status.Update(SERVICE_NAME, "Stopped")
@@ -107,12 +120,21 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 		return cmd.Reply(nil, err)
 	}
 
-	switch in.Subsystem {
-	case "mysql":
-		return m.handleMySQLQuery(cmd, in)
-	default:
-		return cmd.Reply(nil, fmt.Errorf("Can only execute MySQL queries"))
+	p, ok := m.plugins[in.Subsystem]
+	if !ok {
+		return cmd.Reply(nil, fmt.Errorf("can't query %s", in.Subsystem))
 	}
+
+	data, err := p.Handle(cmd, in)
+	if err != nil {
+		switch err.(type) {
+		case plugin.UnknownCmdError:
+			return cmd.Reply(nil, err)
+		}
+		return cmd.Reply(nil, fmt.Errorf("cmd '%s' for subsystem '%s' failed: %s", cmd.Cmd, in.Subsystem, err))
+	}
+
+	return cmd.Reply(data)
 }
 
 func (m *Manager) Status() map[string]string {
@@ -129,45 +151,19 @@ func (m *Manager) GetDefaults(uuid string) map[string]interface{} {
 
 // --------------------------------------------------------------------------
 
-func (m *Manager) handleMySQLQuery(cmd *proto.Cmd, in proto.Instance) *proto.Reply {
-	m.logger.Debug("handleMySQLQuery:call")
-	defer m.logger.Debug("handleMySQLQuery:return")
-
-	conn := m.connFactory.Make(in.DSN)
-	if err := conn.Connect(); err != nil {
-		return cmd.Reply(nil, err)
+func (m *Manager) loadPlugins() error {
+	err := m.unloadPlugins()
+	if err != nil {
+		return err
 	}
-	defer conn.Close()
 
-	// Create a MySQL query executor to do the actual work.
-	e := mysqlExec.NewQueryExecutor(conn)
+	m.plugins["mysql"] = mysql.New()
+	m.plugins["mongo"] = mongo.New()
+	m.plugins["os"] = os.New()
+	return nil
+}
 
-	// Execute the query.
-	m.logger.Debug(cmd.Cmd + ":" + in.Name)
-	switch cmd.Cmd {
-	case "Explain":
-		m.status.Update(SERVICE_NAME, "EXPLAIN query on "+in.Name)
-		q := &proto.ExplainQuery{}
-		if err := json.Unmarshal(cmd.Data, q); err != nil {
-			return cmd.Reply(nil, err)
-		}
-		res, err := e.Explain(q.Db, q.Query, q.Convert)
-		if err != nil {
-			return cmd.Reply(nil, fmt.Errorf("EXPLAIN failed: %s", err))
-		}
-		return cmd.Reply(res, nil)
-	case "TableInfo":
-		m.status.Update(SERVICE_NAME, "Table Info queries on "+in.Name)
-		tableInfo := &proto.TableInfoQuery{}
-		if err := json.Unmarshal(cmd.Data, tableInfo); err != nil {
-			return cmd.Reply(nil, err)
-		}
-		res, err := e.TableInfo(tableInfo)
-		if err != nil {
-			return cmd.Reply(nil, fmt.Errorf("Table Info failed: %s", err))
-		}
-		return cmd.Reply(res, nil)
-	default:
-		return cmd.Reply(nil, pct.UnknownCmdError{Cmd: cmd.Cmd})
-	}
+func (m *Manager) unloadPlugins() error {
+	m.plugins = map[string]plugin.Plugin{}
+	return nil
 }

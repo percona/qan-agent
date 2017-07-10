@@ -620,6 +620,7 @@ func (s *AgentTestSuite) TestGetSystemSummary(t *C) {
 
 	got := test.WaitReplyCmd(s.recvChan, "GetServerSummary")
 	t.Assert(len(got), Equals, 1)
+	t.Assert(got[0].Error, Equals, "")
 	t.Assert(string(got[0].Data), Matches, ".*# Percona Toolkit System Summary Report.*")
 }
 
@@ -634,8 +635,26 @@ func (s *AgentTestSuite) TestGetMySQLSummary(t *C) {
 
 	got := test.WaitReplyCmd(s.recvChan, "GetMySQLSummary")
 	t.Assert(len(got), Equals, 1)
+	t.Assert(got[0].Error, Equals, "")
 	t.Assert(string(got[0].Data), Matches, ".*# Percona Toolkit MySQL Summary Report.*")
 
+}
+
+func (s *AgentTestSuite) TestGetMongoSummary(t *C) {
+	cmd := &proto.Cmd{
+		Ts:      time.Now(),
+		User:    "zapp brannigan",
+		Cmd:     "GetMongoSummary",
+		Service: "agent",
+	}
+	s.sendChan <- cmd
+
+	got := test.WaitReplyCmd(s.recvChan, "GetMongoSummary")
+	t.Assert(len(got), Equals, 1)
+	t.Assert(got[0].Error, Equals, "")
+	// in new version:
+	// t.Assert(string(got[0].Data), Matches, ".*# Mongo Executable.*")
+	t.Assert(string(got[0].Data), Matches, ".*# Instances.*")
 }
 
 func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {

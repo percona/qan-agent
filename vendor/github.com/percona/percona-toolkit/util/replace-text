@@ -1,0 +1,19 @@
+#!/usr/bin/awk -f
+
+BEGIN {
+   if ( from == "" || file == "" || to == "" ) {
+      print "Usage: replace-text -v from=PATTERN -v file=FILE -v to=PATTERN"
+      exit
+   }
+}
+
+$0 ~ from {
+   system("cat " file)
+
+   while ( getline ) {
+      if ( $0 ~ to )
+         break
+   }
+}
+
+{ print }

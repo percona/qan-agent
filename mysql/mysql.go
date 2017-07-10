@@ -39,16 +39,16 @@ type Query struct {
 }
 
 type Connector interface {
-	DB() *sql.DB
-	DSN() string
+	AtLeastVersion(string) (bool, error)
 	Connect() error
 	Close()
-	Set([]Query) error
+	DB() *sql.DB
+	DSN() string
 	Exec([]string) error
 	GetGlobalVarString(varName string) (string, error)
 	GetGlobalVarNumber(varName string) (float64, error)
+	Set([]Query) error
 	Uptime() (uptime int64, err error)
-	AtLeastVersion(string) (bool, error)
 	UTCOffset() (time.Duration, time.Duration, error)
 }
 

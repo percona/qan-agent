@@ -1,29 +1,48 @@
-dist: trusty
-
 language: go
 
 go:
-  - 1.6.x
   - 1.7.x
   - 1.8.x
 
 services:
+  - mongodb
   - mysql
 
 env:
-  - "PCT_TEST_MYSQL_DSN=\"root:travis@tcp(localhost:3306)/?parseTime=true\""
+  global:
+    - MYSQL_USER="root"
+    - MYSQL_HOST="localhost"
+    - MYSQL_PORT="3306"
+    - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
 
 addons:
   apt:
     sources:
       - sourceline: 'deb http://repo.percona.com/apt precise testing'
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0x8507EFA5'
+      - mongodb-3.2-precise
     packages:
       - percona-toolkit
+      - mongodb-org
 
 install:
   - go get -u github.com/Masterminds/glide
+  # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
+  - rm -rf vendor/
   - glide install
+
+before_script:
+  # check if vendor dir is correct
+  - git diff --exit-code
+  # turn on profiling on mongo instance
+  - mongo --eval 'db.setProfilingLevel(2)'
+  # wait for MySQL to become available
+  - |
+    until mysql -u"${MYSQL_USER}" -h "${MYSQL_HOST}" -P "${MYSQL_PORT}" -e 'SELECT 1' > /dev/null; do
+      >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} for user ${MYSQL_USER} is unavailable - sleeping"
+      sleep 1
+    done
+    >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} is up"
 
 script:
   - test/runner.sh

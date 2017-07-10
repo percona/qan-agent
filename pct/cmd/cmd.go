@@ -112,7 +112,7 @@ func runCmd(cmd *exec.Cmd) (resultChan chan result) {
 	// because we might get data before we would be waiting on this channel
 	resultChan = make(chan result, 1)
 	go func() {
-		output, err := cmd.Output()
+		output, err := cmd.CombinedOutput()
 		select {
 		case resultChan <- result{output: string(output), err: err}:
 		default:
