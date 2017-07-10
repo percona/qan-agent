@@ -1,0 +1,241 @@
+{
+  "Global": {
+    "Id": "",
+    "Fingerprint": "",
+    "Metrics": {
+      "TimeMetrics": {
+        "Lock_time": {
+          "Sum": 0,
+          "Avg": 0
+        },
+        "Query_time": {
+          "Sum": 0,
+          "Min": 0,
+          "Avg": 0,
+          "Max": 0
+        }
+      },
+      "NumberMetrics": {
+        "Errors": {
+          "Sum": 0
+        },
+        "Merge_passes": {
+          "Sum": 0
+        },
+        "No_good_index_used": {
+          "Sum": 0
+        },
+        "No_index_used": {
+          "Sum": 0
+        },
+        "Rows_affected": {
+          "Sum": 0
+        },
+        "Rows_examined": {
+          "Sum": 0,
+          "Avg": 0
+        },
+        "Rows_sent": {
+          "Sum": 0,
+          "Avg": 0
+        },
+        "Select_full_range_join": {
+          "Sum": 0
+        },
+        "Select_range": {
+          "Sum": 0
+        },
+        "Select_range_check": {
+          "Sum": 0
+        },
+        "Sort_range": {
+          "Sum": 0
+        },
+        "Sort_rows": {
+          "Sum": 0
+        },
+        "Sort_scan": {
+          "Sum": 0
+        },
+        "Warnings": {
+          "Sum": 0
+        }
+      },
+      "BoolMetrics": {
+        "Full_join": {
+          "Sum": 0
+        },
+        "Full_scan": {
+          "Sum": 0
+        },
+        "Tmp_table": {
+          "Sum": 0
+        },
+        "Tmp_table_on_disk": {
+          "Sum": 0
+        }
+      }
+    },
+    "TotalQueries": 3,
+    "UniqueQueries": 2
+  },
+  "Class": [
+    {
+      "Id": "1111111111111111",
+      "Fingerprint": "select 1",
+      "Metrics": {
+        "TimeMetrics": {
+          "Lock_time": {
+            "Sum": 0
+          },
+          "Query_time": {
+            "Sum": 0,
+            "Min": 0,
+            "Avg": 0,
+            "Max": 0
+          }
+        },
+        "NumberMetrics": {
+          "Errors": {
+            "Sum": 0
+          },
+          "Merge_passes": {
+            "Sum": 0
+          },
+          "No_good_index_used": {
+            "Sum": 0
+          },
+          "No_index_used": {
+            "Sum": 0
+          },
+          "Rows_affected": {
+            "Sum": 0
+          },
+          "Rows_examined": {
+            "Sum": 0
+          },
+          "Rows_sent": {
+            "Sum": 0
+          },
+          "Select_full_range_join": {
+            "Sum": 0
+          },
+          "Select_range": {
+            "Sum": 0
+          },
+          "Select_range_check": {
+            "Sum": 0
+          },
+          "Sort_range": {
+            "Sum": 0
+          },
+          "Sort_rows": {
+            "Sum": 0
+          },
+          "Sort_scan": {
+            "Sum": 0
+          },
+          "Warnings": {
+            "Sum": 0
+          }
+        },
+        "BoolMetrics": {
+          "Full_join": {
+            "Sum": 0
+          },
+          "Full_scan": {
+            "Sum": 0
+          },
+          "Tmp_table": {
+            "Sum": 0
+          },
+          "Tmp_table_on_disk": {
+            "Sum": 0
+          }
+        }
+      },
+      "TotalQueries": 1,
+      "UniqueQueries": 0
+    },
+    {
+      "Id": "2222222222222222",
+      "Fingerprint": "select 2",
+      "Metrics": {
+        "TimeMetrics": {
+          "Lock_time": {
+            "Sum": 0
+          },
+          "Query_time": {
+            "Sum": 0,
+            "Min": 0,
+            "Avg": 0,
+            "Max": 0
+          }
+        },
+        "NumberMetrics": {
+          "Errors": {
+            "Sum": 0
+          },
+          "Merge_passes": {
+            "Sum": 0
+          },
+          "No_good_index_used": {
+            "Sum": 0
+          },
+          "No_index_used": {
+            "Sum": 0
+          },
+          "Rows_affected": {
+            "Sum": 0
+          },
+          "Rows_examined": {
+            "Sum": 0
+          },
+          "Rows_sent": {
+            "Sum": 0
+          },
+          "Select_full_range_join": {
+            "Sum": 0
+          },
+          "Select_range": {
+            "Sum": 0
+          },
+          "Select_range_check": {
+            "Sum": 0
+          },
+          "Sort_range": {
+            "Sum": 0
+          },
+          "Sort_rows": {
+            "Sum": 0
+          },
+          "Sort_scan": {
+            "Sum": 0
+          },
+          "Warnings": {
+            "Sum": 0
+          }
+        },
+        "BoolMetrics": {
+          "Full_join": {
+            "Sum": 0
+          },
+          "Full_scan": {
+            "Sum": 0
+          },
+          "Tmp_table": {
+            "Sum": 0
+          },
+          "Tmp_table_on_disk": {
+            "Sum": 0
+          }
+        }
+      },
+      "TotalQueries": 2,
+      "UniqueQueries": 0
+    }
+  ],
+  "RateLimit": 0,
+  "RunTime": 0,
+  "StopOffset": 0
+}

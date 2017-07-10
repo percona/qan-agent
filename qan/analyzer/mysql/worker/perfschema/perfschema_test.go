@@ -654,3 +654,70 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	err = w.Cleanup()
 	t.Assert(err, IsNil)
 }
+
+// Test005 for `PMM-1081: Performance schema doesn't work for queries that don't show every interval`
+func (s *WorkerTestSuite) Test005(t *C) {
+	// This test has 3 iters:
+	//   1: 2 queries
+	//   2: 1 query (res01)
+	//   3: 2 queries (res02)
+	rows, err := s.loadData("005")
+	t.Assert(err, IsNil)
+	getRows := makeGetRowsFunc(rows)
+	getText := makeGetTextFunc(
+		"select 1", "select 2", // that's ok
+		"select 2", // ... again because buggy profiler thinks it's a new query
+	)
+	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
+
+	// First interval doesn't produce a result because 2 snapshots are required.
+	i := &iter.Interval{
+		Number:    1,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	t.Assert(err, IsNil)
+
+	res, err := w.Run()
+	t.Assert(err, IsNil)
+	t.Check(res, IsNil)
+
+	err = w.Cleanup()
+	t.Assert(err, IsNil)
+
+	// Second interval produces a result: the diff of 2nd - 1st.
+	i = &iter.Interval{
+		Number:    2,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	t.Assert(err, IsNil)
+
+	res, err = w.Run()
+	t.Assert(err, IsNil)
+	normalizeResult(res)
+	expect, err := s.loadResult("005/res01.json", res)
+	t.Assert(err, IsNil)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	t.Assert(err, IsNil)
+
+	// Third interval...
+	i = &iter.Interval{
+		Number:    3,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	t.Assert(err, IsNil)
+
+	res, err = w.Run()
+	t.Assert(err, IsNil)
+	normalizeResult(res)
+	expect, err = s.loadResult("005/res02.json", res)
+	t.Assert(err, IsNil)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	t.Assert(err, IsNil)
+}
