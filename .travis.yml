@@ -18,27 +18,28 @@ env:
     - MYSQL_PORT="3406"
     - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
   matrix:
-    - MYSQL_VERSION=5.6
-    - MYSQL_VERSION=5.7
+    - MYSQL_IMAGE=mysql:5.6
+    - MYSQL_IMAGE=mysql:5.7
+    - MONGODB_IMAGE=mongo:3.2
+    - MONGODB_IMAGE=mongo:3.4
 
 addons:
   apt:
     sources:
       - sourceline: 'deb http://repo.percona.com/apt trusty testing'
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0x8507EFA5'
-      - mongodb-3.2-trusty
     packages:
       - percona-toolkit
-      - mongodb-org
 
 install:
-  - sh .travis-install-mysql.sh
   - go get -u github.com/Masterminds/glide
   # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
   - rm -rf vendor/
   - glide install
 
 before_script:
+  # run docker containers
+  - docker-compose up -d
   # check if vendor dir is correct
   - git diff --exit-code
   # turn on profiling on mongo instance
