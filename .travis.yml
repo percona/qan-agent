@@ -14,8 +14,6 @@ services:
 env:
   - MYSQL_VERSION=5.6
   - MYSQL_VERSION=5.7
-
-env:
   global:
     - MYSQL_USER="root"
     - MYSQL_HOST="127.0.0.1"
@@ -25,9 +23,9 @@ env:
 addons:
   apt:
     sources:
-      - sourceline: 'deb http://repo.percona.com/apt precise testing'
+      - sourceline: 'deb http://repo.percona.com/apt trusty testing'
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0x8507EFA5'
-      - mongodb-3.2-precise
+      - mongodb-3.2-trusty
     packages:
       - percona-toolkit
       - mongodb-org
