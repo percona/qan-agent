@@ -9,6 +9,9 @@ go:
 matrix:
   exclude:
     - go: 1.7.x
+  include:
+    - go: 1.7.x
+      env: MYSQL_IMAGE=mysql:5.7 MONGODB_IMAGE=mongo:3.5
 
 services:
   - mysql
