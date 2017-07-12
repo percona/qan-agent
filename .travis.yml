@@ -1,5 +1,3 @@
-sudo: required
-
 language: go
 
 go:
@@ -8,6 +6,7 @@ go:
 
 services:
   - mongodb
+  - docker
 
 env:
   - MYSQL_VERSION=5.6
