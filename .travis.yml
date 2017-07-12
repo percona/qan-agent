@@ -18,7 +18,7 @@ env:
 env:
   global:
     - MYSQL_USER="root"
-    - MYSQL_HOST="localhost"
+    - MYSQL_HOST="127.0.0.1"
     - MYSQL_PORT="3406"
     - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
 
