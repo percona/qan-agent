@@ -2,6 +2,14 @@ sudo: required
 
 language: go
 
+go:
+  - 1.7.x
+  - 1.8.x
+
+matrix:
+  exclude:
+    - go: 1.7.x
+
 services:
   - mysql
   - docker
