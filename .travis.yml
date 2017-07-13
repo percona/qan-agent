@@ -38,6 +38,7 @@ matrix:
     - MYSQL_IMAGE=mysql:8.0
     - MONGODB_IMAGE=mongo:3.0
     - MONGODB_IMAGE=mongo:3.5
+  fast_finish: true
 
 addons:
   apt:
