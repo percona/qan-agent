@@ -26,11 +26,7 @@ env:
 matrix:
   include:
     - go: 1.7.x
-      env:
-        - MYSQL_IMAGE=mysql:5.7 MONGODB_IMAGE=mongo:3.4
     - go: tip
-      env:
-        - MYSQL_IMAGE=mysql:5.7 MONGODB_IMAGE=mongo:3.4
 
 addons:
   apt:
