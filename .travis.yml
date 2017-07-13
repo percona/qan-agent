@@ -1,3 +1,4 @@
+dist: trusty
 sudo: required
 
 language: go
@@ -5,7 +6,7 @@ language: go
 go:
   - 1.8.x
 
-services: &services
+services:
   - mysql
   - docker
 
