@@ -3,20 +3,19 @@ sudo: required
 language: go
 
 go:
-  - 1.8
-  - tip
+  - 1.8.x
 
-services:
+services: &services
   - mysql
   - docker
 
 env:
-  global:
+  global: &global
     - MYSQL_USER="root"
     - MYSQL_HOST="127.0.0.1"
     - MYSQL_PORT="3406"
     - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
-  matrix:
+  matrix: &matrix
     - MYSQL_IMAGE=mysql:5.5
     - MYSQL_IMAGE=mysql:5.6
     - MYSQL_IMAGE=mysql:5.7
@@ -25,6 +24,20 @@ env:
     - MONGODB_IMAGE=mongo:3.2
     - MONGODB_IMAGE=mongo:3.4
     - MONGODB_IMAGE=mongo:3.5
+
+matrix:
+  include:
+    - go: 1.7.x
+      services: *services
+      env:
+        global: *global
+        matrix: *matrix
+  include:
+    - go: tip
+      services: *services
+      env:
+        global: *global
+        matrix: *matrix
 
 addons:
   apt:
