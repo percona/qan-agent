@@ -96,6 +96,7 @@ func TestWithRealMySQL(t *testing.T) {
 }
 
 // testGetDefaultsBoolValues verifies if value for MySQL bool variable is properly converted to json bool
+// https://jira.percona.com/browse/PMM-949
 func testGetDefaultsBoolValues(
 	t *testing.T,
 	logger *pct.Logger,
@@ -121,12 +122,14 @@ func testGetDefaultsBoolValues(
 	require.Nil(t, err)
 	test.WaitStatus(1, m, "qan", "Running")
 
-	keys := []struct {
-		db   string
-		json string
-	}{
-		{"log_slow_admin_statements", "LogSlowAdminStatements"},
-		{"log_slow_slave_statements", "LogSlowSlaveStatements"},
+	type Key struct {
+		db      string
+		json    string
+		version string
+	}
+	keys := []Key{
+		{"log_slow_admin_statements", "LogSlowAdminStatements", "5.6.11"},
+		{"log_slow_slave_statements", "LogSlowSlaveStatements", "5.6.11"},
 	}
 
 	t.Run("variables", func(t *testing.T) {
@@ -136,6 +139,15 @@ func testGetDefaultsBoolValues(
 
 			t.Run(keys[i].json, func(t *testing.T) {
 				t.Parallel()
+
+				// Skip testing variable if it was introduced in higher MySQL version
+				if keys[i].version != "" {
+					variableIsSupported, err := conn.AtLeastVersion(keys[i].version)
+					assert.Nil(t, err)
+					if !variableIsSupported {
+						t.Skipf("Variable '%s' is unsupported, it was introduced in MySQL %s.", keys[i].db, keys[i].version)
+					}
+				}
 
 				// GetDefaults returns current configuration
 				// let's be sure log_slow_slave_statements=0 returns `false`
