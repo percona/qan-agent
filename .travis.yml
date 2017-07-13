@@ -11,14 +11,14 @@ matrix:
     - go: 1.7.x
   include:
     - go: 1.7.x
-      env: MYSQL_IMAGE=mysql:5.7 MONGODB_IMAGE=mongo:3.5
+      env: *global MYSQL_IMAGE=mysql:5.7 MONGODB_IMAGE=mongo:3.5
 
 services:
   - mysql
   - docker
 
 env:
-  global:
+  global: &global
     - MYSQL_USER="root"
     - MYSQL_HOST="127.0.0.1"
     - MYSQL_PORT="3406"
