@@ -111,6 +111,12 @@ Variable        Default     Purpose
 
 **ApiHostname**             ``host:port`` of datastore (no ``http(s)/ws(s)://`` prefix)
 
+ApiPath                     Path appended to the ApiHostname (when your API is located in a subdirectory)
+
+ServerUser                  Username for the API server
+
+ServerPassword              Password for the API server
+
 Keepalive       76          How often to ping API on cmd websocket
 
 PidFile         agent.pid   PID file (relative to basedir)
