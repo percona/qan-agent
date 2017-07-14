@@ -11,7 +11,7 @@ import (
 	"github.com/percona/qan-agent/mrms"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/config"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/factory"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
@@ -21,7 +21,7 @@ import (
 	"github.com/percona/qan-agent/ticker"
 )
 
-func New(ctx context.Context, protoInstance proto.Instance) qan.Analyzer {
+func New(ctx context.Context, protoInstance proto.Instance) analyzer.Analyzer {
 	// Get available services from ctx
 	services, _ := ctx.Value("services").(map[string]interface{})
 
@@ -61,7 +61,7 @@ func New(ctx context.Context, protoInstance proto.Instance) qan.Analyzer {
 type MySQLAnalyzer struct {
 	// on initialization config and analyzer are uninitialized
 	config   pc.QAN
-	analyzer qan.Analyzer
+	analyzer analyzer.Analyzer
 	// services initialized in New
 	protoInstance           proto.Instance
 	logger                  *pct.Logger
@@ -197,18 +197,18 @@ func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 	mysqlConn := m.mysqlConnFactory.Make(mysqlInstance.DSN)
 	config.ReadMySQLConfig(mysqlConn) // Read current values
 	return map[string]interface{}{
-		"CollectFrom":             collectFrom,
-		"Interval":                interval,
-		"LongQueryTime":           config.DEFAULT_LONG_QUERY_TIME,
-		"MaxSlowLogSize":          config.DEFAULT_MAX_SLOW_LOG_SIZE,
-		"RemoveOldSlowLogs":       config.DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		"ExampleQueries":          exampleQueries,
-		"SlowLogVerbosity":        config.DEFAULT_SLOW_LOG_VERBOSITY,
-		"RateLimit":               config.DEFAULT_RATE_LIMIT,
-		"LogSlowAdminStatements":  config.DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
-		"LogSlowSlaveStatemtents": config.DEFAULT_LOG_SLOW_SLAVE_STATEMENTS,
-		"WorkerRunTime":           config.DEFAULT_WORKER_RUNTIME,
-		"ReportLimit":             config.DEFAULT_REPORT_LIMIT,
+		"CollectFrom":            collectFrom,
+		"Interval":               interval,
+		"LongQueryTime":          config.DEFAULT_LONG_QUERY_TIME,
+		"MaxSlowLogSize":         config.DEFAULT_MAX_SLOW_LOG_SIZE,
+		"RemoveOldSlowLogs":      config.DEFAULT_REMOVE_OLD_SLOW_LOGS,
+		"ExampleQueries":         exampleQueries,
+		"SlowLogVerbosity":       config.DEFAULT_SLOW_LOG_VERBOSITY,
+		"RateLimit":              config.DEFAULT_RATE_LIMIT,
+		"LogSlowAdminStatements": config.DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
+		"LogSlowSlaveStatements": config.DEFAULT_LOG_SLOW_SLAVE_STATEMENTS,
+		"WorkerRunTime":          config.DEFAULT_WORKER_RUNTIME,
+		"ReportLimit":            config.DEFAULT_REPORT_LIMIT,
 	}
 }
 

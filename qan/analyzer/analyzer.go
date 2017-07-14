@@ -15,7 +15,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>
 */
 
-package qan
+package analyzer
 
 import (
 	"github.com/percona/pmm/proto"

@@ -26,7 +26,7 @@ import (
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mrms"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer"
 	mongoAnalyzer "github.com/percona/qan-agent/qan/analyzer/mongo"
 	mysqlAnalyzer "github.com/percona/qan-agent/qan/analyzer/mysql"
 	"github.com/percona/qan-agent/ticker"
@@ -65,7 +65,7 @@ func New(
 	return f
 }
 
-func (f *Factory) Make(analyzerType, analyzerName string, protoInstance proto.Instance) (qan.Analyzer, error) {
+func (f *Factory) Make(analyzerType, analyzerName string, protoInstance proto.Instance) (analyzer.Analyzer, error) {
 	logger := pct.NewLogger(f.logChan, analyzerName)
 
 	// Expose some global services to plugins

@@ -31,6 +31,7 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan/analyzer"
 )
 
 const (
@@ -46,14 +47,14 @@ var (
 // as configured.
 type AnalyzerInstance struct {
 	setConfig pc.QAN
-	analyzer  Analyzer
+	analyzer  analyzer.Analyzer
 }
 
 // A Manager runs AnalyzerInstances, one per MySQL instance as configured.
 type Manager struct {
 	logger          *pct.Logger
 	instanceRepo    *instance.Repo
-	analyzerFactory AnalyzerFactory
+	analyzerFactory analyzer.AnalyzerFactory
 	// --
 	mux       *sync.RWMutex
 	running   bool
@@ -64,7 +65,7 @@ type Manager struct {
 func NewManager(
 	logger *pct.Logger,
 	instanceRepo *instance.Repo,
-	analyzerFactory AnalyzerFactory,
+	analyzerFactory analyzer.AnalyzerFactory,
 ) *Manager {
 	m := &Manager{
 		logger:          logger,

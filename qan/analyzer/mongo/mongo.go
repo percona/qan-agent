@@ -10,13 +10,13 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/collector"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/parser"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/sender"
 )
 
-func New(ctx context.Context, protoInstance proto.Instance) qan.Analyzer {
+func New(ctx context.Context, protoInstance proto.Instance) analyzer.Analyzer {
 	// Get available services from ctx
 	services, _ := ctx.Value("services").(map[string]interface{})
 
@@ -145,7 +145,7 @@ func (m *MongoAnalyzer) Status() map[string]string {
 // Stop stops running analyzer, waits until it stops
 func (m *MongoAnalyzer) Stop() error {
 	m.Lock()
-	m.Unlock()
+	defer m.Unlock()
 	if !m.running {
 		return nil
 	}

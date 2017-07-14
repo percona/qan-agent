@@ -30,6 +30,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/percona/qan-agent/test/rootdir"
 	. "gopkg.in/check.v1"
 )
 
@@ -144,9 +145,9 @@ func (s *ManagerTestSuite) TestStartAndUpdate(t *C) {
 	mysqlInstanceFile := pct.Basedir.InstanceFile("BBB")
 
 	var err error
-	err = test.CopyFile(filepath.Join(test.RootDir, "instances/001/os-AAA.json"), pct.Basedir.InstanceFile("AAA"))
+	err = test.CopyFile(filepath.Join(rootdir.RootDir(), "test/instances/001/os-AAA.json"), pct.Basedir.InstanceFile("AAA"))
 	t.Assert(err, IsNil)
-	err = test.CopyFile(filepath.Join(test.RootDir, "instances/001/mysql-BBB.json"), mysqlInstanceFile)
+	err = test.CopyFile(filepath.Join(rootdir.RootDir(), "test/instances/001/mysql-BBB.json"), mysqlInstanceFile)
 	t.Assert(err, IsNil)
 
 	bytes, err := ioutil.ReadFile(mysqlInstanceFile)

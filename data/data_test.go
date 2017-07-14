@@ -35,6 +35,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/percona/qan-agent/test/rootdir"
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
@@ -42,7 +43,7 @@ import (
 // Hook up gocheck into the "go test" runner.
 func Test(t *testing.T) { TestingT(t) }
 
-var sample = test.RootDir + "/qan/"
+var sample = rootdir.RootDir() + "/test/qan/"
 
 /////////////////////////////////////////////////////////////////////////////
 // DiskvSpooler test suite
