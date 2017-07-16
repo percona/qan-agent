@@ -649,11 +649,7 @@ func (s *WorkerTestSuite) Test005(t *C) {
 	rows, err := s.loadData("005")
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
-	getText := makeGetTextFunc(
-		"select 1", "select 2", // that's ok
-		"select 2", // ... again because buggy profiler thinks it's a new query
-	)
-	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows)
 
 	// First interval doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
