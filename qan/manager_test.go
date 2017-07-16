@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"testing"
 	"time"
 
 	"github.com/percona/pmm/proto"
@@ -34,6 +35,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	. "gopkg.in/check.v1"
 )
+
+// Hook up gocheck into the "go test" runner.
+func Test(t *testing.T) { TestingT(t) }
 
 type ManagerTestSuite struct {
 	logChan       chan proto.LogEntry

@@ -22,7 +22,7 @@ import (
 
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
-	"github.com/percona/qan-agent/qan"
+	"github.com/percona/qan-agent/qan/analyzer"
 )
 
 type QanAnalyzer struct {
@@ -118,11 +118,11 @@ type AnalyzerArgs struct {
 
 type QanAnalyzerFactory struct {
 	Args      []AnalyzerArgs
-	analyzers []qan.Analyzer
+	analyzers []analyzer.Analyzer
 	n         int
 }
 
-func NewQanAnalyzerFactory(a ...qan.Analyzer) *QanAnalyzerFactory {
+func NewQanAnalyzerFactory(a ...analyzer.Analyzer) *QanAnalyzerFactory {
 	f := &QanAnalyzerFactory{
 		Args:      []AnalyzerArgs{},
 		analyzers: a,
@@ -135,7 +135,7 @@ func (f *QanAnalyzerFactory) Make(
 	analyzerName string,
 	protoInstance proto.Instance,
 ) (
-	qan.Analyzer,
+	analyzer.Analyzer,
 	error,
 ) {
 	if f.n < len(f.analyzers) {

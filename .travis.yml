@@ -1,29 +1,46 @@
+dist: trusty
+sudo: required
+
 language: go
 
 go:
-  - 1.7.x
   - 1.8.x
 
 services:
-  - mongodb
   - mysql
+  - docker
 
 env:
   global:
     - MYSQL_USER="root"
-    - MYSQL_HOST="localhost"
-    - MYSQL_PORT="3306"
+    - MYSQL_HOST="127.0.0.1"
+    - MYSQL_PORT="3406"
     - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
+  matrix:
+    - MYSQL_IMAGE=mysql:5.5
+    - MYSQL_IMAGE=mysql:5.6
+    - MYSQL_IMAGE=mysql:5.7
+    - MYSQL_IMAGE=percona/percona-server:5.6
+    - MYSQL_IMAGE=percona/percona-server:5.7
+    - MONGODB_IMAGE=mongo:3.2
+    - MONGODB_IMAGE=mongo:3.4
+    - MONGODB_IMAGE=percona/percona-server-mongodb:3.2
+    - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
+
+matrix:
+  include:
+    - go: 1.7.x
+      env:
+    - go: tip
+      env:
 
 addons:
   apt:
     sources:
-      - sourceline: 'deb http://repo.percona.com/apt precise testing'
+      - sourceline: "deb http://repo.percona.com/apt $(lsb_release -s -c) testing"
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0x8507EFA5'
-      - mongodb-3.2-precise
     packages:
       - percona-toolkit
-      - mongodb-org
 
 install:
   - go get -u github.com/Masterminds/glide
@@ -32,6 +49,8 @@ install:
   - glide install
 
 before_script:
+  # run docker containers
+  - docker-compose up -d
   # check if vendor dir is correct
   - git diff --exit-code
   # turn on profiling on mongo instance
@@ -51,3 +70,8 @@ notifications:
   email:
     on_success: change
     on_failure: change
+  slack:
+    on_success: change
+    on_failure: change
+    rooms:
+      secure: A/jke9SzibxoGc0H86z5fnGKoLr6xTPBNUcjLMVJ2xzqp8HX90gOdWKenooCu6tyJ0gXX8nUgIOQWsupICy2P2HPGXXKonY4Lq1qRPbxXnlqweaoTf2IZ8SmQeyP6TvNZF9978YRLqRBmJXzq7dcZCF2Gr/1XLPDCNIVJcKgG+heVUubt6q8EnIzB4OYKwUJwZ2ORzleLwqzs8ViB5ffmOXmAVd80rUTcCOailKE4+ML+CQO1MLbGxbdVjacivjM0cvXoibRZF5bhUsg7qoszaWJidJjX9UtW9rRKyPuh1vh1HFgayxmWNeiqe7yyIwGZU37Gnten+4XsVpKYxSOfRWz8TNu01jdDs7e8RgJ29OCwVG88y/yxrBtDlhjsKvy7owV1eAH63YVUJzgoVQZKUt04LAKTMxjEZKBb7o7+GdmSHQWPj8NNmcPEWBwSg99yU3xTQXefgLjqiCQTTNaiNEa1JgPNroKXzAcjJ12qpY5F5MWPFZ2ndTOL2kVEn4iqV7t6bresISXAZKJn+IrjUdZ+ZBr48zcnO7rgWGvszScDWt3oqjRlCbwxXWTL8VoDouylGVAJTUHxo07Bs307cwYiLsUp/2hPvcY2ELXrQXTqk3ZHJkMHa4U+nNvXY9RYNNqFmvAnUCHG6JfBda4b0SCjbCINjQVMCsF5DSXua8=

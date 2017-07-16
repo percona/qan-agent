@@ -137,17 +137,6 @@ func makeGetRowsFunc(iters [][]*DigestRow) GetDigestRowsFunc {
 	}
 }
 
-func makeGetTextFunc(texts ...string) GetDigestTextFunc {
-	return func(digest string) (string, error) {
-		if len(texts) == 0 {
-			return "", fmt.Errorf("No more texts")
-		}
-		text := texts[0]
-		texts = texts[1:]
-		return text, nil
-	}
-}
-
 type ByClassId []*event.Class
 
 func (a ByClassId) Len() int      { return len(a) }
@@ -174,8 +163,7 @@ func (s *WorkerTestSuite) Test001(t *C) {
 	rows, err := s.loadData("001")
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
-	getText := makeGetTextFunc("select 1")
-	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows)
 
 	// First run doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
@@ -224,8 +212,7 @@ func (s *WorkerTestSuite) Test002(t *C) {
 	rows, err := s.loadData("002")
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
-	getText := makeGetTextFunc("select 1")
-	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows)
 
 	// First run doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
@@ -268,8 +255,7 @@ func (s *WorkerTestSuite) TestEmptyDigest(t *C) {
 	rows, err := s.loadData("004")
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
-	getText := makeGetTextFunc("select 1")
-	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows)
 
 	// First run doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
@@ -582,8 +568,7 @@ func (s *WorkerTestSuite) Test003(t *C) {
 	rows, err := s.loadData("003")
 	t.Assert(err, IsNil)
 	getRows := makeGetRowsFunc(rows)
-	getText := makeGetTextFunc("select 1", "select 2", "select 3", "select 4")
-	w := NewWorker(s.logger, s.nullmysql, getRows, getText)
+	w := NewWorker(s.logger, s.nullmysql, getRows)
 
 	// First interval doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
