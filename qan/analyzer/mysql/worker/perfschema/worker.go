@@ -181,7 +181,6 @@ func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<-
 // --------------------------------------------------------------------------
 
 type GetDigestRowsFunc func(c chan<- *DigestRow, lastFetchSeconds float64, doneChan chan<- error) error
-type GetDigestTextFunc func(string) (string, error)
 
 type Worker struct {
 	logger    *pct.Logger

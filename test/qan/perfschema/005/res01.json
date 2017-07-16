@@ -82,7 +82,7 @@
   "Class": [
     {
       "Id": "1111111111111111",
-      "Fingerprint": "select 1",
+      "Fingerprint": "",
       "Metrics": {
         "TimeMetrics": {
           "Lock_time": {
