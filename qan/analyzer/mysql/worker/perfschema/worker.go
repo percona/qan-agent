@@ -76,6 +76,41 @@ type Class struct {
 // produce a mysqlAnalyzer.Result.
 type Snapshot map[string]Class // keyed on digest (classId)
 
+// NewDigests returns ready to use *Digests
+func NewDigests() *Digests {
+	d := &Digests{}
+	d.Reset()
+	return d
+}
+
+// Digests represents all digests retrieved from performance_schema
+type Digests struct {
+	// All digests collected from performance_schema since creation of Digests or Reset()
+	All Snapshot
+	// Curr digests collected from performance_schema
+	Curr Snapshot
+}
+
+// MergeCurr merges current snapshot into all collected digests so far
+func (d *Digests) MergeCurr() {
+	for i := range d.Curr {
+		if _, ok := d.All[i]; !ok {
+			d.All[i] = d.Curr[i]
+			continue
+		}
+
+		for j := range d.Curr[i].Rows {
+			d.All[i].Rows[j] = d.Curr[i].Rows[j]
+		}
+	}
+}
+
+// Reset drops all collected data
+func (d *Digests) Reset() {
+	d.All = Snapshot{}
+	d.All = Snapshot{}
+}
+
 // --------------------------------------------------------------------------
 
 type WorkerFactory interface {
@@ -214,8 +249,7 @@ type Worker struct {
 	// --
 	name            string
 	status          *pct.Status
-	prev            Snapshot
-	curr            Snapshot
+	digests         *Digests
 	iter            *iter.Interval
 	lastErr         error
 	lastRowCnt      uint
@@ -240,10 +274,9 @@ func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestR
 		status: pct.NewStatus([]string{
 			name,
 			name + "-last",
-			name + "-curr",
-			name + "-prev",
+			name + "-digests",
 		}),
-		prev:          make(Snapshot),
+		digests:       NewDigests(),
 		queryExamples: make(map[string]perfSchemaExample),
 	}
 	return w
@@ -282,17 +315,17 @@ func (w *Worker) Run() (*report.Result, error) {
 	defer w.mysqlConn.Close()
 
 	var err error
-	w.curr, err = w.getSnapshot()
+	w.digests.Curr, err = w.getSnapshot()
 	if err != nil {
 		w.lastErr = err
 		return nil, err
 	}
 
-	if len(w.prev) == 0 {
+	if len(w.digests.All) == 0 {
 		return nil, nil
 	}
 
-	res, err := w.prepareResult(w.prev, w.curr)
+	res, err := w.prepareResult(w.digests.All, w.digests.Curr)
 	if err != nil {
 		w.lastErr = err
 		return nil, err
@@ -304,24 +337,15 @@ func (w *Worker) Run() (*report.Result, error) {
 func (w *Worker) Cleanup() error {
 	w.logger.Debug("Cleanup:call:", w.iter.Number)
 	defer w.logger.Debug("Cleanup:return:", w.iter.Number)
-	for i := range w.curr {
-		if _, ok := w.prev[i]; !ok {
-			w.prev[i] = w.curr[i]
-			continue
-		}
-
-		for j := range w.curr[i].Rows {
-			w.prev[i].Rows[j] = w.curr[i].Rows[j]
-		}
-	}
+	w.digests.MergeCurr()
 	last := fmt.Sprintf("rows: %d, fetch: %s, prep: %s",
 		w.lastRowCnt, w.lastFetchTime.Format(time.RFC3339), pct.Duration(w.lastPrepTime))
 	if w.lastErr != nil {
 		last += fmt.Sprintf(", error: %s", w.lastErr)
 	}
+	digests := fmt.Sprintf("all: %d, curr: %d", len(w.digests.All), len(w.digests.Curr))
 	w.status.Update(w.name+"-last", last)
-	w.status.Update(w.name+"-prev", fmt.Sprintf("%d", len(w.prev)))
-	w.status.Update(w.name+"-curr", fmt.Sprintf("%d", len(w.curr)))
+	w.status.Update(w.name+"-digest", digests)
 	return nil
 }
 
@@ -348,8 +372,7 @@ func (w *Worker) SetConfig(config pc.QAN) {
 
 func (w *Worker) reset() {
 	w.iter = nil
-	w.curr = Snapshot{}
-	w.prev = Snapshot{}
+	w.digests.Reset()
 	w.lastErr = nil
 	w.lastRowCnt = 0
 	w.lastFetchTime = time.Time{}
@@ -409,7 +432,7 @@ func (w *Worker) getSnapshot() (Snapshot, error) {
 
 	seconds := float64(0)
 	// If it's first snapshot we should fetch it all
-	if len(w.prev) == 0 {
+	if len(w.digests.All) == 0 {
 		seconds = -1
 	} else {
 		seconds = time.Now().UTC().Sub(w.lastFetchTime).Seconds()
@@ -584,7 +607,7 @@ CLASS_LOOP:
 		// Create standard metric stats from the class metrics just calculated.
 		stats := event.NewMetrics()
 
-		// Time metircs are in picoseconds, so multiply by 10^-12 to convert to seconds.
+		// Time metrics are in picoseconds, so multiply by 10^-12 to convert to seconds.
 		stats.TimeMetrics["Query_time"] = &event.TimeStats{
 			Sum: float64(d.SumTimerWait) * math.Pow10(-12),
 			Min: float64(d.MinTimerWait) * math.Pow10(-12),
