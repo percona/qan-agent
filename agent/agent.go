@@ -43,15 +43,13 @@ const (
 )
 
 const (
-	CMD_QUEUE_SIZE              = 10
-	STATUS_QUEUE_SIZE           = 10
-	MAX_ERRORS                  = 3
-	MIN_SUPPORTED_MYSQL_VERSION = "5.1.0"
+	CMD_QUEUE_SIZE    = 10
+	STATUS_QUEUE_SIZE = 10
+	MAX_ERRORS        = 3
 )
 
 var (
-	ErrRestart = errors.New("received Restart command")
-	ErrStop    = errors.New("received Stop command")
+	ErrStop = errors.New("received Stop command")
 )
 
 type Agent struct {
