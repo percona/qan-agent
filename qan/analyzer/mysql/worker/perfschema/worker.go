@@ -469,7 +469,7 @@ func (w *Worker) prepareResult(prev, curr Snapshot) (*report.Result, error) {
 	classes := []*event.Class{}
 
 	// Compare current classes to previous.
-CLASS_LOOP:
+ClassLoop:
 	for classId, class := range curr {
 
 		// If this class does not exist in prev, skip the entire class.
@@ -486,7 +486,7 @@ CLASS_LOOP:
 		n := uint64(0)                           // number of query instances in prev and curr
 
 		// Each row is an instance of the query executed in the schema.
-	ROW_LOOP:
+	RowLoop:
 		for schema, row := range class.Rows {
 			prevRow, ok := prevClass.Rows[schema]
 			if !ok {
@@ -495,7 +495,7 @@ CLASS_LOOP:
 
 			// Check if it executed during the interval.
 			if row.CountStar == prevRow.CountStar {
-				continue ROW_LOOP // not executed during interval
+				continue RowLoop // not executed during interval
 			}
 
 			// If current value of CountStart (number of queries)
@@ -554,7 +554,7 @@ CLASS_LOOP:
 
 		// Class was in prev, but no rows in prev were in curr, so skip the class.
 		if n == 0 {
-			continue CLASS_LOOP
+			continue ClassLoop
 		}
 
 		// Divide the total averages to yield the average of the averages.
