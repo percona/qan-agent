@@ -23,6 +23,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -37,49 +39,76 @@ import (
 	"github.com/percona/qan-agent/test/mock"
 	. "github.com/percona/qan-agent/test/rootdir"
 	"github.com/stretchr/testify/assert"
-	. "gopkg.in/check.v1"
+	"github.com/stretchr/testify/require"
 )
-
-// Hook up gocheck into the "go test" runner.
-func Test(t *testing.T) { TestingT(t) }
 
 var inputDir = RootDir() + "/test/qan/perfschema/"
 
-type WorkerTestSuite struct {
-	dsn       string
-	logChan   chan proto.LogEntry
-	logger    *pct.Logger
-	nullmysql *mock.NullMySQL
-	mysqlConn *mysql.Connection
+func TestWorker(t *testing.T) {
+	logChan := make(chan proto.LogEntry, 100)
+	logger := pct.NewLogger(logChan, "qan-worker")
+
+	tests := []func(t *testing.T, logger *pct.Logger){
+		testWorkerWithNullMySQL,
+		testWorkerWithRealMySQL,
+	}
+
+	for _, f := range tests {
+		f := f // capture range variable
+		fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		t.Run(fName, func(t *testing.T) {
+			t.Parallel()
+
+			f(t, logger)
+		})
+	}
 }
 
-var _ = Suite(&WorkerTestSuite{})
-
-func (s *WorkerTestSuite) SetUpSuite(t *C) {
-	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	if s.dsn == "" {
+func testWorkerWithRealMySQL(t *testing.T, logger *pct.Logger) {
+	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
+	if dsn == "" {
 		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
 	}
-	s.mysqlConn = mysql.NewConnection(s.dsn)
-	if err := s.mysqlConn.Connect(); err != nil {
-		t.Fatal(err)
+
+	tests := []func(t *testing.T, logger *pct.Logger, dsn string){
+		testRealWorker,
+		testIterClockReset,
+		testIterOutOfSeq,
 	}
-	s.logChan = make(chan proto.LogEntry, 100)
-	s.logger = pct.NewLogger(s.logChan, "qan-worker")
-	s.nullmysql = mock.NewNullMySQL()
+
+	for _, f := range tests {
+		f := f // capture range variable
+		fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		t.Run(fName, func(t *testing.T) {
+			f(t, logger, dsn)
+		})
+	}
 }
 
-func (s *WorkerTestSuite) SetUpTest(t *C) {
-	s.nullmysql.Reset()
-}
+func testWorkerWithNullMySQL(t *testing.T, logger *pct.Logger) {
+	tests := []func(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL){
+		test001,
+		test002,
+		test003,
+		test005,
+		test004EmptyDigest,
+	}
 
-func (s *WorkerTestSuite) TearDownSuite(t *C) {
-	s.mysqlConn.Close()
+	for _, f := range tests {
+		f := f // capture range variable
+		fName := runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name()
+		t.Run(fName, func(t *testing.T) {
+			t.Parallel()
+
+			nullmysql := mock.NewNullMySQL()
+			f(t, logger, nullmysql)
+		})
+	}
 }
 
 // --------------------------------------------------------------------------
 
-func (s *WorkerTestSuite) loadData(dir string) ([][]*DigestRow, error) {
+func loadData(dir string) ([][]*DigestRow, error) {
 	files, err := filepath.Glob(filepath.Join(inputDir, dir, "/iter*.json"))
 	if err != nil {
 		return nil, err
@@ -99,7 +128,7 @@ func (s *WorkerTestSuite) loadData(dir string) ([][]*DigestRow, error) {
 	return iters, nil
 }
 
-func (s *WorkerTestSuite) loadResult(file string, got *report.Result) (*report.Result, error) {
+func loadResult(file string, got *report.Result) (*report.Result, error) {
 	file = filepath.Join(inputDir, file)
 	updateTestData := os.Getenv("UPDATE_TEST_DATA")
 	if updateTestData != "" {
@@ -156,14 +185,14 @@ func normalizeResult(res *report.Result) {
 
 // --------------------------------------------------------------------------
 
-func (s *WorkerTestSuite) Test001(t *C) {
+func test001(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	// This is the simplest input possible: 1 query in iter 1 and 2. The result
 	// is just the increase in its values.
 
-	rows, err := s.loadData("001")
-	t.Assert(err, IsNil)
+	rows, err := loadData("001")
+	require.Nil(t, err)
 	getRows := makeGetRowsFunc(rows)
-	w := NewWorker(s.logger, s.nullmysql, getRows)
+	w := NewWorker(logger, nullmysql, getRows)
 
 	// First run doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
@@ -171,14 +200,14 @@ func (s *WorkerTestSuite) Test001(t *C) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
+	require.Nil(t, err)
+	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// The second run produces a result: the diff of 2nd - 1st.
 	i = &iter.Interval{
@@ -186,33 +215,32 @@ func (s *WorkerTestSuite) Test001(t *C) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err = w.Run()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 	normalizeResult(res)
-	expect, err := s.loadResult("001/res01.json", res)
-	t.Assert(err, IsNil)
+	expect, err := loadResult("001/res01.json", res)
+	require.Nil(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Quick side test that Status() works and reports last stats.
 	status := w.Status()
-	t.Logf("%+v", status)
-	t.Check(strings.HasPrefix(status["qan-worker-last"], "rows: 1"), Equals, true)
+	assert.Equal(t, true, strings.HasPrefix(status["qan-worker-last"], "rows: 1"))
 }
 
-func (s *WorkerTestSuite) Test002(t *C) {
+func test002(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	// This is the 2nd most simplest input after 001: two queries, same digest,
-	// but different schemas. The reuslt is the aggregate of their value diffs
+	// but different schemas. The result is the aggregate of their value diffs
 	// from iter 1 to 2.
 
-	rows, err := s.loadData("002")
-	t.Assert(err, IsNil)
+	rows, err := loadData("002")
+	require.Nil(t, err)
 	getRows := makeGetRowsFunc(rows)
-	w := NewWorker(s.logger, s.nullmysql, getRows)
+	w := NewWorker(logger, nullmysql, getRows)
 
 	// First run doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
@@ -220,14 +248,14 @@ func (s *WorkerTestSuite) Test002(t *C) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
+	require.Nil(t, err)
+	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// The second run produces a result: the diff of 2nd - 1st.
 	i = &iter.Interval{
@@ -235,27 +263,108 @@ func (s *WorkerTestSuite) Test002(t *C) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err = w.Run()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 	normalizeResult(res)
-	expect, err := s.loadResult("002/res01.json", res)
-	t.Assert(err, IsNil)
+	expect, err := loadResult("002/res01.json", res)
+	require.Nil(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 }
 
-func (s *WorkerTestSuite) TestEmptyDigest(t *C) {
+func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
+	// This test has 4 iters:
+	//   1: 2 queries
+	//   2: 2 queries (res02)
+	//   3: 4 queries (res03)
+	//   4: 4 queries but 4th has same COUNT_STAR (res04)
+	rows, err := loadData("003")
+	require.Nil(t, err)
+	getRows := makeGetRowsFunc(rows)
+	w := NewWorker(logger, nullmysql, getRows)
+
+	// First interval doesn't produce a result because 2 snapshots are required.
+	i := &iter.Interval{
+		Number:    1,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err := w.Run()
+	require.Nil(t, err)
+	assert.Nil(t, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+
+	// Second interval produces a result: the diff of 2nd - 1st.
+	i = &iter.Interval{
+		Number:    2,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err = w.Run()
+	require.Nil(t, err)
+	normalizeResult(res)
+	expect, err := loadResult("003/res02.json", res)
+	require.Nil(t, err)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+
+	// Third interval...
+	i = &iter.Interval{
+		Number:    3,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err = w.Run()
+	require.Nil(t, err)
+	normalizeResult(res)
+	expect, err = loadResult("003/res03.json", res)
+	require.Nil(t, err)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+
+	// Fourth interval...
+	i = &iter.Interval{
+		Number:    4,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err = w.Run()
+	require.Nil(t, err)
+	normalizeResult(res)
+	expect, err = loadResult("003/res04.json", res)
+	require.Nil(t, err)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+}
+
+func test004EmptyDigest(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	// This is the simplest input possible: 1 query in iter 1 and 2. The result
 	// is just the increase in its values.
 
-	rows, err := s.loadData("004")
-	t.Assert(err, IsNil)
+	rows, err := loadData("004")
+	require.Nil(t, err)
 	getRows := makeGetRowsFunc(rows)
-	w := NewWorker(s.logger, s.nullmysql, getRows)
+	w := NewWorker(logger, nullmysql, getRows)
 
 	// First run doesn't produce a result because 2 snapshots are required.
 	i := &iter.Interval{
@@ -263,32 +372,89 @@ func (s *WorkerTestSuite) TestEmptyDigest(t *C) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
+	require.Nil(t, err)
+	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 }
-func (s *WorkerTestSuite) TestRealWorker(t *C) {
-	//FAIL: perfschema_test.go:290: WorkerTestSuite.TestRealWorker
-	//
-	//perfschema_test.go:344:
-	//t.Assert(res, NotNil)
-	//... value *iter.Result = (*iter.Result)(nil)
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
 
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
+// Test005 for `PMM-1081: Performance schema doesn't work for queries that don't show every interval`
+func test005(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
+	// This test has 3 iters:
+	//   1: 2 queries
+	//   2: 1 query (res01)
+	//   3: 2 queries (res02)
+	rows, err := loadData("005")
+	require.Nil(t, err)
+	getRows := makeGetRowsFunc(rows)
+	w := NewWorker(logger, nullmysql, getRows)
+
+	// First interval doesn't produce a result because 2 snapshots are required.
+	i := &iter.Interval{
+		Number:    1,
+		StartTime: time.Now().UTC(),
 	}
-	mysqlConn := mysql.NewConnection(s.dsn)
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err := w.Run()
+	require.Nil(t, err)
+	assert.Nil(t, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+
+	// Second interval produces a result: the diff of 2nd - 1st.
+	i = &iter.Interval{
+		Number:    2,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err = w.Run()
+	require.Nil(t, err)
+	normalizeResult(res)
+	expect, err := loadResult("005/res01.json", res)
+	require.Nil(t, err)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+
+	// Third interval...
+	i = &iter.Interval{
+		Number:    3,
+		StartTime: time.Now().UTC(),
+	}
+	err = w.Setup(i)
+	require.Nil(t, err)
+
+	res, err = w.Run()
+	require.Nil(t, err)
+	normalizeResult(res)
+	expect, err = loadResult("005/res02.json", res)
+	require.Nil(t, err)
+	assert.Equal(t, expect, res)
+
+	err = w.Cleanup()
+	require.Nil(t, err)
+}
+
+func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
+	mysqlConn := mysql.NewConnection(dsn)
 	err := mysqlConn.Connect()
-	t.Assert(err, IsNil)
-	f := NewRealWorkerFactory(s.logChan)
-	w := f.Make("qan-worker", mysqlConn)
+	require.Nil(t, err)
+	defer mysqlConn.Close()
+
+	mysqlWorkerConn := mysql.NewConnection(dsn)
+	f := NewRealWorkerFactory(logger.LogChan())
+	w := f.Make("qan-worker", mysqlWorkerConn)
 
 	start := []mysql.Query{
 		{Verify: "performance_schema", Expect: "1"},
@@ -296,7 +462,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
 		{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
 	}
-	if err := s.mysqlConn.Set(start); err != nil {
+	if err := mysqlConn.Set(start); err != nil {
 		t.Fatal(err)
 	}
 	stop := []mysql.Query{
@@ -304,7 +470,7 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
 	}
 	defer func() {
-		if err := s.mysqlConn.Set(stop); err != nil {
+		if err := mysqlConn.Set(stop); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -312,30 +478,30 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	// SCHEMA_NAME: NULL
 	//      DIGEST: fbe070dfb47e4a2401c5be6b5201254e
 	// DIGEST_TEXT: SELECT ? FROM DUAL
-	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
+	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 
 	// First interval.
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
+	require.Nil(t, err)
+	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Some query activity between intervals.
-	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
+	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 	time.Sleep(1 * time.Second)
 
 	// Second interval and a result.
 	err = w.Setup(&iter.Interval{Number: 2, StartTime: time.Now().UTC()})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err = w.Run()
-	t.Assert(err, IsNil)
-	t.Assert(res, NotNil)
+	require.Nil(t, err)
+	require.NotNil(t, res)
 	if len(res.Class) == 0 {
 		t.Fatal("Expected len(res.Class) > 0")
 	}
@@ -346,10 +512,10 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 			break
 		}
 	}
-	t.Assert(class, NotNil)
+	require.NotNil(t, class)
 	// Digests on different versions or distros of MySQL don't match
-	//t.Check(class.Id, Equals, "01C5BE6B5201254E")
-	//t.Check(class.Fingerprint, Equals, "SELECT ? FROM DUAL ")
+	//assert.Equal(t, "01C5BE6B5201254E", class.Id)
+	//assert.Equal(t, "SELECT ? FROM DUAL ", class.Fingerprint)
 	queryTime := class.Metrics.TimeMetrics["Query_time"]
 	if queryTime.Min == 0 {
 		t.Error("Expected Query_time_min > 0")
@@ -363,30 +529,23 @@ func (s *WorkerTestSuite) TestRealWorker(t *C) {
 	if queryTime.Min > queryTime.Max {
 		t.Error("Expected Query_time_min >= Query_time_max")
 	}
-	t.Check(class.Metrics.NumberMetrics["Rows_affected"].Sum, Equals, uint64(0))
-	t.Check(class.Metrics.NumberMetrics["Rows_examined"].Sum, Equals, uint64(0))
-	t.Check(class.Metrics.NumberMetrics["Rows_sent"].Sum, Equals, uint64(1))
+	assert.Equal(t, uint64(0), class.Metrics.NumberMetrics["Rows_affected"].Sum)
+	assert.Equal(t, uint64(0), class.Metrics.NumberMetrics["Rows_examined"].Sum)
+	assert.Equal(t, uint64(1), class.Metrics.NumberMetrics["Rows_sent"].Sum)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 }
 
-func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
-	//FAIL: perfschema_test.go:380: WorkerTestSuite.TestIterOutOfSeq
-
-	//perfschema_test.go:448:
-	//t.Assert(res, NotNil)
-	//... value *iter.Result = (*iter.Result)(nil)
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
-
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
-	mysqlConn := mysql.NewConnection(s.dsn)
+func testIterOutOfSeq(t *testing.T, logger *pct.Logger, dsn string) {
+	mysqlConn := mysql.NewConnection(dsn)
 	err := mysqlConn.Connect()
-	t.Assert(err, IsNil)
-	f := NewRealWorkerFactory(s.logChan)
-	w := f.Make("qan-worker", mysqlConn)
+	require.Nil(t, err)
+	defer mysqlConn.Close()
+
+	mysqlWorkerConn := mysql.NewConnection(dsn)
+	f := NewRealWorkerFactory(logger.LogChan())
+	w := f.Make("qan-worker", mysqlWorkerConn)
 
 	start := []mysql.Query{
 		{Verify: "performance_schema", Expect: "1"},
@@ -394,7 +553,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
 		{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
 	}
-	if err := s.mysqlConn.Set(start); err != nil {
+	if err := mysqlConn.Set(start); err != nil {
 		t.Fatal(err)
 	}
 	stop := []mysql.Query{
@@ -402,7 +561,7 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
 	}
 	defer func() {
-		if err := s.mysqlConn.Set(stop); err != nil {
+		if err := mysqlConn.Set(stop); err != nil {
 			t.Fatal(err)
 		}
 	}()
@@ -410,65 +569,60 @@ func (s *WorkerTestSuite) TestIterOutOfSeq(t *C) {
 	// SCHEMA_NAME: NULL
 	//      DIGEST: fbe070dfb47e4a2401c5be6b5201254e
 	// DIGEST_TEXT: SELECT ? FROM DUAL
-	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
+	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 
 	// First interval.
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
+	require.Nil(t, err)
+	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Some query activity between intervals.
-	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
+	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 	time.Sleep(1 * time.Second)
 
 	// Simulate the ticker being reset which results in it resetting
 	// its internal interval number, so instead of 2 here we have 1 again.
 	// Second interval and a result.
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err = w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil) // no result due to out of sequence interval
+	require.Nil(t, err)
+	assert.Nil(t, res) // no result due to out of sequence interval
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Simulate normal operation resuming, i.e. interval 2.
 	err = w.Setup(&iter.Interval{Number: 2, StartTime: time.Now().UTC()})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Now there should be a result.
 	res, err = w.Run()
-	t.Assert(err, IsNil)
-	t.Assert(res, NotNil)
+	require.Nil(t, err)
+	require.NotNil(t, res)
 	if len(res.Class) == 0 {
 		t.Error("Expected len(res.Class) > 0")
 	}
 }
 
-func (s *WorkerTestSuite) TestIterClockReset(t *C) {
-	//FAIL: perfschema_test.go:454: WorkerTestSuite.TestIterClockReset
-	//
-	//perfschema_test.go:518:
-	//t.Assert(res, NotNil)
-	//... value *iter.Result = (*iter.Result)(nil)
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
+func testIterClockReset(t *testing.T, logger *pct.Logger, dsn string) {
+	var err error
 
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
-	mysqlConn := mysql.NewConnection(s.dsn)
-	err := mysqlConn.Connect()
-	t.Assert(err, IsNil)
-	f := NewRealWorkerFactory(s.logChan)
-	w := f.Make("qan-worker", mysqlConn)
+	mysqlConn := mysql.NewConnection(dsn)
+	err = mysqlConn.Connect()
+	require.Nil(t, err)
+	defer mysqlConn.Close()
+
+	mysqlWorkerConn := mysql.NewConnection(dsn)
+	f := NewRealWorkerFactory(logger.LogChan())
+	w := f.Make("qan-worker", mysqlWorkerConn)
 
 	start := []mysql.Query{
 		{Verify: "performance_schema", Expect: "1"},
@@ -476,7 +630,7 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'YES', TIMED = 'YES' WHERE NAME LIKE 'statement/sql/%'"},
 		{Set: "TRUNCATE performance_schema.events_statements_summary_by_digest"},
 	}
-	if err := s.mysqlConn.Set(start); err != nil {
+	if err := mysqlConn.Set(start); err != nil {
 		t.Fatal(err)
 	}
 	stop := []mysql.Query{
@@ -484,60 +638,63 @@ func (s *WorkerTestSuite) TestIterClockReset(t *C) {
 		{Set: "UPDATE performance_schema.setup_instruments SET ENABLED = 'NO', TIMED = 'NO' WHERE NAME LIKE 'statement/sql/%'"},
 	}
 	defer func() {
-		if err := s.mysqlConn.Set(stop); err != nil {
+		if err := mysqlConn.Set(stop); err != nil {
 			t.Fatal(err)
 		}
 	}()
 
 	// Generate some perf schema data.
-	_, err = s.mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
+	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
 
 	// First interval.
 	now := time.Now().UTC()
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: now})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
+	require.Nil(t, err)
+	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Simulate the ticker sending a time that's earlier than the previous
 	// tick, which shouldn't happen.
 	now = now.Add(-1 * time.Minute)
 	err = w.Setup(&iter.Interval{Number: 2, StartTime: now})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	res, err = w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil) // no result due to out of sequence interval
+	require.Nil(t, err)
+	assert.Nil(t, res) // no result due to out of sequence interval
 
 	err = w.Cleanup()
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Simulate normal operation resuming.
 	now = now.Add(1 * time.Minute)
 	err = w.Setup(&iter.Interval{Number: 3, StartTime: now})
-	t.Assert(err, IsNil)
+	require.Nil(t, err)
 
 	// Now there should be a result.
 	res, err = w.Run()
-	t.Assert(err, IsNil)
-	t.Assert(res, NotNil)
+	require.Nil(t, err)
+	require.NotNil(t, res)
 	if len(res.Class) == 0 {
 		t.Error("Expected len(res.Class) > 0")
 	}
 }
 
-func (s *WorkerTestSuite) TestIter(t *C) {
+func TestIter(t *testing.T) {
+	t.Parallel()
+
+	logChan := make(chan proto.LogEntry, 100)
 	tickChan := make(chan time.Time, 1)
-	i := NewIter(pct.NewLogger(s.logChan, "iter"), tickChan)
-	t.Assert(i, NotNil)
+	i := NewIter(pct.NewLogger(logChan, "iter"), tickChan)
+	require.NotNil(t, i)
 
 	iterChan := i.IntervalChan()
-	t.Assert(iterChan, NotNil)
+	require.NotNil(t, iterChan)
 
 	i.Start()
 	defer i.Stop()
@@ -557,148 +714,4 @@ func (s *WorkerTestSuite) TestIter(t *C) {
 	tickChan <- t3
 	got = <-iterChan
 	assert.Equal(t, &iter.Interval{Number: 3, StartTime: t2, StopTime: t3}, got)
-}
-
-func (s *WorkerTestSuite) Test003(t *C) {
-	// This test has 4 iters:
-	//   1: 2 queries
-	//   2: 2 queries (res02)
-	//   3: 4 queries (res03)
-	//   4: 4 queries but 4th has same COUNT_STAR (res04)
-	rows, err := s.loadData("003")
-	t.Assert(err, IsNil)
-	getRows := makeGetRowsFunc(rows)
-	w := NewWorker(s.logger, s.nullmysql, getRows)
-
-	// First interval doesn't produce a result because 2 snapshots are required.
-	i := &iter.Interval{
-		Number:    1,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
-
-	// Second interval produces a result: the diff of 2nd - 1st.
-	i = &iter.Interval{
-		Number:    2,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err = w.Run()
-	t.Assert(err, IsNil)
-	normalizeResult(res)
-	expect, err := s.loadResult("003/res02.json", res)
-	t.Assert(err, IsNil)
-	assert.Equal(t, expect, res)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
-
-	// Third interval...
-	i = &iter.Interval{
-		Number:    3,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err = w.Run()
-	t.Assert(err, IsNil)
-	normalizeResult(res)
-	expect, err = s.loadResult("003/res03.json", res)
-	t.Assert(err, IsNil)
-	assert.Equal(t, expect, res)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
-
-	// Fourth interval...
-	i = &iter.Interval{
-		Number:    4,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err = w.Run()
-	t.Assert(err, IsNil)
-	normalizeResult(res)
-	expect, err = s.loadResult("003/res04.json", res)
-	t.Assert(err, IsNil)
-	assert.Equal(t, expect, res)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
-}
-
-// Test005 for `PMM-1081: Performance schema doesn't work for queries that don't show every interval`
-func (s *WorkerTestSuite) Test005(t *C) {
-	// This test has 3 iters:
-	//   1: 2 queries
-	//   2: 1 query (res01)
-	//   3: 2 queries (res02)
-	rows, err := s.loadData("005")
-	t.Assert(err, IsNil)
-	getRows := makeGetRowsFunc(rows)
-	w := NewWorker(s.logger, s.nullmysql, getRows)
-
-	// First interval doesn't produce a result because 2 snapshots are required.
-	i := &iter.Interval{
-		Number:    1,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err := w.Run()
-	t.Assert(err, IsNil)
-	t.Check(res, IsNil)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
-
-	// Second interval produces a result: the diff of 2nd - 1st.
-	i = &iter.Interval{
-		Number:    2,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err = w.Run()
-	t.Assert(err, IsNil)
-	normalizeResult(res)
-	expect, err := s.loadResult("005/res01.json", res)
-	t.Assert(err, IsNil)
-	assert.Equal(t, expect, res)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
-
-	// Third interval...
-	i = &iter.Interval{
-		Number:    3,
-		StartTime: time.Now().UTC(),
-	}
-	err = w.Setup(i)
-	t.Assert(err, IsNil)
-
-	res, err = w.Run()
-	t.Assert(err, IsNil)
-	normalizeResult(res)
-	expect, err = s.loadResult("005/res02.json", res)
-	t.Assert(err, IsNil)
-	assert.Equal(t, expect, res)
-
-	err = w.Cleanup()
-	t.Assert(err, IsNil)
 }

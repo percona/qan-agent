@@ -76,43 +76,6 @@ type Class struct {
 // produce a mysqlAnalyzer.Result.
 type Snapshot map[string]Class // keyed on digest (classId)
 
-// NewDigests returns ready to use *Digests
-func NewDigests() *Digests {
-	d := &Digests{}
-	d.Reset()
-	return d
-}
-
-// Digests represents all digests retrieved from performance_schema
-type Digests struct {
-	// All digests collected from performance_schema since creation of Digests or Reset()
-	All Snapshot
-	// Curr digests collected from performance_schema
-	Curr Snapshot
-}
-
-// MergeCurr merges current snapshot into all collected digests so far
-func (d *Digests) MergeCurr() {
-	for i := range d.Curr {
-		if _, ok := d.All[i]; !ok {
-			d.All[i] = d.Curr[i]
-			continue
-		}
-
-		for j := range d.Curr[i].Rows {
-			d.All[i].Rows[j] = d.Curr[i].Rows[j]
-		}
-	}
-}
-
-// Reset drops all collected data
-func (d *Digests) Reset() {
-	d.All = Snapshot{}
-	d.All = Snapshot{}
-}
-
-// --------------------------------------------------------------------------
-
 type WorkerFactory interface {
 	Make(name string, mysqlConn mysql.Connector) *Worker
 }
@@ -448,7 +411,6 @@ func (w *Worker) getSnapshot() (Snapshot, error) {
 
 	curr := Snapshot{}
 	var err error // from getRows() on doneChan
-ROW_LOOP:
 	for {
 		select {
 		case row := <-rowChan:
@@ -486,10 +448,9 @@ ROW_LOOP:
 				}
 			}
 		case err = <-doneChan:
-			break ROW_LOOP
+			return curr, err
 		}
 	}
-	return curr, err
 }
 
 func (w *Worker) prepareResult(prev, curr Snapshot) (*report.Result, error) {
