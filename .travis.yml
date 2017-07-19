@@ -49,6 +49,11 @@ install:
   - glide install
 
 before_script:
+  # log software versions
+  - docker --version
+  - docker-compose --version
+  - docker-compose exec mysql mysql --version
+  - docker-compose exec mongo mongo --version
   # run docker containers
   - docker-compose up -d
   # check if vendor dir is correct
