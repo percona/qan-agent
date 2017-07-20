@@ -452,6 +452,17 @@ func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 	require.Nil(t, err)
 	defer mysqlConn.Close()
 
+	requiredVersion := "5.6.5"
+	ok, err := mysqlConn.AtLeastVersion(requiredVersion)
+	require.Nil(t, err)
+	if !ok {
+		t.Skip(
+			"Monitoring Performance Schema for this version of MySQL is unsupported.",
+			fmt.Sprintf("Required table `events_statements_summary_by_digest` was introduced in MySQL %s.", requiredVersion),
+			"https://dev.mysql.com/doc/relnotes/mysql/5.6/en/news-5-6-5.html",
+		)
+	}
+
 	mysqlWorkerConn := mysql.NewConnection(dsn)
 	f := NewRealWorkerFactory(logger.LogChan())
 	w := f.Make("qan-worker", mysqlWorkerConn)
@@ -543,6 +554,17 @@ func testIterOutOfSeq(t *testing.T, logger *pct.Logger, dsn string) {
 	require.Nil(t, err)
 	defer mysqlConn.Close()
 
+	requiredVersion := "5.6.5"
+	ok, err := mysqlConn.AtLeastVersion(requiredVersion)
+	require.Nil(t, err)
+	if !ok {
+		t.Skip(
+			"Monitoring Performance Schema for this version of MySQL is unsupported.",
+			fmt.Sprintf("Required table `events_statements_summary_by_digest` was introduced in MySQL %s.", requiredVersion),
+			"https://dev.mysql.com/doc/relnotes/mysql/5.6/en/news-5-6-5.html",
+		)
+	}
+
 	mysqlWorkerConn := mysql.NewConnection(dsn)
 	f := NewRealWorkerFactory(logger.LogChan())
 	w := f.Make("qan-worker", mysqlWorkerConn)
@@ -619,6 +641,17 @@ func testIterClockReset(t *testing.T, logger *pct.Logger, dsn string) {
 	err = mysqlConn.Connect()
 	require.Nil(t, err)
 	defer mysqlConn.Close()
+
+	requiredVersion := "5.6.5"
+	ok, err := mysqlConn.AtLeastVersion(requiredVersion)
+	require.Nil(t, err)
+	if !ok {
+		t.Skip(
+			"Monitoring Performance Schema for this version of MySQL is unsupported.",
+			fmt.Sprintf("Required table `events_statements_summary_by_digest` was introduced in MySQL %s.", requiredVersion),
+			"https://dev.mysql.com/doc/relnotes/mysql/5.6/en/news-5-6-5.html",
+		)
+	}
 
 	mysqlWorkerConn := mysql.NewConnection(dsn)
 	f := NewRealWorkerFactory(logger.LogChan())

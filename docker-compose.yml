@@ -6,8 +6,6 @@ services:
       - ${MYSQL_HOST:-127.0.0.1}:${MYSQL_PORT:-3306}:3306
     environment:
       - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-    # MySQL 5.5 doesn't enable Performance Schema by default so we need to do it manually
-    command: --performance-schema
   mongo:
     image: ${MONGODB_IMAGE:-percona/percona-server-mongodb:3.4}
     ports:
