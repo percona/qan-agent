@@ -503,22 +503,6 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 }
 
 func (s *ManagerTestSuite) TestStartTool(t *C) {
-	//	FAIL: manager_test.go:554: ManagerTestSuite.TestStartTool
-	//
-	//	manager_test.go:610:
-	//	t.Error(diff)
-	//	... Error: MaxSlowLogSize:
-	//	got: 0
-	//	expected: 1073741824
-	//
-	//
-	//	manager_test.go:621:
-	//	t.Check(reply.Error, Equals, a.String()+" service is running")
-	//	... obtained string = "Query Analytics is already running on MySQL 3130000000000000.To reconfigure or restart Query Analytics, stop then start it again."
-	//	... expected string = "qan-analizer-1 service is running"
-	//
-	t.Skip("'Make PMM great again!' No automated testing and this test was failing on 9 Feburary 2017: https://github.com/percona/qan-agent/pull/37")
-
 	// Make and start a qan.Manager with mock factories, no analyzer yet.
 	a := mock.NewQanAnalyzer("qan-analizer-1")
 	f := mock.NewQanAnalyzerFactory(a)
@@ -571,6 +555,14 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	gotConfig := &pc.QAN{}
 	err = json.Unmarshal(data, gotConfig)
 	t.Check(err, IsNil)
+	// For some reasons MaxSlowLogSize is explicitly marked to not be saved in config file
+	// type QAN struct {
+	//      ...
+	// 	MaxSlowLogSize int64  `json:"-"` // bytes, 0 = DEFAULT_MAX_SLOW_LOG_SIZE. Don't write it to the config
+	//      ...
+	// }
+	t.Check(gotConfig.MaxSlowLogSize, Equals, int64(0))
+	gotConfig.MaxSlowLogSize = config.MaxSlowLogSize
 	t.Check(gotConfig, DeepEquals, config)
 
 	// Now the manager and analyzer should be running.
@@ -581,7 +573,7 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	// Try to start the same analyzer again. It results in an error because
 	// double tooling is not allowed.
 	reply = m.Handle(cmd)
-	t.Check(reply.Error, Equals, a.String()+" service is running")
+	t.Check(reply.Error, Equals, fmt.Sprintf("Query Analytics is already running on instance %s. To reconfigure or restart Query Analytics, stop then start it again.", mysqlUUID))
 
 	// Send a StopTool cmd to stop the analyzer.
 	now = time.Now()
