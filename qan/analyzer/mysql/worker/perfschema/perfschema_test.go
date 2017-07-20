@@ -190,7 +190,7 @@ func test001(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	// is just the increase in its values.
 
 	rows, err := loadData("001")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	getRows := makeGetRowsFunc(rows)
 	w := NewWorker(logger, nullmysql, getRows)
 
@@ -200,14 +200,14 @@ func test001(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// The second run produces a result: the diff of 2nd - 1st.
 	i = &iter.Interval{
@@ -215,17 +215,17 @@ func test001(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err := loadResult("001/res01.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Quick side test that Status() works and reports last stats.
 	status := w.Status()
@@ -238,7 +238,7 @@ func test002(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	// from iter 1 to 2.
 
 	rows, err := loadData("002")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	getRows := makeGetRowsFunc(rows)
 	w := NewWorker(logger, nullmysql, getRows)
 
@@ -248,14 +248,14 @@ func test002(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// The second run produces a result: the diff of 2nd - 1st.
 	i = &iter.Interval{
@@ -263,17 +263,17 @@ func test002(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err := loadResult("002/res01.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
@@ -283,7 +283,7 @@ func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	//   3: 4 queries (res03)
 	//   4: 4 queries but 4th has same COUNT_STAR (res04)
 	rows, err := loadData("003")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	getRows := makeGetRowsFunc(rows)
 	w := NewWorker(logger, nullmysql, getRows)
 
@@ -293,14 +293,14 @@ func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Second interval produces a result: the diff of 2nd - 1st.
 	i = &iter.Interval{
@@ -308,17 +308,17 @@ func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err := loadResult("003/res02.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Third interval...
 	i = &iter.Interval{
@@ -326,17 +326,17 @@ func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err = loadResult("003/res03.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Fourth interval...
 	i = &iter.Interval{
@@ -344,17 +344,17 @@ func test003(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err = loadResult("003/res04.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func test004EmptyDigest(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
@@ -362,7 +362,7 @@ func test004EmptyDigest(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMy
 	// is just the increase in its values.
 
 	rows, err := loadData("004")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	getRows := makeGetRowsFunc(rows)
 	w := NewWorker(logger, nullmysql, getRows)
 
@@ -372,14 +372,14 @@ func test004EmptyDigest(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMy
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 }
 
@@ -390,7 +390,7 @@ func test005(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 	//   2: 1 query (res01)
 	//   3: 2 queries (res02)
 	rows, err := loadData("005")
-	require.Nil(t, err)
+	require.NoError(t, err)
 	getRows := makeGetRowsFunc(rows)
 	w := NewWorker(logger, nullmysql, getRows)
 
@@ -400,14 +400,14 @@ func test005(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Second interval produces a result: the diff of 2nd - 1st.
 	i = &iter.Interval{
@@ -415,17 +415,17 @@ func test005(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err := loadResult("005/res01.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Third interval...
 	i = &iter.Interval{
@@ -433,28 +433,28 @@ func test005(t *testing.T, logger *pct.Logger, nullmysql *mock.NullMySQL) {
 		StartTime: time.Now().UTC(),
 	}
 	err = w.Setup(i)
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	normalizeResult(res)
 	expect, err = loadResult("005/res02.json", res)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expect, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 	mysqlConn := mysql.NewConnection(dsn)
 	err := mysqlConn.Connect()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer mysqlConn.Close()
 
 	requiredVersion := "5.6.5"
 	ok, err := mysqlConn.AtLeastVersion(requiredVersion)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	if !ok {
 		t.Skip(
 			"Monitoring Performance Schema for this version of MySQL is unsupported.",
@@ -493,14 +493,14 @@ func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 
 	// First interval.
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Some query activity between intervals.
 	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
@@ -508,10 +508,10 @@ func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 
 	// Second interval and a result.
 	err = w.Setup(&iter.Interval{Number: 2, StartTime: time.Now().UTC()})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, res)
 	if len(res.Class) == 0 {
 		t.Fatal("Expected len(res.Class) > 0")
@@ -545,18 +545,18 @@ func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 	assert.Equal(t, uint64(1), class.Metrics.NumberMetrics["Rows_sent"].Sum)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 }
 
 func testIterOutOfSeq(t *testing.T, logger *pct.Logger, dsn string) {
 	mysqlConn := mysql.NewConnection(dsn)
 	err := mysqlConn.Connect()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer mysqlConn.Close()
 
 	requiredVersion := "5.6.5"
 	ok, err := mysqlConn.AtLeastVersion(requiredVersion)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	if !ok {
 		t.Skip(
 			"Monitoring Performance Schema for this version of MySQL is unsupported.",
@@ -595,14 +595,14 @@ func testIterOutOfSeq(t *testing.T, logger *pct.Logger, dsn string) {
 
 	// First interval.
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Some query activity between intervals.
 	_, err = mysqlConn.DB().Exec("SELECT 'teapot' FROM DUAL")
@@ -612,22 +612,22 @@ func testIterOutOfSeq(t *testing.T, logger *pct.Logger, dsn string) {
 	// its internal interval number, so instead of 2 here we have 1 again.
 	// Second interval and a result.
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: time.Now().UTC()})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res) // no result due to out of sequence interval
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Simulate normal operation resuming, i.e. interval 2.
 	err = w.Setup(&iter.Interval{Number: 2, StartTime: time.Now().UTC()})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Now there should be a result.
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, res)
 	if len(res.Class) == 0 {
 		t.Error("Expected len(res.Class) > 0")
@@ -639,12 +639,12 @@ func testIterClockReset(t *testing.T, logger *pct.Logger, dsn string) {
 
 	mysqlConn := mysql.NewConnection(dsn)
 	err = mysqlConn.Connect()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	defer mysqlConn.Close()
 
 	requiredVersion := "5.6.5"
 	ok, err := mysqlConn.AtLeastVersion(requiredVersion)
-	require.Nil(t, err)
+	require.NoError(t, err)
 	if !ok {
 		t.Skip(
 			"Monitoring Performance Schema for this version of MySQL is unsupported.",
@@ -682,36 +682,36 @@ func testIterClockReset(t *testing.T, logger *pct.Logger, dsn string) {
 	// First interval.
 	now := time.Now().UTC()
 	err = w.Setup(&iter.Interval{Number: 1, StartTime: now})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err := w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res)
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Simulate the ticker sending a time that's earlier than the previous
 	// tick, which shouldn't happen.
 	now = now.Add(-1 * time.Minute)
 	err = w.Setup(&iter.Interval{Number: 2, StartTime: now})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	assert.Nil(t, res) // no result due to out of sequence interval
 
 	err = w.Cleanup()
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Simulate normal operation resuming.
 	now = now.Add(1 * time.Minute)
 	err = w.Setup(&iter.Interval{Number: 3, StartTime: now})
-	require.Nil(t, err)
+	require.NoError(t, err)
 
 	// Now there should be a result.
 	res, err = w.Run()
-	require.Nil(t, err)
+	require.NoError(t, err)
 	require.NotNil(t, res)
 	if len(res.Class) == 0 {
 		t.Error("Expected len(res.Class) > 0")
