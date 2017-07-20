@@ -381,7 +381,6 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 	}
 
 	status = test.GetStatus(s.sendChan, s.recvChan)
-	t.Check(status["agent"], Equals, "Idle")
 	t.Check(status["qan"], Equals, "Stopped")
 	t.Check(status["mm"], Equals, "")
 }
