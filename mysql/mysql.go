@@ -30,7 +30,9 @@ import (
 	"github.com/percona/qan-agent/pct"
 )
 
-var ErrNotConnected = errors.New("not connected")
+var (
+	ErrNotConnected    = errors.New("not connected")
+)
 
 type Query struct {
 	Set    string // SET GLOBAL long_query_time=0
@@ -159,7 +161,10 @@ func (c *Connection) GetGlobalVarBoolean(varName string) (bool, error) {
 		return false, ErrNotConnected
 	}
 	var varValue sql.NullBool
-	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	err := c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	if err != nil {
+		return false, err
+	}
 	return varValue.Bool, nil
 }
 
@@ -168,7 +173,10 @@ func (c *Connection) GetGlobalVarString(varName string) (string, error) {
 		return "", ErrNotConnected
 	}
 	var varValue string
-	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	err := c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	if err != nil {
+		return "", err
+	}
 	return varValue, nil
 }
 
@@ -177,7 +185,10 @@ func (c *Connection) GetGlobalVarNumber(varName string) (float64, error) {
 		return 0, ErrNotConnected
 	}
 	var varValue float64
-	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	err := c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	if err != nil {
+		return 0, err
+	}
 	return varValue, nil
 }
 
