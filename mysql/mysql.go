@@ -45,6 +45,7 @@ type Connector interface {
 	DB() *sql.DB
 	DSN() string
 	Exec([]string) error
+	GetGlobalVarBoolean(varName string) (bool, error)
 	GetGlobalVarString(varName string) (string, error)
 	GetGlobalVarNumber(varName string) (float64, error)
 	Set([]Query) error
@@ -151,6 +152,15 @@ func (c *Connection) Exec(queries []string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Connection) GetGlobalVarBoolean(varName string) (bool, error) {
+	if !c.connected {
+		return false, ErrNotConnected
+	}
+	var varValue sql.NullBool
+	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
+	return varValue.Bool, nil
 }
 
 func (c *Connection) GetGlobalVarString(varName string) (string, error) {

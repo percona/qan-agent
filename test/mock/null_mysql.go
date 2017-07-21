@@ -34,6 +34,7 @@ type NullMySQL struct {
 	explain              map[string]*proto.ExplainResult
 	uptime               int64
 	uptimeCount          uint
+	boolVars             map[string]bool
 	stringVars           map[string]string
 	numberVars           map[string]float64
 	SetChan              chan bool
@@ -115,8 +116,17 @@ func (n *NullMySQL) GetExec() []string {
 func (n *NullMySQL) Reset() {
 	n.set = []mysql.Query{}
 	n.exec = []string{}
+	n.boolVars = make(map[string]bool)
 	n.stringVars = make(map[string]string)
 	n.numberVars = make(map[string]float64)
+}
+
+func (n *NullMySQL) GetGlobalVarBoolean(varName string) (bool, error) {
+	value, ok := n.boolVars[varName]
+	if ok {
+		return value, nil
+	}
+	return false, ERR_NOT_FOUND
 }
 
 func (n *NullMySQL) GetGlobalVarString(varName string) (string, error) {

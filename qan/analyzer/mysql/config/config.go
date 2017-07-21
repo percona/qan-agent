@@ -19,67 +19,77 @@ package config
 
 import (
 	"fmt"
+	"strings"
 
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
-	"github.com/percona/qan-agent/pct"
 )
 
 var (
-	DEFAULT_COLLECT_FROM                    = "slowlog"
-	DEFAULT_INTERVAL                  uint  = 60         // 1 minute
-	DEFAULT_LONG_QUERY_TIME                 = 0.001      // 1ms
-	DEFAULT_MAX_SLOW_LOG_SIZE         int64 = 1073741824 // 1G
-	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true       // whether to remove old slow logs after rotation
-	DEFAULT_OLD_SLOW_LOGS_TO_KEEP           = 1          // how many slow logs to keep on filesystem
-	DEFAULT_EXAMPLE_QUERIES                 = true
-	DEFAULT_SLOW_LOG_VERBOSITY              = "full" // all metrics, Percona Server
-	DEFAULT_RATE_LIMIT                uint  = 100    // 1%, Percona Server
-	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS       = true   // Percona Server
-	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS       = true   // Percona Server
+	DEFAULT_INTERVAL              uint  = 60         // 1 minute
+	DEFAULT_MAX_SLOW_LOG_SIZE     int64 = 1073741824 // 1G
+	DEFAULT_REMOVE_OLD_SLOW_LOGS        = true       // whether to remove old slow logs after rotation
+	DEFAULT_OLD_SLOW_LOGS_TO_KEEP       = 1          // how many slow logs to keep on filesystem
+	DEFAULT_EXAMPLE_QUERIES             = true
 	// internal
 	DEFAULT_WORKER_RUNTIME uint = 55
 	DEFAULT_REPORT_LIMIT   uint = 200
 )
 
-func ReadMySQLConfig(conn mysql.Connector) error {
-	if _, err := conn.Uptime(); err != nil {
-		err := conn.Connect()
-		if err != nil {
-			return err
+type MySQLVarType int
+
+const (
+	MySQLVarTypeBoolean MySQLVarType = iota
+	MySQLVarTypeString
+	MySQLVarTypeInteger
+	MySQLVarTypeNumeric
+)
+
+type MySQLVar struct {
+	Name string
+	Type MySQLVarType
+}
+
+var (
+	mysqlVars = []MySQLVar{
+		{"log_slow_admin_statements", MySQLVarTypeBoolean},
+		{"log_slow_slave_statements", MySQLVarTypeBoolean},
+		{"log_slow_rate_limit", MySQLVarTypeInteger},
+		{"log_slow_verbosity", MySQLVarTypeString},
+		{"long_query_time", MySQLVarTypeNumeric},
+		{"performance_schema", MySQLVarTypeBoolean},
+	}
+)
+
+func ReadInfoFromShowGlobalStatus(conn mysql.Connector) map[string]interface{} {
+	info := map[string]interface{}{}
+	for _, mysqlVar := range mysqlVars {
+		var v interface{}
+		var err error
+
+		switch mysqlVar.Type {
+		case MySQLVarTypeNumeric, MySQLVarTypeInteger:
+			v, err = conn.GetGlobalVarNumber(mysqlVar.Name)
+		case MySQLVarTypeBoolean:
+			v, err = conn.GetGlobalVarBoolean(mysqlVar.Name)
+		case MySQLVarTypeString:
+			v, err = conn.GetGlobalVarString(mysqlVar.Name)
 		}
-		defer conn.Close()
+
+		switch err {
+		case nil:
+			info[underscoreToCamelCase(mysqlVar.Name)] = v
+		default:
+			v = nil
+		}
 	}
 
-	perfschemaStatus, _ := conn.GetGlobalVarString("performance_schema")
-	if pct.ToBool(perfschemaStatus) {
-		DEFAULT_COLLECT_FROM = "perfschema"
-	}
-
-	//
-	DEFAULT_LONG_QUERY_TIME, _ = conn.GetGlobalVarNumber("long_query_time")
-
-	//
-	defaultLogSlowAdminStatements, _ := conn.GetGlobalVarString("log_slow_admin_statements")
-	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = pct.ToBool(defaultLogSlowAdminStatements)
-
-	//
-	defaultRateLimit, _ := conn.GetGlobalVarNumber("log_slow_rate_limit")
-	DEFAULT_RATE_LIMIT = uint(defaultRateLimit)
-
-	//
-	defaultLogSlowSlaveStatements, _ := conn.GetGlobalVarString("log_slow_slave_statements")
-	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = pct.ToBool(defaultLogSlowSlaveStatements)
-
-	//
-	DEFAULT_SLOW_LOG_VERBOSITY, _ = conn.GetGlobalVarString("log_slow_verbosity")
-	return nil
+	return info
 }
 
 func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:           setConfig.UUID,
-		CollectFrom:    DEFAULT_COLLECT_FROM,
 		Interval:       DEFAULT_INTERVAL,
 		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
 		ExampleQueries: DEFAULT_EXAMPLE_QUERIES,
@@ -104,4 +114,10 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
 
 	return runConfig, nil
+}
+
+// UnderscoreToCamelCase converts from underscore separated form to camel case form.
+// Ex.: my_func => MyFunc
+func underscoreToCamelCase(s string) string {
+	return strings.Replace(strings.Title(strings.Replace(strings.ToLower(s), "_", " ", -1)), " ", "", -1)
 }
