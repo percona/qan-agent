@@ -75,32 +75,34 @@ func (s *MysqlTestSuite) TestMissingSocketError(t *C) {
 	)
 }
 
-func (s *MysqlTestSuite) TestGetGlobalNumber(t *C) {
+func (s *MysqlTestSuite) TestGetGlobalInteger(t *C) {
 	conn := mysql.NewConnection(s.dsn)
 	err := conn.Connect()
 	t.Assert(err, IsNil)
+	defer conn.Close()
 
-	globalVarNumber, err := conn.GetGlobalVarNumber("connect_timeout")
+	globalVarNumber, err := conn.GetGlobalVarInteger("connect_timeout")
 	t.Check(err, IsNil)
-	t.Check(globalVarNumber, Equals, float64(10))
+	t.Check(globalVarNumber.Int64, Equals, int64(10))
 
 }
 
-func (s *MysqlTestSuite) TestGetGlobalNumberWhenNotConnected(t *C) {
+func (s *MysqlTestSuite) TestGetGlobalIntegerWhenNotConnected(t *C) {
 	conn := mysql.NewConnection("percona:percona@unix(/foo/bar/my.sock)/")
 	err := conn.Connect()
+	defer conn.Close()
 	t.Check(
 		fmt.Sprintf("%s", err),
 		Equals,
 		"Cannot connect to MySQL percona:***@unix(/foo/bar/my.sock): connect: no such file or directory: /foo/bar/my.sock",
 	)
-	globalVarNumber, err := conn.GetGlobalVarNumber("connect_timeout")
+	globalVarNumber, err := conn.GetGlobalVarInteger("connect_timeout")
 	t.Check(
 		fmt.Sprintf("%s", err),
 		Equals,
 		"not connected",
 	)
-	t.Check(globalVarNumber, Equals, float64(0))
+	t.Check(globalVarNumber.Int64, Equals, int64(0))
 
 }
 

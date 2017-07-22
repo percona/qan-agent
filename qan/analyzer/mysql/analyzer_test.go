@@ -146,7 +146,7 @@ func (s *AnalyzerTestSuite) TearDownSuite(t *C) {
 // --------------------------------------------------------------------------
 
 func (s *AnalyzerTestSuite) TestRunMockWorker(t *C) {
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -200,7 +200,7 @@ func (s *AnalyzerTestSuite) TestRunMockWorker(t *C) {
 }
 
 func (s *AnalyzerTestSuite) TestStartServiceFast(t *C) {
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	// Simulate the next tick being 3m away (mock.clock.Eta = 180) so that
 	// run() sends the first tick on the tick chan, causing the first
@@ -246,7 +246,7 @@ func (s *AnalyzerTestSuite) TestStartServiceFast(t *C) {
 
 func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	s.nullmysql.Reset()
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -269,7 +269,7 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	// Simulate a MySQL restart. This causes the analyzer to re-configure MySQL
 	// using the same Start queries.
 	s.nullmysql.Reset()
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 	s.restartChan <- s.mysqlInstance
 	if !test.WaitState(s.nullmysql.SetChan) {
 		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
@@ -291,7 +291,7 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	// Enable slow log rotation by setting max_slowlog_size to a value > 4096,
 	// then simulate MySQL restart.
 	s.nullmysql.Reset()
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 100000)
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 100000)
 	s.restartChan <- s.mysqlInstance
 	if !test.WaitState(s.nullmysql.SetChan) {
 		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
@@ -375,7 +375,7 @@ func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
 }
 
 func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -447,7 +447,7 @@ func (s *AnalyzerTestSuite) TestRecoverWorkerPanic(t *C) {
 
 // Test that a disabled slow log rotation in Percona Server (or MySQL) does not change analizer config
 func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	/*
 		PS can be configured to rotate slow log, making qan break.
@@ -472,7 +472,7 @@ func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
 	// Disable DB rotation by setting max_slowlog_size to a value < 4096
 	s.nullmysql.Reset()
 	lower := mysqlAnalyzer.MIN_SLOWLOG_ROTATION_SIZE - 1
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", float64(lower))
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", lower)
 	// Trigger our PS slow log rotation take-over, everything should stay the same since max_slowlog_size is < 4096
 	a.TakeOverPerconaServerRotation()
 	t.Check(a.Config().MaxSlowLogSize, Equals, MAX_SLOW_LOG_SIZE)
@@ -484,7 +484,7 @@ func (s *AnalyzerTestSuite) TestNoSlowLogTakeOver(t *C) {
 
 // Test slow log rotation take over from Percona Server
 func (s *AnalyzerTestSuite) TestSlowLogTakeOver(t *C) {
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
 
 	a := mysqlAnalyzer.NewRealAnalyzer(
 		pct.NewLogger(s.logChan, "qan-analyzer"),
@@ -504,7 +504,7 @@ func (s *AnalyzerTestSuite) TestSlowLogTakeOver(t *C) {
 	// Increase our max_slowlog_size in mocked DB
 	s.nullmysql.Reset()
 	greater := mysqlAnalyzer.MIN_SLOWLOG_ROTATION_SIZE + 1
-	s.nullmysql.SetGlobalVarNumber("max_slowlog_size", float64(greater))
+	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", greater)
 	// Trigger slowlog rotation, takeover should succeed since max_slowlog_size >= mysqlAnalyzer.MIN_SLOWLOG_ROTATION_SIZE
 	a.TakeOverPerconaServerRotation()
 	expectedQueries := []string{

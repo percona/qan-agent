@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"database/sql/driver"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
 )
@@ -64,12 +65,14 @@ var (
 func ReadInfoFromShowGlobalStatus(conn mysql.Connector) map[string]interface{} {
 	info := map[string]interface{}{}
 	for _, mysqlVar := range mysqlVars {
-		var v interface{}
+		var v driver.Valuer
 		var err error
 
 		switch mysqlVar.Type {
-		case MySQLVarTypeNumeric, MySQLVarTypeInteger:
-			v, err = conn.GetGlobalVarNumber(mysqlVar.Name)
+		case MySQLVarTypeNumeric:
+			v, err = conn.GetGlobalVarNumeric(mysqlVar.Name)
+		case MySQLVarTypeInteger:
+			v, err = conn.GetGlobalVarInteger(mysqlVar.Name)
 		case MySQLVarTypeBoolean:
 			v, err = conn.GetGlobalVarBoolean(mysqlVar.Name)
 		case MySQLVarTypeString:
@@ -78,7 +81,8 @@ func ReadInfoFromShowGlobalStatus(conn mysql.Connector) map[string]interface{} {
 
 		switch err {
 		case nil:
-			info[underscoreToCamelCase(mysqlVar.Name)] = v
+			varValue, _ := v.Value()
+			info[underscoreToCamelCase(mysqlVar.Name)] = varValue
 		default:
 			v = nil
 		}
