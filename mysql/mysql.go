@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver"
 	_ "github.com/go-sql-driver/mysql"
-	goversion "github.com/hashicorp/go-version"
 	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/qan-agent/pct"
 )
@@ -204,12 +204,12 @@ func (c *Connection) VersionConstraint(constraint string) (bool, error) {
 	// Strip everything after the first dash
 	re := regexp.MustCompile("-.*$")
 	version = re.ReplaceAllString(version, "")
-	v, err := goversion.NewVersion(version)
+	v, err := semver.NewVersion(version)
 	if err != nil {
 		return false, err
 	}
 
-	constraints, err := goversion.NewConstraint(constraint)
+	constraints, err := semver.NewConstraint(constraint)
 	if err != nil {
 		return false, err
 	}

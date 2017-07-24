@@ -23,7 +23,7 @@ by removing all monitored instances as described in :ref:`pmm-admin-rm`.
 
         $ docker rm pmm-data
 
-* If you are :ref:`running a virtual appliance <run-server-ova>`,
+* If you are :ref:`running an image in VirtualBox <run-server-vbox>`,
   stop the *PMM Server* appliance.
 
   Remove the appliance if necessary.

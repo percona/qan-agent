@@ -150,28 +150,6 @@ that are critical to a database server.
 Time-based graphs are separated into dashboards by themes:
 some are related to MySQL or MongoDB, others provide general system metrics.
 
-When you open *Metrics Monitor* for the first time,
-it loads the **Cross Server Graphs** dashboard.
-The credentials used to sign in to Grafana depend on the options
-that you specified when :ref:`starting PMM Server <run-server>`:
-
-* If you did not specify either ``SERVER_USER`` or ``SERVER_PASSWORD``,
-  you will be signed in anonymously.
-  You can change to a different existing Grafana user.
-
-* If you specified both ``SERVER_USER`` and ``SERVER_PASSWORD``,
-  then these credentials will be used to sign in to Grafana.
-
-* If you specified only ``SERVER_PASSWORD``,
-  a single user (``pmm``) will be used to sign in to all components
-  (including QAN, Prometheus, Grafana, etc.).
-  You will not be able to change to a different Grafana user.
-
-* If you specified only ``SERVER_USER``,
-  this parameter will be ignored.
-
-.. warning:: Do not include the ``#`` or ``:`` symbols in ``SERVER_USER``.
-
 To access the dashboards, provide default user credentials:
 
 * User: ``admin``
@@ -195,8 +173,6 @@ Orchestrator
 
 Orchestrator is a MySQL replication topology management and visualization tool.
 You can access it using the ``/orchestrator`` URL after *PMM Server* address.
-Alternatively, you can click the **MySQL Replication Topology Manager** button
-on the main *PMM Server* landing page.
 
 To use it, create a MySQL user for Orchestrator on all managed instances::
 

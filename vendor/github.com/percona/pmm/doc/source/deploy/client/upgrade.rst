@@ -4,18 +4,7 @@
 Upgrading PMM Client
 ====================
 
-When a newer version of *PMM Client* becomes available,
-you can update from the Percona software repositories:
-
-* For Debian or Ubuntu::
-
-   $ sudo apt-get update && sudo apt-get install pmm-client
-
-* For RedHat or CentOS::
-
-   $ yum update pmm-client
-
-If you installed *PMM Client* :ref:`manually <install-client-manual>`:
+When a newer version of *PMM Client* becomes available:
 
 1. :ref:`Remove PMM Client <remove-client>`.
 

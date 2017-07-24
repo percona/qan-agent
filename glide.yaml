@@ -30,6 +30,7 @@ import:
 - package: gopkg.in/mgo.v2
   subpackages:
   - bson
+- package: github.com/Masterminds/semver
 testImport:
 - package: github.com/gorilla/mux
 - package: github.com/stretchr/testify
