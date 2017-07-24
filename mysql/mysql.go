@@ -200,10 +200,15 @@ func (c *Connection) VersionConstraint(constraint string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
+	// Strip everything after the first dash
+	re := regexp.MustCompile("-.*$")
+	version = re.ReplaceAllString(version, "")
 	v, err := goversion.NewVersion(version)
 	if err != nil {
 		return false, err
 	}
+
 	constraints, err := goversion.NewConstraint(constraint)
 	if err != nil {
 		return false, err
