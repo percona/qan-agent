@@ -22,13 +22,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSummary(t *testing.T) {
 	t.Parallel()
 
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	assert.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	output, err := Summary(dsn)
 	assert.Nil(t, err)

@@ -41,6 +41,7 @@ import (
 	"github.com/percona/qan-agent/test/mock"
 	. "github.com/percona/qan-agent/test/rootdir"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -67,13 +68,15 @@ type WorkerTestSuite struct {
 	mysqlConn     mysql.Connector
 	worker        *Worker
 	nullmysql     *mock.NullMySQL
-	dsn           string
 }
 
 var _ = Suite(&WorkerTestSuite{})
 
+var dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
+
 func (s *WorkerTestSuite) SetUpSuite(t *C) {
-	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
+
 	s.logChan = make(chan proto.LogEntry, 100)
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 	s.now = time.Now().UTC()

@@ -30,6 +30,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/query"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -44,7 +45,6 @@ type ManagerTestSuite struct {
 	logger        *pct.Logger
 	configDir     string
 	tmpDir        string
-	dsn           string
 	repo          *instance.Repo
 	mysqlInstance proto.Instance
 	api           *mock.API
@@ -52,11 +52,10 @@ type ManagerTestSuite struct {
 
 var _ = Suite(&ManagerTestSuite{})
 
+var dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
+
 func (s *ManagerTestSuite) SetUpSuite(t *C) {
-	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, query.SERVICE_NAME+"-manager-test")

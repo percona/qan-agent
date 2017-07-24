@@ -36,6 +36,7 @@ import (
 	"github.com/percona/qan-agent/test/mock/interval_iter"
 	"github.com/percona/qan-agent/test/mock/qan_worker"
 	. "github.com/percona/qan-agent/test/rootdir"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -313,9 +314,8 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 
 func (s *AnalyzerTestSuite) TestRealSlowLogWorker(t *C) {
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	if dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
+
 	realmysql := mysql.NewConnection(dsn)
 	if err := realmysql.Connect(); err != nil {
 		t.Fatal(err)
