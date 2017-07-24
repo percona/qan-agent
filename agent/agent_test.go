@@ -23,6 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"sync"
 	"testing"
 	"time"
 
@@ -62,11 +63,11 @@ type AgentTestSuite struct {
 	api          *mock.API
 	agentRunning bool
 	// --
-	readyChan  chan bool
-	traceChan  chan string
-	doneChan   chan bool
-	stopReason string
-	upgrade    bool
+	startWaitGroup *sync.WaitGroup
+	traceChan      chan string
+	doneChan       chan bool
+	stopReason     string
+	upgrade        bool
 }
 
 var _ = Suite(&AgentTestSuite{})
@@ -100,17 +101,22 @@ func (s *AgentTestSuite) SetUpSuite(t *C) {
 	s.client = mock.NewWebsocketClient(s.sendChan, s.recvChan, s.sendDataChan, s.recvDataChan)
 	s.client.ErrChan = make(chan error)
 
-	s.readyChan = make(chan bool, 2)
 	s.traceChan = make(chan string, 10)
 	s.doneChan = make(chan bool, 1)
 }
 
 func (s *AgentTestSuite) SetUpTest(t *C) {
+	s.startWaitGroup = &sync.WaitGroup{}
 	// Before each test, create an agent.  Tests make change the agent,
 	// so this ensures each test starts with an agent with known values.
 	s.services = make(map[string]pct.ServiceManager)
-	s.services["qan"] = mock.NewMockServiceManager("qan", s.readyChan, s.traceChan)
-	s.services["mm"] = mock.NewMockServiceManager("mm", s.readyChan, s.traceChan)
+	for _, service := range []string{"qan", "mm"} {
+		s.services[service] = mock.NewMockServiceManager(
+			service,
+			s.startWaitGroup,
+			s.traceChan,
+		)
+	}
 
 	links := map[string]string{
 		"agent":     "http://localhost/agent",
@@ -135,17 +141,8 @@ func (s *AgentTestSuite) SetUpTest(t *C) {
 
 func (s *AgentTestSuite) TearDownTest(t *C) {
 	if s.agentRunning {
-		select {
-		case s.readyChan <- true: // qan.Stop() immediately
-		default:
-			t.Fatal("mock service 1 Stop not ready")
-		}
-		select {
-		case s.readyChan <- true: // mm.Stop immediately
-		default:
-			t.Fatal("mock service 1 Stop not ready")
-		}
 		s.sendChan <- &proto.Cmd{Cmd: "Stop"} // tell agent to stop itself
+
 		test.WaitReply(s.recvChan)
 		select {
 		case <-s.doneChan: // wait for goroutine agent.Run() in test
@@ -307,11 +304,6 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 		Data:    serviceData,
 	}
 
-	// The readyChan is used by mock.MockServiceManager.Start() and Stop()
-	// to simulate slow starts and stops.  We're not testing that here, so
-	// this lets the service start immediately.
-	s.readyChan <- true
-
 	// Send the StartService cmd to the client, then wait for the reply
 	// which should not have an error, indicating success.
 	s.sendChan <- cmd
@@ -366,9 +358,6 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 		Data:    serviceData,
 	}
 
-	// Let fake qan service stop immediately.
-	s.readyChan <- true
-
 	s.sendChan <- cmd
 	gotReplies = test.WaitReply(s.recvChan)
 	if len(gotReplies) != 1 {
@@ -409,6 +398,7 @@ func (s *AgentTestSuite) TestStartServiceSlow(t *C) {
 		Data:    serviceData,
 	}
 
+	s.startWaitGroup.Add(1)
 	// Send the cmd to the client, tell the agent to stop, then wait for it.
 	s.sendChan <- cmd
 
@@ -421,10 +411,10 @@ func (s *AgentTestSuite) TestStartServiceSlow(t *C) {
 	// Agent should be able to reply on status chan, indicating that it's
 	// still starting the service.
 	gotStatus := test.GetStatus(s.sendChan, s.recvChan)
-	t.Check(gotStatus["agent"], Equals, "Idle")
+	t.Check(gotStatus["qan"], Equals, "Starting")
 
 	// Make it seem like service has started now.
-	s.readyChan <- true
+	s.startWaitGroup.Done()
 
 	// Agent sends reply: no error.
 	gotReplies = test.WaitReply(s.recvChan)

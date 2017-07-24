@@ -22,26 +22,31 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
+	"sync"
 )
 
 type MockServiceManager struct {
-	name         string
-	traceChan    chan string
-	readyChan    chan bool
-	StartErr     error
-	StopErr      error
-	IsRunningVal bool
-	status       *pct.Status
-	Cmds         []*proto.Cmd
+	name           string
+	traceChan      chan string
+	startWaitGroup *sync.WaitGroup
+	StartErr       error
+	StopErr        error
+	IsRunningVal   bool
+	status         *pct.Status
+	Cmds           []*proto.Cmd
 }
 
-func NewMockServiceManager(name string, readyChan chan bool, traceChan chan string) *MockServiceManager {
+func NewMockServiceManager(
+	name string,
+	startWaitGroup *sync.WaitGroup,
+	traceChan chan string,
+) *MockServiceManager {
 	m := &MockServiceManager{
-		name:      name,
-		readyChan: readyChan,
-		traceChan: traceChan,
-		status:    pct.NewStatus([]string{name}),
-		Cmds:      []*proto.Cmd{},
+		name:           name,
+		startWaitGroup: startWaitGroup,
+		traceChan:      traceChan,
+		status:         pct.NewStatus([]string{name}),
+		Cmds:           []*proto.Cmd{},
 	}
 	return m
 }
@@ -50,7 +55,7 @@ func (m *MockServiceManager) Start() error {
 	m.traceChan <- fmt.Sprintf("Start %s", m.name)
 	// Return when caller is ready.  This allows us to simulate slow starts.
 	m.status.Update(m.name, "Starting")
-	<-m.readyChan
+	m.startWaitGroup.Wait()
 	m.IsRunningVal = true
 	m.status.Update(m.name, "Ready")
 	return m.StartErr
@@ -60,7 +65,6 @@ func (m *MockServiceManager) Stop() error {
 	m.traceChan <- "Stop " + m.name
 	// Return when caller is ready.  This allows us to simulate slow stops.
 	m.status.Update(m.name, "Stopping")
-	<-m.readyChan
 	m.IsRunningVal = false
 	m.status.Update(m.name, "Stopped")
 	return m.StopErr
