@@ -153,6 +153,7 @@ func (s *ManagerTestSuite) TestHandleExplain(t *C) {
 	query := proto.ExplainQuery{
 		UUID:  "313",
 		Query: "SELECT 1",
+		Db: "information_schema",
 	}
 	data, err := json.Marshal(query)
 	t.Assert(err, IsNil)

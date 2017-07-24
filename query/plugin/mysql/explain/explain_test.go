@@ -46,14 +46,14 @@ type QueryBlock struct {
 }
 
 type Table struct {
-	TableName         string   `json:"table_name,omitempty"`
-	AccessType        string   `json:"access_type,omitempty"`
-	Key               string   `json:"key,omitempty"`
-	SkipOpenTable     bool     `json:"skip_open_table,omitempty"`
-	UsedColumns       []string `json:"used_columns,omitempty"`
-	ScannedDatabases  string   `json:"scanned_databases,omitempty"`
-	AttachedCondition string   `json:"attached_condition,omitempty"`
-	Message           string   `json:"message,omitempty"`
+	TableName         string      `json:"table_name,omitempty"`
+	AccessType        string      `json:"access_type,omitempty"`
+	Key               string      `json:"key,omitempty"`
+	SkipOpenTable     bool        `json:"skip_open_table,omitempty"`
+	UsedColumns       []string    `json:"used_columns,omitempty"`
+	ScannedDatabases  interface{} `json:"scanned_databases,omitempty"`
+	AttachedCondition string      `json:"attached_condition,omitempty"`
+	Message           string      `json:"message,omitempty"`
 }
 
 type CostInfo struct {
@@ -222,6 +222,13 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 				AttachedCondition: "(`information_schema`.`tables`.`TABLE_NAME` = 'tables')",
 			},
 		},
+	}
+
+	mariaDB101, err := conn.VersionConstraint(">= 10.1")
+	assert.Nil(t, err)
+	if mariaDB101 {
+		expectedJsonQuery.QueryBlock.Table.ScannedDatabases = float64(1)
+		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "`tables`.`TABLE_NAME` = 'tables'"
 	}
 
 	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
