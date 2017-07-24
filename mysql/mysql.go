@@ -26,6 +26,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	goversion "github.com/hashicorp/go-version"
 	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/qan-agent/pct"
 )
@@ -39,6 +40,7 @@ type Query struct {
 }
 
 type Connector interface {
+	VersionConstraint(constraint string) (bool, error)
 	AtLeastVersion(string) (bool, error)
 	Connect() error
 	Close()
@@ -190,6 +192,23 @@ func (c *Connection) AtLeastVersion(minVersion string) (bool, error) {
 		return false, err
 	}
 	return pct.AtLeastVersion(version, minVersion)
+}
+
+// VersionConstraint checks if version fits given constraint
+func (c *Connection) VersionConstraint(constraint string) (bool, error) {
+	version, err := c.GetGlobalVarString("version")
+	if err != nil {
+		return false, err
+	}
+	v, err := goversion.NewVersion(version)
+	if err != nil {
+		return false, err
+	}
+	constraints, err := goversion.NewConstraint(constraint)
+	if err != nil {
+		return false, err
+	}
+	return constraints.Check(v), nil
 }
 
 func (c *Connection) UTCOffset() (time.Duration, time.Duration, error) {

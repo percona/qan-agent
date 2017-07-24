@@ -125,12 +125,11 @@ func testGetDefaultsBoolValues(
 	type Key struct {
 		db         string
 		json       string
-		versionMin string
-		versionMax string
+		constraint string
 	}
 	keys := []Key{
-		{"log_slow_admin_statements", "LogSlowAdminStatements", "5.6.11", "10.0.0"},
-		{"log_slow_slave_statements", "LogSlowSlaveStatements", "5.6.11", "10.0.0"},
+		{"log_slow_admin_statements", "LogSlowAdminStatements", ">= 5.6.11, != 10.0"},
+		{"log_slow_slave_statements", "LogSlowSlaveStatements", ">= 5.6.11, != 10.0"},
 	}
 
 	t.Run("variables", func(t *testing.T) {
@@ -142,20 +141,11 @@ func testGetDefaultsBoolValues(
 				t.Parallel()
 
 				// Skip testing variable if it was introduced in higher MySQL version
-				if keys[i].versionMin != "" {
-					variableIsSupported, err := conn.AtLeastVersion(keys[i].versionMin)
+				if keys[i].constraint != "" {
+					variableIsSupported, err := conn.VersionConstraint(keys[i].constraint)
 					assert.Nil(t, err)
 					if !variableIsSupported {
-						t.Skipf("Variable '%s' is unsupported, it was introduced in MySQL %s.", keys[i].db, keys[i].versionMin)
-					}
-				}
-
-				// Skip testing variable if it is unsupported anymore
-				if keys[i].versionMax != "" {
-					variableUnsupported, err := conn.AtLeastVersion(keys[i].versionMax)
-					assert.Nil(t, err)
-					if variableUnsupported {
-						t.Skipf("Variable '%s' is unsupported, it was dropped in MySQL %s.", keys[i].db, keys[i].versionMax)
+						t.Skipf("Variable '%s' is unsupported, it's supported in MySQL %s.", keys[i].db, keys[i].constraint)
 					}
 				}
 
