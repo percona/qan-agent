@@ -19,19 +19,14 @@ package os
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/percona/pmm/proto"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHandle(t *testing.T) {
 	t.Parallel()
-
-	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	fs := []struct {
 		provider func() (cmd *proto.Cmd, in proto.Instance)

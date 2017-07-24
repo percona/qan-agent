@@ -41,13 +41,12 @@ func Test(t *testing.T) { TestingT(t) }
 /////////////////////////////////////////////////////////////////////////////
 
 type ManagerTestSuite struct {
-	logChan       chan proto.LogEntry
-	logger        *pct.Logger
-	configDir     string
-	tmpDir        string
-	repo          *instance.Repo
-	mysqlInstance proto.Instance
-	api           *mock.API
+	logChan   chan proto.LogEntry
+	logger    *pct.Logger
+	configDir string
+	tmpDir    string
+	repo      *instance.Repo
+	api       *mock.API
 }
 
 var _ = Suite(&ManagerTestSuite{})
@@ -71,13 +70,13 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 
 	// Real instance repo
 	s.repo = instance.NewRepo(pct.NewLogger(s.logChan, "im-test"), s.configDir, s.api)
-	s.mysqlInstance = proto.Instance{
+	mysqlInstance := proto.Instance{
 		Subsystem: "mysql",
 		UUID:      "313",
 		Name:      "db1",
-		DSN:       s.dsn,
+		DSN:       dsn,
 	}
-	s.repo.Add(s.mysqlInstance, false)
+	s.repo.Add(mysqlInstance, false)
 
 	links := map[string]string{
 		"agent":     "http://localhost/agent",
