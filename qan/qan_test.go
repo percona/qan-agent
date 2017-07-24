@@ -18,11 +18,11 @@
 package qan
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"fmt"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"

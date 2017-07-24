@@ -18,11 +18,12 @@
 package ticker
 
 import (
-	"github.com/percona/qan-agent/pct"
 	"log"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/percona/qan-agent/pct"
 )
 
 type Ticker interface {

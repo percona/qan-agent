@@ -206,7 +206,7 @@ func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 	mysqlConn := m.mysqlConnFactory.Make(mysqlInstance.DSN)
 	mysqlConn.Connect()
 	defer mysqlConn.Close()
-	info := config.ReadInfoFromShowGlobalStatus(mysqlConn) // Read current values
+	info, _ := config.ReadInfoFromShowGlobalStatus(mysqlConn) // Read current values
 	for k, v := range info {
 		cfg[k] = v
 	}
