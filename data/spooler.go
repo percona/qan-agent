@@ -212,7 +212,7 @@ func (s *DiskvSpooler) Write(service string, data interface{}) error {
 	// Write data to disk.
 	select {
 	case s.dataChan <- protoData:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(500 * time.Millisecond):
 		// Let caller decide what to do.
 		s.logger.Debug("write:timeout")
 		return ErrSpoolTimeout
