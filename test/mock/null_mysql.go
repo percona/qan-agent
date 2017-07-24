@@ -24,12 +24,14 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
+	"sync"
 )
 
 var ERR_NOT_FOUND = errors.New("var not found in NullMySQL mock")
 
 type NullMySQL struct {
 	set                  []mysql.Query
+	SetCond              *sync.Cond
 	exec                 []string
 	explain              map[string]*proto.ExplainResult
 	uptime               int64
@@ -38,7 +40,6 @@ type NullMySQL struct {
 	stringVars           map[string]sql.NullString
 	numericVars          map[string]sql.NullFloat64
 	integerVars          map[string]sql.NullInt64
-	SetChan              chan bool
 	atLeastVersion       bool
 	atLeastVersionErr    error
 	Version              string
@@ -51,7 +52,7 @@ func NewNullMySQL() *NullMySQL {
 		set:                  []mysql.Query{},
 		exec:                 []string{},
 		explain:              make(map[string]*proto.ExplainResult),
-		SetChan:              make(chan bool),
+		SetCond:              sync.NewCond(&sync.Mutex{}),
 		CurrentTzOffsetHours: 6,
 		SystemTzOffsetHours:  0,
 	}
@@ -86,10 +87,11 @@ func (n *NullMySQL) Set(queries []mysql.Query) error {
 	for _, q := range queries {
 		n.set = append(n.set, q)
 	}
-	select {
-	case n.SetChan <- true:
-	default:
-	}
+
+	// broadcast an event
+	n.SetCond.L.Lock()
+	defer n.SetCond.L.Unlock()
+	n.SetCond.Broadcast()
 	return nil
 }
 
@@ -97,10 +99,11 @@ func (n *NullMySQL) Exec(queries []string) error {
 	for _, q := range queries {
 		n.exec = append(n.exec, q)
 	}
-	select {
-	case n.SetChan <- true:
-	default:
-	}
+
+	// broadcast an event
+	n.SetCond.L.Lock()
+	defer n.SetCond.L.Unlock()
+	n.SetCond.Broadcast()
 	return nil
 }
 

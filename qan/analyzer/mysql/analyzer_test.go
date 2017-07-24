@@ -270,10 +270,10 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	// using the same Start queries.
 	s.nullmysql.Reset()
 	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 0) // TakeOverPerconaServerRotation
+	s.nullmysql.SetCond.L.Lock()
 	s.restartChan <- s.mysqlInstance
-	if !test.WaitState(s.nullmysql.SetChan) {
-		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
-	}
+	s.nullmysql.SetCond.Wait()
+	s.nullmysql.SetCond.L.Unlock()
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 	expectedQueries := []string{
 		"SET GLOBAL slow_query_log=OFF",
@@ -292,10 +292,10 @@ func (s *AnalyzerTestSuite) TestMySQLRestart(t *C) {
 	// then simulate MySQL restart.
 	s.nullmysql.Reset()
 	s.nullmysql.SetGlobalVarInteger("max_slowlog_size", 100000)
+	s.nullmysql.SetCond.L.Lock()
 	s.restartChan <- s.mysqlInstance
-	if !test.WaitState(s.nullmysql.SetChan) {
-		t.Error("Timeout waiting for <-s.nullmysql.SetChan")
-	}
+	s.nullmysql.SetCond.Wait()
+	s.nullmysql.SetCond.L.Unlock()
 	test.WaitStatus(1, a, "qan-analyzer", "Idle")
 	expectedQueries = []string{
 		"SET GLOBAL max_slowlog_size = 0",
