@@ -18,11 +18,11 @@
 package qan
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"fmt"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
@@ -123,13 +123,14 @@ func testGetDefaultsBoolValues(
 	test.WaitStatus(1, m, "qan", "Running")
 
 	type Key struct {
-		db      string
-		json    string
-		version string
+		db         string
+		json       string
+		versionMin string
+		versionMax string
 	}
 	keys := []Key{
-		{"log_slow_admin_statements", "LogSlowAdminStatements", "5.6.11"},
-		{"log_slow_slave_statements", "LogSlowSlaveStatements", "5.6.11"},
+		{"log_slow_admin_statements", "LogSlowAdminStatements", "5.6.11", "10.0.0"},
+		{"log_slow_slave_statements", "LogSlowSlaveStatements", "5.6.11", "10.0.0"},
 	}
 
 	t.Run("variables", func(t *testing.T) {
@@ -141,11 +142,20 @@ func testGetDefaultsBoolValues(
 				t.Parallel()
 
 				// Skip testing variable if it was introduced in higher MySQL version
-				if keys[i].version != "" {
-					variableIsSupported, err := conn.AtLeastVersion(keys[i].version)
+				if keys[i].versionMin != "" {
+					variableIsSupported, err := conn.AtLeastVersion(keys[i].versionMin)
 					assert.Nil(t, err)
 					if !variableIsSupported {
-						t.Skipf("Variable '%s' is unsupported, it was introduced in MySQL %s.", keys[i].db, keys[i].version)
+						t.Skipf("Variable '%s' is unsupported, it was introduced in MySQL %s.", keys[i].db, keys[i].versionMin)
+					}
+				}
+
+				// Skip testing variable if it is unsupported anymore
+				if keys[i].versionMax != "" {
+					variableUnsupported, err := conn.AtLeastVersion(keys[i].versionMax)
+					assert.Nil(t, err)
+					if variableUnsupported {
+						t.Skipf("Variable '%s' is unsupported, it was dropped in MySQL %s.", keys[i].db, keys[i].versionMax)
 					}
 				}
 
