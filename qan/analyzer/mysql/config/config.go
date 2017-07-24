@@ -46,43 +46,58 @@ const (
 	MySQLVarTypeNumeric
 )
 
-type MySQLVar struct {
-	Name string
-	Type MySQLVarType
-}
-
 var (
-	mysqlVars = []MySQLVar{
-		{"log_slow_admin_statements", MySQLVarTypeBoolean},
-		{"log_slow_slave_statements", MySQLVarTypeBoolean},
-		{"log_slow_rate_limit", MySQLVarTypeInteger},
-		{"log_slow_verbosity", MySQLVarTypeString},
-		{"long_query_time", MySQLVarTypeNumeric},
-		{"performance_schema", MySQLVarTypeBoolean},
+	mysqlVars = map[string]MySQLVarType{
+		// Slowlog
+		"log_slow_admin_statements":              MySQLVarTypeBoolean,
+		"log_slow_slave_statements":              MySQLVarTypeBoolean,
+		"log_queries_not_using_indexes":          MySQLVarTypeBoolean,
+		"log_throttle_queries_not_using_indexes": MySQLVarTypeInteger,
+		"log_output":                             MySQLVarTypeString, // @todo it's a set, not string
+		"log_timestamps":                         MySQLVarTypeString, // @todo it's a enumeration, not string
+		"slow_query_log":                         MySQLVarTypeBoolean,
+		"slow_query_log_file":                    MySQLVarTypeString,
+		// Percona Slowlog
+		"log_slow_filter":                   MySQLVarTypeString, // @todo set, not string
+		"log_slow_rate_type":                MySQLVarTypeString,
+		"log_slow_rate_limit":               MySQLVarTypeInteger,
+		"log_slow_sp_statements":            MySQLVarTypeBoolean,
+		"log_slow_verbosity":                MySQLVarTypeString, // @todo set, not string
+		"slow_query_log_use_global_control": MySQLVarTypeString, // @todo set, not string
+		"slow_query_log_always_write_time":  MySQLVarTypeNumeric,
+
+		// Performance Schema
+		"performance_schema":                   MySQLVarTypeBoolean,
+		"performance_schema_digests_size":      MySQLVarTypeInteger, // increments "Performance_schema_digest_lost" https://dev.mysql.com/doc/refman/5.7/en/performance-schema-status-variables.html#statvar_Performance_schema_digest_lost
+		"performance_schema_max_digest_length": MySQLVarTypeInteger,
+
+		// Common for Slowlog and Performance Schema
+		"long_query_time":        MySQLVarTypeNumeric,
+		"min_examined_row_limit": MySQLVarTypeInteger,
 	}
 )
 
 func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interface{}, err error) {
 	info = map[string]interface{}{}
-	for _, mysqlVar := range mysqlVars {
+	for mysqlVarName, mysqlVarType := range mysqlVars {
 		var v driver.Valuer
 
-		switch mysqlVar.Type {
+		switch mysqlVarType {
 		case MySQLVarTypeNumeric:
-			v, err = conn.GetGlobalVarNumeric(mysqlVar.Name)
+			v, err = conn.GetGlobalVarNumeric(mysqlVarName)
 		case MySQLVarTypeInteger:
-			v, err = conn.GetGlobalVarInteger(mysqlVar.Name)
+			v, err = conn.GetGlobalVarInteger(mysqlVarName)
 		case MySQLVarTypeBoolean:
-			v, err = conn.GetGlobalVarBoolean(mysqlVar.Name)
+			v, err = conn.GetGlobalVarBoolean(mysqlVarName)
 		case MySQLVarTypeString:
-			v, err = conn.GetGlobalVarString(mysqlVar.Name)
+			v, err = conn.GetGlobalVarString(mysqlVarName)
 		}
 
 		if err != nil {
 			return info, err
 		}
 
-		info[underscoreToCamelCase(mysqlVar.Name)], _ = v.Value()
+		info[underscoreToCamelCase(mysqlVarName)], _ = v.Value()
 	}
 
 	return info, nil
