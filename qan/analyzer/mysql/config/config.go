@@ -77,9 +77,10 @@ var (
 	}
 )
 
-func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interface{}, err error) {
+func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interface{}) {
 	info = map[string]interface{}{}
 	for mysqlVarName, mysqlVarType := range mysqlVars {
+		var err error
 		var v driver.Valuer
 
 		switch mysqlVarType {
@@ -93,14 +94,17 @@ func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interfa
 			v, err = conn.GetGlobalVarString(mysqlVarName)
 		}
 
-		if err != nil {
-			return info, err
+		var msg interface{}
+		switch err {
+		case nil:
+			msg, _ = v.Value()
+		default:
+			msg = fmt.Errorf("unable to read global variable: %s", err)
 		}
-
-		info[underscoreToCamelCase(mysqlVarName)], _ = v.Value()
+		info[underscoreToCamelCase(mysqlVarName)] = msg
 	}
 
-	return info, nil
+	return info
 }
 
 func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
