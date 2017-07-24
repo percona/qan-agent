@@ -153,6 +153,11 @@ func (n *NullMySQL) AtLeastVersion(v string) (bool, error) {
 	return n.atLeastVersion, n.atLeastVersionErr
 }
 
+// VersionConstraint checks if version fits given constraint
+func (n *NullMySQL) VersionConstraint(constraint string) (bool, error) {
+	return false, nil
+}
+
 func (n *NullMySQL) SetAtLeastVersion(atLeastVersion bool, err error) {
 	n.atLeastVersion = atLeastVersion
 	n.atLeastVersionErr = err
