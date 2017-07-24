@@ -61,7 +61,7 @@ func (f *RealIntervalIterFactory) Make(analyzerType string, mysqlConn mysql.Conn
 			if err != nil {
 				return "", err
 			}
-			filename := AbsDataFile(dataDir, slowQueryLogFile)
+			filename := AbsDataFile(dataDir.String, slowQueryLogFile.String)
 			return filename, nil
 		}
 		return slowlog.NewIter(pct.NewLogger(f.logChan, "qan-interval"), getSlowLogFunc, tickChan)

@@ -18,12 +18,13 @@
 package mock
 
 import (
-	"golang.org/x/net/websocket"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
+
+	"golang.org/x/net/websocket"
 )
 
 func NewWebsocketServer() *WebsocketServer {

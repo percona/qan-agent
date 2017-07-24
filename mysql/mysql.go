@@ -25,12 +25,14 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/qan-agent/pct"
 )
 
-var ErrNotConnected = errors.New("not connected")
+var (
+	ErrNotConnected = errors.New("not connected")
+)
 
 type Query struct {
 	Set    string // SET GLOBAL long_query_time=0
@@ -45,8 +47,10 @@ type Connector interface {
 	DB() *sql.DB
 	DSN() string
 	Exec([]string) error
-	GetGlobalVarString(varName string) (string, error)
-	GetGlobalVarNumber(varName string) (float64, error)
+	GetGlobalVarBoolean(varName string) (varValue sql.NullBool, err error)
+	GetGlobalVarString(varName string) (varValue sql.NullString, err error)
+	GetGlobalVarNumeric(varName string) (varValue sql.NullFloat64, err error)
+	GetGlobalVarInteger(varName string) (varValue sql.NullInt64, err error)
 	Set([]Query) error
 	Uptime() (uptime int64, err error)
 	UTCOffset() (time.Duration, time.Duration, error)
@@ -129,7 +133,7 @@ func (c *Connection) Set(queries []Query) error {
 			if err != nil {
 				return err
 			}
-			if got != query.Expect {
+			if got.String != query.Expect {
 				return fmt.Errorf(
 					"Global variable '%s' is set to '%s' but needs to be '%s'. "+
 						"Consult the MySQL manual, or contact Percona Support, "+
@@ -153,22 +157,37 @@ func (c *Connection) Exec(queries []string) error {
 	return nil
 }
 
-func (c *Connection) GetGlobalVarString(varName string) (string, error) {
-	if !c.connected {
-		return "", ErrNotConnected
-	}
-	var varValue string
-	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
-	return varValue, nil
+func (c *Connection) GetGlobalVarBoolean(varName string) (varValue sql.NullBool, err error) {
+	err = c.getGlobalVar(varName, &varValue)
+	return varValue, err
 }
 
-func (c *Connection) GetGlobalVarNumber(varName string) (float64, error) {
+func (c *Connection) GetGlobalVarString(varName string) (varValue sql.NullString, err error) {
+	err = c.getGlobalVar(varName, &varValue)
+	return varValue, err
+}
+
+func (c *Connection) GetGlobalVarNumeric(varName string) (varValue sql.NullFloat64, err error) {
+	err = c.getGlobalVar(varName, &varValue)
+	return varValue, err
+}
+
+func (c *Connection) GetGlobalVarInteger(varName string) (varValue sql.NullInt64, err error) {
+	err = c.getGlobalVar(varName, &varValue)
+	return varValue, err
+}
+
+func (c *Connection) getGlobalVar(varName string, varValue interface{}) (err error) {
 	if !c.connected {
-		return 0, ErrNotConnected
+		return ErrNotConnected
 	}
-	var varValue float64
-	c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(&varValue)
-	return varValue, nil
+	err = c.conn.QueryRow("SELECT @@GLOBAL." + varName).Scan(varValue)
+	if val, ok := err.(*mysql.MySQLError); ok {
+		if val.Number == 1193 /*ER_UNKNOWN_SYSTEM_VARIABLE*/ {
+			return nil
+		}
+	}
+	return err
 }
 
 func (c *Connection) Uptime() (uptime int64, err error) {
@@ -189,7 +208,7 @@ func (c *Connection) AtLeastVersion(minVersion string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return pct.AtLeastVersion(version, minVersion)
+	return pct.AtLeastVersion(version.String, minVersion)
 }
 
 func (c *Connection) UTCOffset() (time.Duration, time.Duration, error) {

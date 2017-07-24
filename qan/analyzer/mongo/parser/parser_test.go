@@ -3,12 +3,12 @@ package parser
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	pm "github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/stretchr/testify/assert"
-	"time"
 )
 
 func TestNew(t *testing.T) {

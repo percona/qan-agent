@@ -19,9 +19,10 @@ package data
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
-	"time"
 )
 
 const (

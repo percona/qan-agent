@@ -24,19 +24,22 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
+	"sync"
 )
 
 var ERR_NOT_FOUND = errors.New("var not found in NullMySQL mock")
 
 type NullMySQL struct {
 	set                  []mysql.Query
+	SetCond              *sync.Cond
 	exec                 []string
 	explain              map[string]*proto.ExplainResult
 	uptime               int64
 	uptimeCount          uint
-	stringVars           map[string]string
-	numberVars           map[string]float64
-	SetChan              chan bool
+	boolVars             map[string]sql.NullBool
+	stringVars           map[string]sql.NullString
+	numericVars          map[string]sql.NullFloat64
+	integerVars          map[string]sql.NullInt64
 	atLeastVersion       bool
 	atLeastVersionErr    error
 	Version              string
@@ -49,9 +52,7 @@ func NewNullMySQL() *NullMySQL {
 		set:                  []mysql.Query{},
 		exec:                 []string{},
 		explain:              make(map[string]*proto.ExplainResult),
-		stringVars:           make(map[string]string),
-		numberVars:           make(map[string]float64),
-		SetChan:              make(chan bool),
+		SetCond:              sync.NewCond(&sync.Mutex{}),
 		CurrentTzOffsetHours: 6,
 		SystemTzOffsetHours:  0,
 	}
@@ -86,10 +87,11 @@ func (n *NullMySQL) Set(queries []mysql.Query) error {
 	for _, q := range queries {
 		n.set = append(n.set, q)
 	}
-	select {
-	case n.SetChan <- true:
-	default:
-	}
+
+	// broadcast an event
+	n.SetCond.L.Lock()
+	defer n.SetCond.L.Unlock()
+	n.SetCond.Broadcast()
 	return nil
 }
 
@@ -97,10 +99,11 @@ func (n *NullMySQL) Exec(queries []string) error {
 	for _, q := range queries {
 		n.exec = append(n.exec, q)
 	}
-	select {
-	case n.SetChan <- true:
-	default:
-	}
+
+	// broadcast an event
+	n.SetCond.L.Lock()
+	defer n.SetCond.L.Unlock()
+	n.SetCond.Broadcast()
 	return nil
 }
 
@@ -115,32 +118,60 @@ func (n *NullMySQL) GetExec() []string {
 func (n *NullMySQL) Reset() {
 	n.set = []mysql.Query{}
 	n.exec = []string{}
-	n.stringVars = make(map[string]string)
-	n.numberVars = make(map[string]float64)
+	n.boolVars = make(map[string]sql.NullBool)
+	n.stringVars = make(map[string]sql.NullString)
+	n.numericVars = make(map[string]sql.NullFloat64)
+	n.integerVars = make(map[string]sql.NullInt64)
 }
 
-func (n *NullMySQL) GetGlobalVarString(varName string) (string, error) {
-	value, ok := n.stringVars[varName]
+func (n *NullMySQL) GetGlobalVarBoolean(varName string) (varValue sql.NullBool, err error) {
+	varValue, ok := n.boolVars[varName]
 	if ok {
-		return value, nil
+		return varValue, nil
 	}
-	return "", ERR_NOT_FOUND
+	return varValue, ERR_NOT_FOUND
 }
 
-func (n *NullMySQL) GetGlobalVarNumber(varName string) (float64, error) {
-	value, ok := n.numberVars[varName]
+func (n *NullMySQL) GetGlobalVarString(varName string) (varValue sql.NullString, err error) {
+	varValue, ok := n.stringVars[varName]
 	if ok {
-		return value, nil
+		return varValue, nil
 	}
-	return 0, ERR_NOT_FOUND
+	return varValue, ERR_NOT_FOUND
 }
 
-func (n *NullMySQL) SetGlobalVarNumber(name string, value float64) {
-	n.numberVars[name] = value
+func (n *NullMySQL) GetGlobalVarNumeric(varName string) (varValue sql.NullFloat64, err error) {
+	varValue, ok := n.numericVars[varName]
+	if ok {
+		return varValue, nil
+	}
+	return varValue, ERR_NOT_FOUND
+}
+
+func (n *NullMySQL) GetGlobalVarInteger(varName string) (varValue sql.NullInt64, err error) {
+	varValue, ok := n.integerVars[varName]
+	if ok {
+		return varValue, nil
+	}
+	return varValue, ERR_NOT_FOUND
+}
+
+func (n *NullMySQL) SetGlobalVarNumeric(name string, value float64) {
+	n.numericVars[name] = sql.NullFloat64{
+		Float64: value,
+	}
+}
+
+func (n *NullMySQL) SetGlobalVarInteger(name string, value int64) {
+	n.integerVars[name] = sql.NullInt64{
+		Int64: value,
+	}
 }
 
 func (n *NullMySQL) SetGlobalVarString(name, value string) {
-	n.stringVars[name] = value
+	n.stringVars[name] = sql.NullString{
+		String: value,
+	}
 }
 
 func (n *NullMySQL) Uptime() (int64, error) {

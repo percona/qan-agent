@@ -18,6 +18,7 @@
 package mrms_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	. "gopkg.in/check.v1"
-	"os"
 )
 
 func Test(t *testing.T) { TestingT(t) }

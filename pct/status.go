@@ -19,8 +19,9 @@ package pct
 
 import (
 	"fmt"
-	"github.com/percona/pmm/proto"
 	"sync"
+
+	"github.com/percona/pmm/proto"
 )
 
 type StatusReporter interface {
