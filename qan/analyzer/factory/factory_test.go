@@ -124,11 +124,12 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	err = plugin.Start()
 	assert.Nil(t, err)
 	expected := map[string]string{
-		"plugin":               "",
-		"plugin-last-interval": "",
-		"plugin-next-interval": "0.0s",
-		"plugin-worker":        "",
-		"plugin-worker-last":   "",
+		"plugin":                "",
+		"plugin-last-interval":  "",
+		"plugin-next-interval":  "0.0s",
+		"plugin-worker":         "",
+		"plugin-worker-last":    "",
+		"plugin-worker-digests": "",
 	}
 	assert.Equal(t, expected, plugin.Status())
 	err = plugin.Stop()

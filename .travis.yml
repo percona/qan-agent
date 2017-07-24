@@ -62,6 +62,11 @@ before_script:
       sleep 1
     done
     >&2 echo "MySQL ${MYSQL_HOST}:${MYSQL_PORT} is up"
+  # log versions
+  - docker --version
+  - docker-compose --version
+  - docker-compose exec mysql mysql --version
+  - docker-compose exec mongo mongo --version
 
 script:
   - test/runner.sh

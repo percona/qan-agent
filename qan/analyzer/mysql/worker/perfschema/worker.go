@@ -76,8 +76,6 @@ type Class struct {
 // produce a mysqlAnalyzer.Result.
 type Snapshot map[string]Class // keyed on digest (classId)
 
-// --------------------------------------------------------------------------
-
 type WorkerFactory interface {
 	Make(name string, mysqlConn mysql.Connector) *Worker
 }
@@ -106,24 +104,51 @@ func (f *RealWorkerFactory) Make(name string, mysqlConn mysql.Connector) *Worker
 	return NewWorker(pct.NewLogger(f.logChan, name), mysqlConn, getRows)
 }
 
+// GetDigestRows connects to MySQL through `mysql.Connector`,
+// fetches snapshot of data from events_statements_summary_by_digest,
+// delivers it over a channel, and notifies success or error through `doneChan`.
+// If `lastFetchSeconds` equals `-1` then it fetches all data, not just since `lastFetchSeconds`.
 func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<- *DigestRow, doneChan chan<- error) error {
-	rows, err := mysqlConn.DB().Query(
-		fmt.Sprintf(
-			"SELECT "+
-				" COALESCE(SCHEMA_NAME, ''), COALESCE(DIGEST, ''), COALESCE(DIGEST_TEXT, ''), COUNT_STAR,"+
-				" SUM_TIMER_WAIT, MIN_TIMER_WAIT, AVG_TIMER_WAIT, MAX_TIMER_WAIT,"+
-				" SUM_LOCK_TIME,"+
-				" SUM_ERRORS, SUM_WARNINGS,"+
-				" SUM_ROWS_AFFECTED, SUM_ROWS_SENT, SUM_ROWS_EXAMINED,"+
-				" SUM_CREATED_TMP_DISK_TABLES, SUM_CREATED_TMP_TABLES,"+
-				" SUM_SELECT_FULL_JOIN, SUM_SELECT_FULL_RANGE_JOIN, SUM_SELECT_RANGE, SUM_SELECT_RANGE_CHECK, SUM_SELECT_SCAN,"+
-				" SUM_SORT_MERGE_PASSES, SUM_SORT_RANGE, SUM_SORT_ROWS, SUM_SORT_SCAN,"+
-				" SUM_NO_INDEX_USED, SUM_NO_GOOD_INDEX_USED"+
-				" FROM performance_schema.events_statements_summary_by_digest"+
-				" WHERE DIGEST IS NOT NULL AND LAST_SEEN > NOW() - INTERVAL %d SECOND", int64(lastFetchSeconds)))
+	q := `
+SELECT
+	COALESCE(SCHEMA_NAME, ''),
+	COALESCE(DIGEST, ''),
+	COALESCE(DIGEST_TEXT, ''),
+	COUNT_STAR,
+	SUM_TIMER_WAIT,
+	MIN_TIMER_WAIT,
+	AVG_TIMER_WAIT,
+	MAX_TIMER_WAIT,
+	SUM_LOCK_TIME,
+	SUM_ERRORS,
+	SUM_WARNINGS,
+	SUM_ROWS_AFFECTED,
+	SUM_ROWS_SENT,
+	SUM_ROWS_EXAMINED,
+	SUM_CREATED_TMP_DISK_TABLES,
+	SUM_CREATED_TMP_TABLES,
+	SUM_SELECT_FULL_JOIN,
+	SUM_SELECT_FULL_RANGE_JOIN,
+	SUM_SELECT_RANGE,
+	SUM_SELECT_RANGE_CHECK,
+	SUM_SELECT_SCAN,
+	SUM_SORT_MERGE_PASSES,
+	SUM_SORT_RANGE,
+	SUM_SORT_ROWS,
+	SUM_SORT_SCAN,
+	SUM_NO_INDEX_USED,
+	SUM_NO_GOOD_INDEX_USED
+	FROM performance_schema.events_statements_summary_by_digest
+`
+
+	if lastFetchSeconds >= 0 {
+		q += fmt.Sprintf(" WHERE LAST_SEEN >= NOW() - INTERVAL %d SECOND", int64(lastFetchSeconds))
+	}
+
+	rows, err := mysqlConn.DB().Query(q)
 	if err != nil {
 		// This bubbles up to the analyzer which logs it as an error:
-		//   0. Analyer.Worker.Run()
+		//   0. Analyzer.Worker.Run()
 		//   1. Worker.Run().getSnapShot()
 		//   2. Worker.getSnapshot().getRows() (ptr to this func)
 		//   3. here
@@ -178,10 +203,7 @@ func GetDigestRows(mysqlConn mysql.Connector, lastFetchSeconds float64, c chan<-
 	return nil
 }
 
-// --------------------------------------------------------------------------
-
 type GetDigestRowsFunc func(c chan<- *DigestRow, lastFetchSeconds float64, doneChan chan<- error) error
-type GetDigestTextFunc func(string) (string, error)
 
 type Worker struct {
 	logger    *pct.Logger
@@ -190,8 +212,7 @@ type Worker struct {
 	// --
 	name            string
 	status          *pct.Status
-	prev            Snapshot
-	curr            Snapshot
+	digests         *Digests
 	iter            *iter.Interval
 	lastErr         error
 	lastRowCnt      uint
@@ -212,10 +233,13 @@ func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestR
 		mysqlConn: mysqlConn,
 		getRows:   getRows,
 		// --
-		name:          name,
-		status:        pct.NewStatus([]string{name, name + "-last"}),
-		lastFetchTime: time.Now(),
-		prev:          make(Snapshot),
+		name: name,
+		status: pct.NewStatus([]string{
+			name,
+			name + "-last",
+			name + "-digests",
+		}),
+		digests:       NewDigests(),
 		queryExamples: make(map[string]perfSchemaExample),
 	}
 	return w
@@ -254,17 +278,17 @@ func (w *Worker) Run() (*report.Result, error) {
 	defer w.mysqlConn.Close()
 
 	var err error
-	w.curr, err = w.getSnapshot(w.prev)
+	w.digests.Curr, err = w.getSnapshot()
 	if err != nil {
 		w.lastErr = err
 		return nil, err
 	}
 
-	if len(w.prev) == 0 {
+	if len(w.digests.All) == 0 {
 		return nil, nil
 	}
 
-	res, err := w.prepareResult(w.prev, w.curr)
+	res, err := w.prepareResult(w.digests.All, w.digests.Curr)
 	if err != nil {
 		w.lastErr = err
 		return nil, err
@@ -276,13 +300,15 @@ func (w *Worker) Run() (*report.Result, error) {
 func (w *Worker) Cleanup() error {
 	w.logger.Debug("Cleanup:call:", w.iter.Number)
 	defer w.logger.Debug("Cleanup:return:", w.iter.Number)
-	w.prev = w.curr
-	last := fmt.Sprintf("rows: %d, fetch: %v, prep: %s",
-		w.lastRowCnt, w.lastFetchTime, pct.Duration(w.lastPrepTime))
+	w.digests.MergeCurr()
+	last := fmt.Sprintf("rows: %d, fetch: %s, prep: %s",
+		w.lastRowCnt, w.lastFetchTime.Format(time.RFC3339), pct.Duration(w.lastPrepTime))
 	if w.lastErr != nil {
 		last += fmt.Sprintf(", error: %s", w.lastErr)
 	}
+	digests := fmt.Sprintf("all: %d, curr: %d", len(w.digests.All), len(w.digests.Curr))
 	w.status.Update(w.name+"-last", last)
+	w.status.Update(w.name+"-digest", digests)
 	return nil
 }
 
@@ -309,7 +335,7 @@ func (w *Worker) SetConfig(config pc.QAN) {
 
 func (w *Worker) reset() {
 	w.iter = nil
-	w.prev = make(Snapshot)
+	w.digests.Reset()
 	w.lastErr = nil
 	w.lastRowCnt = 0
 	w.lastFetchTime = time.Time{}
@@ -356,7 +382,7 @@ func (w *Worker) getQueryExamples(ticker <-chan time.Time) {
 	}
 }
 
-func (w *Worker) getSnapshot(prev Snapshot) (Snapshot, error) {
+func (w *Worker) getSnapshot() (Snapshot, error) {
 	w.logger.Debug("getSnapshot:call:", w.iter.Number)
 	defer w.logger.Debug("getSnapshot:return:", w.iter.Number)
 
@@ -364,21 +390,27 @@ func (w *Worker) getSnapshot(prev Snapshot) (Snapshot, error) {
 	defer w.status.Update(w.name, "Idle")
 
 	defer func() {
-		w.lastFetchTime = time.Now()
+		w.lastFetchTime = time.Now().UTC()
 	}()
 
-	seconds := time.Now().Sub(w.lastFetchTime).Seconds()
-	curr := make(Snapshot)
+	seconds := float64(0)
+	// If it's first snapshot we should fetch it all
+	if len(w.digests.All) == 0 {
+		seconds = -1
+	} else {
+		seconds = time.Now().UTC().Sub(w.lastFetchTime).Seconds()
+	}
 	rowChan := make(chan *DigestRow)
 	doneChan := make(chan error, 1)
 	if err := w.getRows(rowChan, seconds, doneChan); err != nil {
 		if err == sql.ErrNoRows {
-			return curr, nil
+			return Snapshot{}, nil
 		}
-		return nil, err
+		return Snapshot{}, err
 	}
+
+	curr := Snapshot{}
 	var err error // from getRows() on doneChan
-ROW_LOOP:
 	for {
 		select {
 		case row := <-rowChan:
@@ -416,10 +448,9 @@ ROW_LOOP:
 				}
 			}
 		case err = <-doneChan:
-			break ROW_LOOP
+			return curr, err
 		}
 	}
-	return curr, err
 }
 
 func (w *Worker) prepareResult(prev, curr Snapshot) (*report.Result, error) {
@@ -430,13 +461,15 @@ func (w *Worker) prepareResult(prev, curr Snapshot) (*report.Result, error) {
 	defer w.status.Update(w.name, "Idle")
 
 	t0 := time.Now()
-	defer func() { w.lastPrepTime = time.Now().Sub(t0).Seconds() }()
+	defer func() {
+		w.lastPrepTime = time.Now().UTC().Sub(t0).Seconds()
+	}()
 
 	global := event.NewClass("", "", false)
 	classes := []*event.Class{}
 
 	// Compare current classes to previous.
-CLASS_LOOP:
+ClassLoop:
 	for classId, class := range curr {
 
 		// If this class does not exist in prev, skip the entire class.
@@ -453,87 +486,75 @@ CLASS_LOOP:
 		n := uint64(0)                           // number of query instances in prev and curr
 
 		// Each row is an instance of the query executed in the schema.
-	ROW_LOOP:
+	RowLoop:
 		for schema, row := range class.Rows {
-			if prevRow, ok := prevClass.Rows[schema]; ok {
-				// We saw this row last time, so first check if it executed during
-				// the interval:
-				if row.CountStar == prevRow.CountStar {
-					continue ROW_LOOP // not executed during interval
-				}
-
-				// This row executed during the interval, and we've seen it before,
-				// so athe diff of the totals to the class metric totals. For example,
-				// if query 1 in db1 has prev.CountStar=50 and curr.CountStar=100,
-				// and query 1 in db2 has prev.CountStar=100 and curr.CountStar=200,
-				// that's +50 and +100 executions respectively, so +150 executions for
-				// the class metrics.
-				d.CountStar += row.CountStar - prevRow.CountStar
-				d.SumTimerWait += row.SumTimerWait - prevRow.SumTimerWait
-				d.SumLockTime += row.SumLockTime - prevRow.SumLockTime
-				d.SumErrors += row.SumErrors - prevRow.SumErrors
-				d.SumWarnings += row.SumWarnings - prevRow.SumWarnings
-				d.SumRowsAffected += row.SumRowsAffected - prevRow.SumRowsAffected
-				d.SumRowsSent += row.SumRowsSent - prevRow.SumRowsSent
-				d.SumRowsExamined += row.SumRowsExamined - prevRow.SumRowsExamined
-				d.SumCreatedTmpDiskTables += row.SumCreatedTmpDiskTables - prevRow.SumCreatedTmpDiskTables
-				d.SumCreatedTmpTables += row.SumCreatedTmpTables - prevRow.SumCreatedTmpTables
-				d.SumSelectFullJoin += row.SumSelectFullJoin - prevRow.SumSelectFullJoin
-				d.SumSelectFullRangeJoin += row.SumSelectFullRangeJoin - prevRow.SumSelectFullRangeJoin
-				d.SumSelectRange += row.SumSelectRange - prevRow.SumSelectRange
-				d.SumSelectRangeCheck += row.SumSelectRangeCheck - prevRow.SumSelectRangeCheck
-				d.SumSelectScan += row.SumSelectScan - prevRow.SumSelectScan
-				d.SumSortMergePasses += row.SumSortMergePasses - prevRow.SumSortMergePasses
-				d.SumSortRange += row.SumSortRange - prevRow.SumSortRange
-				d.SumSortRows += row.SumSortRows - prevRow.SumSortRows
-				d.SumSortScan += row.SumSortScan - prevRow.SumSortScan
-				d.SumNoIndexUsed += row.SumNoIndexUsed - prevRow.SumNoIndexUsed
-				d.SumNoGoodIndexUsed += row.SumNoGoodIndexUsed - prevRow.SumNoGoodIndexUsed
-
-				// Take the current min and max.
-				if row.MinTimerWait < d.MinTimerWait {
-					d.MinTimerWait = row.MinTimerWait
-				}
-				if row.MaxTimerWait > d.MaxTimerWait {
-					d.MaxTimerWait = row.MaxTimerWait
-				}
-				// Add the averages, divide later.
-				d.AvgTimerWait += row.AvgTimerWait
-			} else {
-				// We didn't see this row last time, so the query executed some
-				// time during the interval. Since this is our first time seeing
-				// it, we don't diff the values, we use the current values.
-				d.CountStar = row.CountStar
-				d.SumTimerWait = row.SumTimerWait
-				d.MinTimerWait = row.MinTimerWait
-				d.AvgTimerWait = row.AvgTimerWait
-				d.MaxTimerWait = row.MaxTimerWait
-				d.SumLockTime = row.SumLockTime
-				d.SumErrors = row.SumErrors
-				d.SumWarnings = row.SumWarnings
-				d.SumRowsAffected = row.SumRowsAffected
-				d.SumRowsSent = row.SumRowsSent
-				d.SumRowsExamined = row.SumRowsExamined
-				d.SumCreatedTmpDiskTables = row.SumCreatedTmpDiskTables
-				d.SumCreatedTmpTables = row.SumCreatedTmpTables
-				d.SumSelectFullJoin = row.SumSelectFullJoin
-				d.SumSelectFullRangeJoin = row.SumSelectFullRangeJoin
-				d.SumSelectRange = row.SumSelectRange
-				d.SumSelectRangeCheck = row.SumSelectRangeCheck
-				d.SumSelectScan = row.SumSelectScan
-				d.SumSortMergePasses = row.SumSortMergePasses
-				d.SumSortRange = row.SumSortRange
-				d.SumSortRows = row.SumSortRows
-				d.SumSortScan = row.SumSortScan
-				d.SumNoIndexUsed = row.SumNoIndexUsed
-				d.SumNoGoodIndexUsed = row.SumNoGoodIndexUsed
+			prevRow, ok := prevClass.Rows[schema]
+			if !ok {
+				prevRow = &DigestRow{}
 			}
+
+			// Check if it executed during the interval.
+			if row.CountStar == prevRow.CountStar {
+				continue RowLoop // not executed during interval
+			}
+
+			// If current value of CountStart (number of queries)
+			// is lesser than previous one, then this indicates truncate of the table.
+			// In such case we should re-fetch whole data snapshot, not just it's part.
+			// Reset the worker to initial state and drop this snapshot
+			if row.CountStar < prevRow.CountStar {
+				w.reset()
+				return nil, nil
+			}
+
+			// This row executed during the interval.
+			// If query 1 in db1 has prev.CountStar=50 and curr.CountStar=100,
+			// and query 1 in db2 has prev.CountStar=100 and curr.CountStar=200,
+			// that's +50 and +100 executions respectively, so +150 executions for
+			// the class metrics.
+			d.CountStar += row.CountStar - prevRow.CountStar
+			d.SumTimerWait += row.SumTimerWait - prevRow.SumTimerWait
+			d.SumLockTime += row.SumLockTime - prevRow.SumLockTime
+			d.SumErrors += row.SumErrors - prevRow.SumErrors
+			d.SumWarnings += row.SumWarnings - prevRow.SumWarnings
+			d.SumRowsAffected += row.SumRowsAffected - prevRow.SumRowsAffected
+			d.SumRowsSent += row.SumRowsSent - prevRow.SumRowsSent
+			d.SumRowsExamined += row.SumRowsExamined - prevRow.SumRowsExamined
+			d.SumCreatedTmpDiskTables += row.SumCreatedTmpDiskTables - prevRow.SumCreatedTmpDiskTables
+			d.SumCreatedTmpTables += row.SumCreatedTmpTables - prevRow.SumCreatedTmpTables
+			d.SumSelectFullJoin += row.SumSelectFullJoin - prevRow.SumSelectFullJoin
+			d.SumSelectFullRangeJoin += row.SumSelectFullRangeJoin - prevRow.SumSelectFullRangeJoin
+			d.SumSelectRange += row.SumSelectRange - prevRow.SumSelectRange
+			d.SumSelectRangeCheck += row.SumSelectRangeCheck - prevRow.SumSelectRangeCheck
+			d.SumSelectScan += row.SumSelectScan - prevRow.SumSelectScan
+			d.SumSortMergePasses += row.SumSortMergePasses - prevRow.SumSortMergePasses
+			d.SumSortRange += row.SumSortRange - prevRow.SumSortRange
+			d.SumSortRows += row.SumSortRows - prevRow.SumSortRows
+			d.SumSortScan += row.SumSortScan - prevRow.SumSortScan
+			d.SumNoIndexUsed += row.SumNoIndexUsed - prevRow.SumNoIndexUsed
+			d.SumNoGoodIndexUsed += row.SumNoGoodIndexUsed - prevRow.SumNoGoodIndexUsed
+
+			// If it's first row for this class then set min,
+			// otherwise min would be always 0.
+			if d.CountStar == 0 {
+				d.MinTimerWait = row.MinTimerWait
+			}
+			// Take the current min and max.
+			if row.MinTimerWait < d.MinTimerWait {
+				d.MinTimerWait = row.MinTimerWait
+			}
+			if row.MaxTimerWait > d.MaxTimerWait {
+				d.MaxTimerWait = row.MaxTimerWait
+			}
+
+			// Add the averages, divide later.
+			d.AvgTimerWait += row.AvgTimerWait
 			n++
 		}
 
 		// Class was in prev, but no rows in prev were in curr, so skip the class.
 		if n == 0 {
-			continue CLASS_LOOP
+			continue ClassLoop
 		}
 
 		// Divide the total averages to yield the average of the averages.
@@ -547,7 +568,7 @@ CLASS_LOOP:
 		// Create standard metric stats from the class metrics just calculated.
 		stats := event.NewMetrics()
 
-		// Time metircs are in picoseconds, so multiply by 10^-12 to convert to seconds.
+		// Time metrics are in picoseconds, so multiply by 10^-12 to convert to seconds.
 		stats.TimeMetrics["Query_time"] = &event.TimeStats{
 			Sum: float64(d.SumTimerWait) * math.Pow10(-12),
 			Min: float64(d.MinTimerWait) * math.Pow10(-12),
