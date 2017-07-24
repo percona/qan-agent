@@ -80,9 +80,17 @@ func (s *MysqlTestSuite) TestGetGlobalNumber(t *C) {
 	err := conn.Connect()
 	t.Assert(err, IsNil)
 
+	// set variable to be sure defaults don't affect us
+	err = conn.Set([]mysql.Query{
+		{
+			Set: "SET GLOBAL connect_timeout=3",
+		},
+	})
+	t.Check(err, IsNil)
+
 	globalVarNumber, err := conn.GetGlobalVarNumber("connect_timeout")
 	t.Check(err, IsNil)
-	t.Check(globalVarNumber, Equals, float64(10))
+	t.Check(globalVarNumber, Equals, float64(3))
 
 }
 
