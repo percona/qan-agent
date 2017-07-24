@@ -507,7 +507,7 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 	cp := exec.Command("cp", inputDir+slowlogFileName, slowlogFile)
 	cp.Run()
 
-	conn := mysql.NewConnection(s.dsn)
+	conn := mysql.NewConnection(dsn)
 	err = conn.Connect()
 	t.Check(err, IsNil)
 	err = conn.Set([]mysql.Query{
