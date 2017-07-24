@@ -113,9 +113,9 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 		},
 	}
 
-	mysql57, err := conn.AtLeastVersion("5.7")
-	assert.Nil(t, err)
-	if mysql57 {
+	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
+	assert.NoError(t, err)
+	if newFormat {
 		expectedJsonQuery.QueryBlock.Message = "No tables used"
 	} else {
 		expectedJsonQuery.QueryBlock.Table = &Table{
@@ -225,9 +225,9 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		},
 	}
 
-	mysql57, err := conn.AtLeastVersion("5.7")
+	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
 	assert.Nil(t, err)
-	if mysql57 {
+	if newFormat {
 		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
 			QueryCost: "10.50",
 		}
