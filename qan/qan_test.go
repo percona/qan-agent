@@ -132,8 +132,8 @@ func testGetDefaultsBoolValues(
 		// https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_log_slow_slave_statements
 		// https://mariadb.com/kb/en/mariadb/replication-and-binary-log-server-system-variables/#log_slow_admin_statements
 		// https://mariadb.com/kb/en/mariadb/replication-and-binary-log-server-system-variables/#log_slow_slave_statements
-		{"log_slow_admin_statements", "LogSlowAdminStatements", ">= 5.6.11, != 10.0"},
-		{"log_slow_slave_statements", "LogSlowSlaveStatements", ">= 5.6.11, != 10.0"},
+		{"log_slow_admin_statements", "LogSlowAdminStatements", ">= 5.6.11, != 10.0.*"},
+		{"log_slow_slave_statements", "LogSlowSlaveStatements", ">= 5.6.11, != 10.0.*"},
 	}
 
 	t.Run("variables", func(t *testing.T) {
