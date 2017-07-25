@@ -1,12 +1,12 @@
 hash: 74b46e7fd2de3e8cf8ed7997ea4ece3e9a4038cff3c5ae4841bb556dd9c8926a
-updated: 2017-07-25T01:33:36.025009594+02:00
+updated: 2017-07-25T02:30:36.179095314+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/fatih/structs
   version: 7e5a8eef611ee84dd359503f3969f80df4c50723
 - name: github.com/go-sql-driver/mysql
-  version: 2e00b5cd70399450106cec6431c2e2ce3cae5034
+  version: 3955978caca48c1658a4bb7a9c6a0f084e326af3
 - name: github.com/google/btree
   version: 316fb6d3f031ae8f4d457c6c5186b9e3ded70435
 - name: github.com/hashicorp/go-version
@@ -18,7 +18,7 @@ imports:
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/percona/go-mysql
-  version: 2a6037d7d809b18ebd6d735b397f2321879af611
+  version: b561fedcb9dd988e592a6fb88bdf05596e598af1
   subpackages:
   - dsn
   - event
@@ -33,9 +33,9 @@ imports:
   - src/go/mongolib/stats
   - src/go/mongolib/util
 - name: github.com/percona/pmgo
-  version: 717c9ce3810f3744d303a8ad418f84d517fde597
+  version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
 - name: github.com/percona/pmm
-  version: 0af8c6479067bf89905f881e6b118d340f719d6d
+  version: 435c36759a496d792394e6bfd1245ebfdcb6a9c0
   subpackages:
   - proto
   - proto/config
@@ -51,7 +51,7 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: 6b27048ae5e6ad1ef927e72e437531493de612fe
+  version: ab5485076ff3407ad2d02db054635913f017b0ed
   subpackages:
   - context
   - websocket
@@ -79,7 +79,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
+  version: 05e8a0eda380579888eb53c394909df027f06991
   subpackages:
   - assert
   - require
