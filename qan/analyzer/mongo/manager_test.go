@@ -16,6 +16,7 @@ import (
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -23,11 +24,11 @@ import (
 func TestRealStartTool(t *testing.T) {
 	{
 		dialInfo, err := pmgo.ParseURL("")
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		dialer := pmgo.NewDialer()
 
 		session, err := dialer.DialWithInfo(dialInfo)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		defer session.Close()
 
 		session.SetMode(mgo.Eventual, true)
@@ -43,10 +44,10 @@ func TestRealStartTool(t *testing.T) {
 			},
 			&result,
 		)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		err = session.DB(dialInfo.Database).C("system.profile").DropCollection()
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		err = session.DB(dialInfo.Database).Run(
 			bson.M{
@@ -54,7 +55,7 @@ func TestRealStartTool(t *testing.T) {
 			},
 			&result,
 		)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	}
 
 	logChan := make(chan proto.LogEntry)
@@ -75,14 +76,14 @@ func TestRealStartTool(t *testing.T) {
 	)
 	m := qan.NewManager(logger, instanceRepo, f)
 	err := m.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	protoInstance := proto.Instance{
 		UUID:      "12345678",
 		Subsystem: "mongo",
 	}
 	err = instanceRepo.Add(protoInstance, false)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Create the qan config.
 	config := &pc.QAN{
@@ -107,10 +108,10 @@ func TestRealStartTool(t *testing.T) {
 
 	// The manager writes the qan config to disk.
 	data, err := ioutil.ReadFile(pct.Basedir.ConfigFile("qan-" + config.UUID))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	gotConfig := &pc.QAN{}
 	err = json.Unmarshal(data, gotConfig)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, config, gotConfig)
 
 	// Now the manager and analyzer should be running.
@@ -136,9 +137,9 @@ func TestRealStartTool(t *testing.T) {
 		}
 	}
 	expectJSON, err := json.Marshal(expect)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	actualJSON, err := json.Marshal(actual)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.JSONEq(t, string(expectJSON), string(actualJSON))
 
 	// Try to start the same analyzer again. It results in an error because
@@ -176,5 +177,5 @@ func TestRealStartTool(t *testing.T) {
 
 	// Stop the manager.
 	err = m.Stop()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }

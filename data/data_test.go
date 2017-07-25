@@ -37,6 +37,7 @@ import (
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/test/rootdir"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -946,12 +947,12 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	}
 	pcDataSet := pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataSetExpected, pcDataSet)
 
 	pcDataRunning := pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
 
 	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
@@ -984,12 +985,12 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	pcDataSet = pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataSetExpected, pcDataSet)
 
 	pcDataRunning = pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
 
 	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
@@ -1060,12 +1061,12 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	pcDataRunningExpected.SendInterval = 5
 	pcDataSet := pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataSetExpected, pcDataSet)
 
 	pcDataRunning := pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
 
 	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
@@ -1119,12 +1120,12 @@ func (s *ManagerTestSuite) TestSetConfig(t *C) {
 	pcDataRunningExpected.Encoding = "gzip"
 	pcDataSet = pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcDataSet)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataSetExpected, pcDataSet)
 
 	pcDataRunning = pc.Data{}
 	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcDataRunning)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcDataRunningExpected, pcDataRunning)
 
 	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order
@@ -1162,11 +1163,13 @@ func (s *ManagerTestSuite) TestStatus(t *C) {
 	t.Assert(err, IsNil)
 
 	// Get its status directly.
-	if !test.WaitStatus(5, m, "data", "Running") {
+	if !test.WaitStatus(1, m, "data", "Running") {
 		t.Fatal("test.WaitStatus() timeout")
 	}
-	status := m.Status()
-	t.Check(status["data"], Equals, "Running")
-	t.Check(status["data-spooler"], Equals, "Idle")
-	t.Check(status["data-sender"], Equals, "Idle")
+	if !test.WaitStatus(1, m, "data-spooler", "Idle") {
+		t.Fatal("test.WaitStatus() timeout")
+	}
+	if !test.WaitStatus(1, m, "data-sender", "Idle") {
+		t.Fatal("test.WaitStatus() timeout")
+	}
 }

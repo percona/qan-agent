@@ -20,11 +20,11 @@ package mock
 import (
 	"database/sql"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
-	"sync"
 )
 
 var ERR_NOT_FOUND = errors.New("var not found in NullMySQL mock")
@@ -182,6 +182,11 @@ func (n *NullMySQL) Uptime() (int64, error) {
 func (n *NullMySQL) AtLeastVersion(v string) (bool, error) {
 	n.Version = v
 	return n.atLeastVersion, n.atLeastVersionErr
+}
+
+// VersionConstraint checks if version fits given constraint
+func (n *NullMySQL) VersionConstraint(constraint string) (bool, error) {
+	return false, nil
 }
 
 func (n *NullMySQL) SetAtLeastVersion(atLeastVersion bool, err error) {

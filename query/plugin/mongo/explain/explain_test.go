@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -35,11 +36,11 @@ func TestExplain(t *testing.T) {
 	query := `{"name":"Alicja"}`
 
 	explainResult, err := Explain(dsn, namespace, query)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	got := bson.M{}
 	err = bson.UnmarshalJSON([]byte(explainResult.JSON), &got)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// check structure of the result
 	assert.NotEmpty(t, got["executionStats"])

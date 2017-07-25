@@ -27,15 +27,14 @@ import (
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTableInfo(t *testing.T) {
 	t.Parallel()
 
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	if dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	conn := mysql.NewConnection(dsn)
 	if err := conn.Connect(); err != nil {
@@ -56,7 +55,7 @@ func TestTableInfo(t *testing.T) {
 			}
 
 			got, err := TableInfo(conn, tables)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			tableInfo, ok := got[db+"."+table]
 			assert.Equal(t, true, ok)
@@ -96,7 +95,7 @@ func TestTableInfo(t *testing.T) {
 			}
 
 			got, err := TableInfo(conn, tables)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			tableInfo, ok := got[db+"."+table]
 			assert.Equal(t, true, ok)

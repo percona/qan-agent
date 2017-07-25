@@ -27,17 +27,18 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
 	. "github.com/percona/qan-agent/test/rootdir"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var outputDir = RootDir() + "/test/qan/"
 
 func TestResult001(t *testing.T) {
 	data, err := ioutil.ReadFile(outputDir + "/result001.json")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	result := &Result{}
 	err = json.Unmarshal(data, result)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	start := time.Now().Add(-1 * time.Second)
 	stop := time.Now()

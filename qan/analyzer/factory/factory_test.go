@@ -26,6 +26,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFactory_MakeMongo(t *testing.T) {
@@ -54,11 +55,11 @@ func TestFactory_MakeMongo(t *testing.T) {
 		serviceName,
 		protoInstance,
 	)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 	err = plugin.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
 	expect := map[string]string{
@@ -83,7 +84,7 @@ func TestFactory_MakeMongo(t *testing.T) {
 	}
 	assert.Equal(t, expect, actual)
 	err = plugin.Stop()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 }
 
@@ -113,7 +114,7 @@ func TestFactory_MakeMySQL(t *testing.T) {
 		serviceName,
 		protoInstance,
 	)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	pcQan := pc.QAN{
 		CollectFrom: "perfschema",
@@ -122,7 +123,7 @@ func TestFactory_MakeMySQL(t *testing.T) {
 
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 	err = plugin.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	expected := map[string]string{
 		"plugin":                "",
 		"plugin-last-interval":  "",
@@ -133,6 +134,6 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	}
 	assert.Equal(t, expected, plugin.Status())
 	err = plugin.Stop()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 }

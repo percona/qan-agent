@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Masterminds/semver"
 	"github.com/go-sql-driver/mysql"
 	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/qan-agent/pct"
@@ -41,6 +42,7 @@ type Query struct {
 }
 
 type Connector interface {
+	VersionConstraint(constraint string) (bool, error)
 	AtLeastVersion(string) (bool, error)
 	Connect() error
 	Close()
@@ -138,7 +140,7 @@ func (c *Connection) Set(queries []Query) error {
 					"Global variable '%s' is set to '%s' but needs to be '%s'. "+
 						"Consult the MySQL manual, or contact Percona Support, "+
 						"for help configuring this variable, then try again.",
-					query.Verify, got, query.Expect)
+					query.Verify, got.String, query.Expect)
 			}
 		}
 	}
@@ -209,6 +211,28 @@ func (c *Connection) AtLeastVersion(minVersion string) (bool, error) {
 		return false, err
 	}
 	return pct.AtLeastVersion(version.String, minVersion)
+}
+
+// VersionConstraint checks if version fits given constraint
+func (c *Connection) VersionConstraint(constraint string) (bool, error) {
+	version, err := c.GetGlobalVarString("version")
+	if err != nil {
+		return false, err
+	}
+
+	// Strip everything after the first dash
+	re := regexp.MustCompile("-.*$")
+	version.String = re.ReplaceAllString(version.String, "")
+	v, err := semver.NewVersion(version.String)
+	if err != nil {
+		return false, err
+	}
+
+	constraints, err := semver.NewConstraint(constraint)
+	if err != nil {
+		return false, err
+	}
+	return constraints.Check(v), nil
 }
 
 func (c *Connection) UTCOffset() (time.Duration, time.Duration, error) {

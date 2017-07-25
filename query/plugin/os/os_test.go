@@ -19,7 +19,6 @@ package os
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/percona/pmm/proto"
@@ -29,9 +28,6 @@ import (
 
 func TestHandle(t *testing.T) {
 	t.Parallel()
-
-	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	fs := []struct {
 		provider func() (cmd *proto.Cmd, in proto.Instance)
@@ -61,7 +57,7 @@ func TestHandle(t *testing.T) {
 				return cmd, in
 			},
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Regexp(t, "# Percona Toolkit System Summary Report #", data)
 			},
 		},

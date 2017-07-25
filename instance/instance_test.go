@@ -31,6 +31,7 @@ import (
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/test/rootdir"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -80,9 +81,7 @@ var dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
 // --------------------------------------------------------------------------
 
 func (s *ManagerTestSuite) TestHandleGetInfoMySQL(t *C) {
-	if dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	// First get MySQL info manually.  This is what GetInfo should do, too.
 	conn := mysql.NewConnection(dsn)
@@ -138,9 +137,7 @@ func (s *ManagerTestSuite) TestHandleGetInfoMySQL(t *C) {
 }
 
 func (s *ManagerTestSuite) TestStartAndUpdate(t *C) {
-	if dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	mysqlInstanceFile := pct.Basedir.InstanceFile("BBB")
 

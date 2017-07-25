@@ -29,6 +29,7 @@ import (
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // --------------------------------------------------------------------------
@@ -45,14 +46,14 @@ type QueryBlock struct {
 }
 
 type Table struct {
-	TableName         string   `json:"table_name,omitempty"`
-	AccessType        string   `json:"access_type,omitempty"`
-	Key               string   `json:"key,omitempty"`
-	SkipOpenTable     bool     `json:"skip_open_table,omitempty"`
-	UsedColumns       []string `json:"used_columns,omitempty"`
-	ScannedDatabases  string   `json:"scanned_databases,omitempty"`
-	AttachedCondition string   `json:"attached_condition,omitempty"`
-	Message           string   `json:"message,omitempty"`
+	TableName         string      `json:"table_name,omitempty"`
+	AccessType        string      `json:"access_type,omitempty"`
+	Key               string      `json:"key,omitempty"`
+	SkipOpenTable     bool        `json:"skip_open_table,omitempty"`
+	UsedColumns       []string    `json:"used_columns,omitempty"`
+	ScannedDatabases  interface{} `json:"scanned_databases,omitempty"`
+	AttachedCondition string      `json:"attached_condition,omitempty"`
+	Message           string      `json:"message,omitempty"`
 }
 
 type CostInfo struct {
@@ -63,9 +64,7 @@ func TestExplain(t *testing.T) {
 	t.Parallel()
 
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	if dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	conn := mysql.NewConnection(dsn)
 	if err := conn.Connect(); err != nil {
@@ -113,9 +112,9 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 		},
 	}
 
-	mysql57, err := conn.AtLeastVersion("5.7")
-	assert.Nil(t, err)
-	if mysql57 {
+	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
+	assert.NoError(t, err)
+	if newFormat {
 		expectedJsonQuery.QueryBlock.Message = "No tables used"
 	} else {
 		expectedJsonQuery.QueryBlock.Table = &Table{
@@ -123,7 +122,7 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 		}
 	}
 	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
 		Classic: []*proto.ExplainRow{
@@ -194,9 +193,12 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	gotExplainResult, err := Explain(conn, db, query, true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+
 	// Check the json first but only if supported...
-	jsonSupported, err := conn.AtLeastVersion("5.6.5")
+	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
+	// https://mariadb.com/kb/en/mariadb/explain-format-json/
+	jsonSupported, err := conn.VersionConstraint(">= 5.6.5, < 10.0.0 || >= 10.1.2")
 	if jsonSupported {
 		assert.JSONEq(t, string(expectedJSON), gotExplainResult.JSON)
 	}
@@ -225,9 +227,22 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		},
 	}
 
-	mysql57, err := conn.AtLeastVersion("5.7")
-	assert.Nil(t, err)
-	if mysql57 {
+	mariaDB101, err := conn.VersionConstraint(">= 10.1")
+	assert.NoError(t, err)
+	if mariaDB101 {
+		expectedJsonQuery.QueryBlock.Table.ScannedDatabases = float64(1)
+		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "(`tables`.`TABLE_NAME` = 'tables')"
+	}
+
+	mariaDB103, err := conn.VersionConstraint(">= 10.3")
+	assert.NoError(t, err)
+	if mariaDB103 {
+		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "`tables`.`TABLE_NAME` = 'tables'"
+	}
+
+	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
+	require.NoError(t, err)
+	if newFormat {
 		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
 			QueryCost: "10.50",
 		}
@@ -257,7 +272,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
 		Classic: []*proto.ExplainRow{
@@ -328,9 +343,12 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	gotExplainResult, err := Explain(conn, db, query, true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+
 	// Check the json first but only if supported...
-	jsonSupported, err := conn.AtLeastVersion("5.6.5")
+	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
+	// https://mariadb.com/kb/en/mariadb/explain-format-json/
+	jsonSupported, err := conn.VersionConstraint(">= 5.6.5, < 10.0.0 || >= 10.1.2")
 	if jsonSupported {
 		assert.JSONEq(t, string(expectedJSON), gotExplainResult.JSON)
 	}

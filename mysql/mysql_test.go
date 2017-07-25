@@ -24,29 +24,28 @@ import (
 	"testing"
 
 	"github.com/percona/qan-agent/mysql"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { TestingT(t) }
 
 type MysqlTestSuite struct {
-	dsn string
 }
 
 var _ = Suite(&MysqlTestSuite{})
 
+var dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
+
 func (s *MysqlTestSuite) SetUpSuite(t *C) {
-	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 }
 
 func (s *MysqlTestSuite) TestConnection(t *C) {
 	// Only 1 physical connection should be allowed. So calling Connect twice
 	// should yield the same underlying sql.DB. Also, Connect and Close should
 	// be idempotent.
-	conn := mysql.NewConnection(s.dsn)
+	conn := mysql.NewConnection(dsn)
 	err := conn.Connect()
 	t.Assert(err, IsNil)
 
@@ -76,15 +75,22 @@ func (s *MysqlTestSuite) TestMissingSocketError(t *C) {
 }
 
 func (s *MysqlTestSuite) TestGetGlobalInteger(t *C) {
-	conn := mysql.NewConnection(s.dsn)
+	conn := mysql.NewConnection(dsn)
 	err := conn.Connect()
 	t.Assert(err, IsNil)
 	defer conn.Close()
 
-	globalVarNumber, err := conn.GetGlobalVarInteger("connect_timeout")
+	// set variable to be sure defaults don't affect us
+	err = conn.Set([]mysql.Query{
+		{
+			Set: "SET GLOBAL connect_timeout=3",
+		},
+	})
 	t.Check(err, IsNil)
-	t.Check(globalVarNumber.Int64, Equals, int64(10))
 
+	globalVarInteger, err := conn.GetGlobalVarInteger("connect_timeout")
+	t.Check(err, IsNil)
+	t.Check(globalVarInteger.Int64, Equals, int64(3))
 }
 
 func (s *MysqlTestSuite) TestGetGlobalIntegerWhenNotConnected(t *C) {

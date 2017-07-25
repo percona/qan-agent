@@ -1,16 +1,18 @@
-hash: 7874744e660c0c02a0662fcccb710c3782b751889443c804d7af2f201b9ebee0
-updated: 2017-07-05T15:18:08.417621306+02:00
+hash: 74b46e7fd2de3e8cf8ed7997ea4ece3e9a4038cff3c5ae4841bb556dd9c8926a
+updated: 2017-07-25T02:30:36.179095314+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/fatih/structs
   version: 7e5a8eef611ee84dd359503f3969f80df4c50723
 - name: github.com/go-sql-driver/mysql
-  version: bf7f34fef176d890dfcc6e94319ac747291bc09a
+  version: 3955978caca48c1658a4bb7a9c6a0f084e326af3
 - name: github.com/google/btree
   version: 316fb6d3f031ae8f4d457c6c5186b9e3ded70435
 - name: github.com/hashicorp/go-version
   version: 03c5bf6be031b6dd45afec16b1cf94fc8938bc77
+- name: github.com/Masterminds/semver
+  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
 - name: github.com/montanaflynn/stats
   version: 41c34e4914ec3c05d485e564d9028d8861d5d9ad
 - name: github.com/nu7hatch/gouuid
@@ -33,7 +35,7 @@ imports:
 - name: github.com/percona/pmgo
   version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
 - name: github.com/percona/pmm
-  version: afd64bde4b5e52da70dafc32cca72600b7b94972
+  version: 435c36759a496d792394e6bfd1245ebfdcb6a9c0
   subpackages:
   - proto
   - proto/config
@@ -49,7 +51,7 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: 570fa1c91359c1869590e9cedf3b53162a51a167
+  version: ab5485076ff3407ad2d02db054635913f017b0ed
   subpackages:
   - context
   - websocket
@@ -77,7 +79,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: f6abca593680b2315d2075e0f5e2a9751e3f431a
+  version: 05e8a0eda380579888eb53c394909df027f06991
   subpackages:
   - assert
   - require

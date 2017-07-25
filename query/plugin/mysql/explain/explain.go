@@ -168,8 +168,9 @@ func classicExplain(c mysql.Connector, tx *sql.Tx, query string) (classicExplain
 }
 
 func jsonExplain(c mysql.Connector, tx *sql.Tx, query string) (string, error) {
-	// EXPLAIN in JSON format is introduced since MySQL 5.6.5
-	ok, err := c.AtLeastVersion("5.6.5")
+	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
+	// https://mariadb.com/kb/en/mariadb/explain-format-json/
+	ok, err := c.VersionConstraint(">= 5.6.5, < 10.0.0 || >= 10.1.2")
 	if !ok || err != nil {
 		return "", err
 	}

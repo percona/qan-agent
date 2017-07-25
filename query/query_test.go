@@ -30,6 +30,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/query"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -40,23 +41,20 @@ func Test(t *testing.T) { TestingT(t) }
 /////////////////////////////////////////////////////////////////////////////
 
 type ManagerTestSuite struct {
-	logChan       chan proto.LogEntry
-	logger        *pct.Logger
-	configDir     string
-	tmpDir        string
-	dsn           string
-	repo          *instance.Repo
-	mysqlInstance proto.Instance
-	api           *mock.API
+	logChan   chan proto.LogEntry
+	logger    *pct.Logger
+	configDir string
+	tmpDir    string
+	repo      *instance.Repo
+	api       *mock.API
 }
 
 var _ = Suite(&ManagerTestSuite{})
 
+var dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
+
 func (s *ManagerTestSuite) SetUpSuite(t *C) {
-	s.dsn = os.Getenv("PCT_TEST_MYSQL_DSN")
-	if s.dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	s.logChan = make(chan proto.LogEntry, 10)
 	s.logger = pct.NewLogger(s.logChan, query.SERVICE_NAME+"-manager-test")
@@ -72,13 +70,13 @@ func (s *ManagerTestSuite) SetUpSuite(t *C) {
 
 	// Real instance repo
 	s.repo = instance.NewRepo(pct.NewLogger(s.logChan, "im-test"), s.configDir, s.api)
-	s.mysqlInstance = proto.Instance{
+	mysqlInstance := proto.Instance{
 		Subsystem: "mysql",
 		UUID:      "313",
 		Name:      "db1",
-		DSN:       s.dsn,
+		DSN:       dsn,
 	}
-	s.repo.Add(s.mysqlInstance, false)
+	s.repo.Add(mysqlInstance, false)
 
 	links := map[string]string{
 		"agent":     "http://localhost/agent",
@@ -155,6 +153,7 @@ func (s *ManagerTestSuite) TestHandleExplain(t *C) {
 	query := proto.ExplainQuery{
 		UUID:  "313",
 		Query: "SELECT 1",
+		Db:    "mysql",
 	}
 	data, err := json.Marshal(query)
 	t.Assert(err, IsNil)

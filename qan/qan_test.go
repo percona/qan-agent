@@ -70,7 +70,7 @@ func TestWithRealMySQL(t *testing.T) {
 		DSN:       dsn,
 	}
 	err = instanceRepo.Add(protoInstance, false)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	defer instanceRepo.Remove(protoInstance.UUID)
 	analyzerFactory := factory.New(
 		logChan,
@@ -88,7 +88,7 @@ func TestWithRealMySQL(t *testing.T) {
 		WorkerRunTime: 270,
 	}
 	err = pct.Basedir.WriteConfig("qan-"+protoInstance.UUID, &pcQANSetExpected)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	t.Run("real-mysql", func(t *testing.T) {
 		testGetDefaultsBoolValues(t, logger, instanceRepo, analyzerFactory, protoInstance)
@@ -123,13 +123,17 @@ func testGetDefaultsBoolValues(
 	test.WaitStatus(1, m, "qan", "Running")
 
 	type Key struct {
-		db      string
-		json    string
-		version string
+		db         string
+		json       string
+		constraint string
 	}
 	keys := []Key{
-		{"log_slow_admin_statements", "LogSlowAdminStatements", "5.6.11"},
-		{"log_slow_slave_statements", "LogSlowSlaveStatements", "5.6.11"},
+		// https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_log_slow_admin_statements
+		// https://dev.mysql.com/doc/refman/5.6/en/replication-options-slave.html#sysvar_log_slow_slave_statements
+		// https://mariadb.com/kb/en/mariadb/replication-and-binary-log-server-system-variables/#log_slow_admin_statements
+		// https://mariadb.com/kb/en/mariadb/replication-and-binary-log-server-system-variables/#log_slow_slave_statements
+		{"log_slow_admin_statements", "LogSlowAdminStatements", ">= 5.6.11, != 10.0.*"},
+		{"log_slow_slave_statements", "LogSlowSlaveStatements", ">= 5.6.11, != 10.0.*"},
 	}
 
 	t.Run("variables", func(t *testing.T) {
@@ -142,10 +146,10 @@ func testGetDefaultsBoolValues(
 
 				// Check if variable is supported in this MySQL version.
 				variableIsSupported := true
-				if keys[i].version != "" {
+				if keys[i].constraint != "" {
 					var err error
-					variableIsSupported, err = conn.AtLeastVersion(keys[i].version)
-					assert.Nil(t, err)
+					variableIsSupported, err = conn.VersionConstraint(keys[i].constraint)
+					require.NoError(t, err)
 				}
 
 				if variableIsSupported {
@@ -188,5 +192,5 @@ func testGetDefaultsBoolValues(
 
 	// Stop the manager.
 	err = m.Stop()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }

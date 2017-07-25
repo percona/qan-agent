@@ -66,9 +66,7 @@ func TestWorker(t *testing.T) {
 
 func testWorkerWithRealMySQL(t *testing.T, logger *pct.Logger) {
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
-	if dsn == "" {
-		t.Fatal("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	tests := []func(t *testing.T, logger *pct.Logger, dsn string){
 		testRealWorker,

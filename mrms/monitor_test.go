@@ -27,6 +27,7 @@ import (
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -232,9 +233,7 @@ func (s *TestSuite) TestTwoListeners(t *C) {
 */
 
 func (s *TestSuite) TestRealMySQL(t *C) {
-	if dsn == "" {
-		t.Skip("PCT_TEST_MYSQL_DSN is not set")
-	}
+	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 	s.instance.DSN = dsn
 	m := mrms.NewRealMonitor(s.logger, &mysql.RealConnectionFactory{})
 	c := m.Add(s.instance)

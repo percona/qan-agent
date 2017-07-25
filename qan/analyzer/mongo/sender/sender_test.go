@@ -9,7 +9,7 @@ import (
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -59,11 +59,11 @@ func TestSender_Start(t *testing.T) {
 
 	// start sender
 	err := sender1.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// running multiple Start() should be idempotent
 	err = sender1.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// running multiple Stop() should be idempotent
 	sender1.Stop()
