@@ -37,7 +37,7 @@ import (
 	"github.com/percona/qan-agent/ticker"
 )
 
-const MIN_SLOWLOG_ROTATION_SIZE = 4096
+const MIN_SLOWLOG_ROTATION_SIZE int64 = 4096
 
 // --------------------------------------------------------------------------
 
@@ -162,18 +162,18 @@ func (a *RealAnalyzer) TakeOverPerconaServerRotation() error {
 	a.logger.Debug("TakeOverPerconaServerRotation:call")
 	defer a.logger.Debug("TakeOverPerconaServerRotation:return")
 
-	maxSlowLogSizeFloat, err := a.mysqlConn.GetGlobalVarNumber("max_slowlog_size")
+	// max_slowlog_size: https://www.percona.com/doc/percona-server/LATEST/flexibility/slowlog_rotation.html#max_slowlog_size
+	maxSlowLogSizeNullInt64, err := a.mysqlConn.GetGlobalVarInteger("max_slowlog_size")
 	if err != nil {
 		return err
 	}
-	maxSlowLogSize := int64(maxSlowLogSizeFloat)
+	maxSlowLogSize := maxSlowLogSizeNullInt64.Int64
 	if maxSlowLogSize == 0 {
 		return nil
 	}
 
-	// Slow log rotation is only activated if max_slowlog_size >= 4096. PS doc
-	// is not very clear, but testing confirmed this.
-	// http://www.percona.com/doc/percona-server/5.6/flexibility/slowlog_rotation.html
+	// Slow log rotation is only activated if max_slowlog_size >= 4096.
+	// https://www.percona.com/doc/percona-server/LATEST/flexibility/slowlog_rotation.html#max_slowlog_size
 	if maxSlowLogSize >= MIN_SLOWLOG_ROTATION_SIZE {
 		a.logger.Info("Taking over Percona Server slow log rotation, max_slowlog_size:", maxSlowLogSize)
 		a.config.MaxSlowLogSize = maxSlowLogSize
@@ -242,6 +242,7 @@ func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 
 		if err := a.TakeOverPerconaServerRotation(); err != nil {
 			lastErr = fmt.Errorf("Cannot takeover slow log rotation: %s", err)
+			panic(lastErr)
 			continue
 		}
 

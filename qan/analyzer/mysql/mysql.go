@@ -100,7 +100,6 @@ func (m *MySQLAnalyzer) Start() error {
 
 	// Create a MySQL connection.
 	mysqlConn := m.mysqlConnFactory.Make(m.protoInstance.DSN)
-	config.ReadMySQLConfig(mysqlConn) // Read current values
 
 	// Validate and transform the set config and into a running config.
 	config, err := config.ValidateConfig(setConfig)
@@ -183,8 +182,7 @@ func (m *MySQLAnalyzer) Stop() error {
 }
 
 func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
-	mysqlInstance := m.protoInstance
-
+	// Configuration
 	collectFrom := m.config.CollectFrom
 	interval := m.config.Interval
 	exampleQueries := m.config.ExampleQueries
@@ -193,23 +191,27 @@ func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 		interval = m.analyzer.Config().Interval
 		exampleQueries = m.analyzer.Config().ExampleQueries
 	}
-
-	mysqlConn := m.mysqlConnFactory.Make(mysqlInstance.DSN)
-	config.ReadMySQLConfig(mysqlConn) // Read current values
-	return map[string]interface{}{
-		"CollectFrom":            collectFrom,
-		"Interval":               interval,
-		"LongQueryTime":          config.DEFAULT_LONG_QUERY_TIME,
-		"MaxSlowLogSize":         config.DEFAULT_MAX_SLOW_LOG_SIZE,
-		"RemoveOldSlowLogs":      config.DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		"ExampleQueries":         exampleQueries,
-		"SlowLogVerbosity":       config.DEFAULT_SLOW_LOG_VERBOSITY,
-		"RateLimit":              config.DEFAULT_RATE_LIMIT,
-		"LogSlowAdminStatements": config.DEFAULT_LOG_SLOW_ADMIN_STATEMENTS,
-		"LogSlowSlaveStatements": config.DEFAULT_LOG_SLOW_SLAVE_STATEMENTS,
-		"WorkerRunTime":          config.DEFAULT_WORKER_RUNTIME,
-		"ReportLimit":            config.DEFAULT_REPORT_LIMIT,
+	cfg := map[string]interface{}{
+		"CollectFrom":       collectFrom,
+		"Interval":          interval,
+		"MaxSlowLogSize":    config.DEFAULT_MAX_SLOW_LOG_SIZE,
+		"RemoveOldSlowLogs": config.DEFAULT_REMOVE_OLD_SLOW_LOGS,
+		"ExampleQueries":    exampleQueries,
+		"WorkerRunTime":     config.DEFAULT_WORKER_RUNTIME,
+		"ReportLimit":       config.DEFAULT_REPORT_LIMIT,
 	}
+
+	// Info from SHOW GLOBAL STATUS
+	mysqlInstance := m.protoInstance
+	mysqlConn := m.mysqlConnFactory.Make(mysqlInstance.DSN)
+	mysqlConn.Connect()
+	defer mysqlConn.Close()
+	info := config.ReadInfoFromShowGlobalStatus(mysqlConn) // Read current values
+	for k, v := range info {
+		cfg[k] = v
+	}
+
+	return cfg
 }
 
 // String returns human readable identification of Analyzer

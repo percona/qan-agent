@@ -18,9 +18,9 @@
 package mongo
 
 import (
+	"encoding/json"
 	"testing"
 
-	"encoding/json"
 	"github.com/percona/pmm/proto"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2/bson"

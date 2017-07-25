@@ -18,68 +18,98 @@
 package config
 
 import (
+	"database/sql/driver"
 	"fmt"
+	"strings"
 
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/mysql"
-	"github.com/percona/qan-agent/pct"
 )
 
 var (
-	DEFAULT_COLLECT_FROM                    = "slowlog"
-	DEFAULT_INTERVAL                  uint  = 60         // 1 minute
-	DEFAULT_LONG_QUERY_TIME                 = 0.001      // 1ms
-	DEFAULT_MAX_SLOW_LOG_SIZE         int64 = 1073741824 // 1G
-	DEFAULT_REMOVE_OLD_SLOW_LOGS            = true       // whether to remove old slow logs after rotation
-	DEFAULT_OLD_SLOW_LOGS_TO_KEEP           = 1          // how many slow logs to keep on filesystem
-	DEFAULT_EXAMPLE_QUERIES                 = true
-	DEFAULT_SLOW_LOG_VERBOSITY              = "full" // all metrics, Percona Server
-	DEFAULT_RATE_LIMIT                uint  = 100    // 1%, Percona Server
-	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS       = true   // Percona Server
-	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS       = true   // Percona Server
+	DEFAULT_INTERVAL              uint  = 60         // 1 minute
+	DEFAULT_MAX_SLOW_LOG_SIZE     int64 = 1073741824 // 1G
+	DEFAULT_REMOVE_OLD_SLOW_LOGS        = true       // whether to remove old slow logs after rotation
+	DEFAULT_OLD_SLOW_LOGS_TO_KEEP       = 1          // how many slow logs to keep on filesystem
+	DEFAULT_EXAMPLE_QUERIES             = true
 	// internal
 	DEFAULT_WORKER_RUNTIME uint = 55
 	DEFAULT_REPORT_LIMIT   uint = 200
 )
 
-func ReadMySQLConfig(conn mysql.Connector) error {
-	if _, err := conn.Uptime(); err != nil {
-		err := conn.Connect()
-		if err != nil {
-			return err
+type MySQLVarType int
+
+const (
+	MySQLVarTypeBoolean MySQLVarType = iota
+	MySQLVarTypeString
+	MySQLVarTypeInteger
+	MySQLVarTypeNumeric
+)
+
+var (
+	mysqlVars = map[string]MySQLVarType{
+		// Slowlog
+		"log_slow_admin_statements":              MySQLVarTypeBoolean,
+		"log_slow_slave_statements":              MySQLVarTypeBoolean,
+		"log_queries_not_using_indexes":          MySQLVarTypeBoolean,
+		"log_throttle_queries_not_using_indexes": MySQLVarTypeInteger,
+		"log_output":                             MySQLVarTypeString, // @todo it's a set, not string
+		"log_timestamps":                         MySQLVarTypeString, // @todo it's a enumeration, not string
+		"slow_query_log":                         MySQLVarTypeBoolean,
+		"slow_query_log_file":                    MySQLVarTypeString,
+		// Percona Slowlog
+		"log_slow_filter":                   MySQLVarTypeString, // @todo set, not string
+		"log_slow_rate_type":                MySQLVarTypeString,
+		"log_slow_rate_limit":               MySQLVarTypeInteger,
+		"log_slow_sp_statements":            MySQLVarTypeBoolean,
+		"log_slow_verbosity":                MySQLVarTypeString, // @todo set, not string
+		"slow_query_log_use_global_control": MySQLVarTypeString, // @todo set, not string
+		"slow_query_log_always_write_time":  MySQLVarTypeNumeric,
+
+		// Performance Schema
+		"performance_schema":                   MySQLVarTypeBoolean,
+		"performance_schema_digests_size":      MySQLVarTypeInteger, // increments "Performance_schema_digest_lost" https://dev.mysql.com/doc/refman/5.7/en/performance-schema-status-variables.html#statvar_Performance_schema_digest_lost
+		"performance_schema_max_digest_length": MySQLVarTypeInteger,
+
+		// Common for Slowlog and Performance Schema
+		"long_query_time":        MySQLVarTypeNumeric,
+		"min_examined_row_limit": MySQLVarTypeInteger,
+	}
+)
+
+func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interface{}) {
+	info = map[string]interface{}{}
+	for mysqlVarName, mysqlVarType := range mysqlVars {
+		var err error
+		var v driver.Valuer
+
+		switch mysqlVarType {
+		case MySQLVarTypeNumeric:
+			v, err = conn.GetGlobalVarNumeric(mysqlVarName)
+		case MySQLVarTypeInteger:
+			v, err = conn.GetGlobalVarInteger(mysqlVarName)
+		case MySQLVarTypeBoolean:
+			v, err = conn.GetGlobalVarBoolean(mysqlVarName)
+		case MySQLVarTypeString:
+			v, err = conn.GetGlobalVarString(mysqlVarName)
 		}
-		defer conn.Close()
+
+		var msg interface{}
+		switch err {
+		case nil:
+			msg, _ = v.Value()
+		default:
+			msg = fmt.Errorf("unable to read global variable: %s", err)
+		}
+		info[underscoreToCamelCase(mysqlVarName)] = msg
 	}
 
-	perfschemaStatus, _ := conn.GetGlobalVarString("performance_schema")
-	if pct.ToBool(perfschemaStatus) {
-		DEFAULT_COLLECT_FROM = "perfschema"
-	}
-
-	//
-	DEFAULT_LONG_QUERY_TIME, _ = conn.GetGlobalVarNumber("long_query_time")
-
-	//
-	defaultLogSlowAdminStatements, _ := conn.GetGlobalVarString("log_slow_admin_statements")
-	DEFAULT_LOG_SLOW_ADMIN_STATEMENTS = pct.ToBool(defaultLogSlowAdminStatements)
-
-	//
-	defaultRateLimit, _ := conn.GetGlobalVarNumber("log_slow_rate_limit")
-	DEFAULT_RATE_LIMIT = uint(defaultRateLimit)
-
-	//
-	defaultLogSlowSlaveStatements, _ := conn.GetGlobalVarString("log_slow_slave_statements")
-	DEFAULT_LOG_SLOW_SLAVE_STATEMENTS = pct.ToBool(defaultLogSlowSlaveStatements)
-
-	//
-	DEFAULT_SLOW_LOG_VERBOSITY, _ = conn.GetGlobalVarString("log_slow_verbosity")
-	return nil
+	return info
 }
 
 func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:           setConfig.UUID,
-		CollectFrom:    DEFAULT_COLLECT_FROM,
 		Interval:       DEFAULT_INTERVAL,
 		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
 		ExampleQueries: DEFAULT_EXAMPLE_QUERIES,
@@ -104,4 +134,10 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
 
 	return runConfig, nil
+}
+
+// UnderscoreToCamelCase converts from underscore separated form to camel case form.
+// Ex.: my_func => MyFunc
+func underscoreToCamelCase(s string) string {
+	return strings.Replace(strings.Title(strings.Replace(strings.ToLower(s), "_", " ", -1)), " ", "", -1)
 }

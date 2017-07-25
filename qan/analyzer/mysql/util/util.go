@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+
 	pc "github.com/percona/pmm/proto/config"
 )
 

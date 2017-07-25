@@ -18,9 +18,10 @@
 package mock
 
 import (
+	"sync"
+
 	"github.com/percona/pmm/proto"
 	"golang.org/x/net/websocket"
-	"sync"
 )
 
 type WebsocketClient struct {

@@ -18,6 +18,7 @@
 package mrms_test
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
-	"os"
 )
 
 func Test(t *testing.T) { TestingT(t) }
