@@ -322,12 +322,12 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 	status := test.GetStatus(s.sendChan, s.recvChan)
 	expectStatus := map[string]string{
 		"ws-link":           "http://localhost",
-		"agent":             "Idle",
 		"agent-cmd-handler": "Idle",
 		"mm":                "",
 		"qan":               "Ready",
 		"ws":                "Connected",
 	}
+	delete(status, "agent") // unpredictable, can be `Idle` or `Queueing`
 	assert.Equal(t, expectStatus, status)
 
 	// Finally, since we're using mock objects, let's double check the
