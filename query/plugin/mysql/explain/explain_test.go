@@ -194,8 +194,11 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 
 	gotExplainResult, err := Explain(conn, db, query, true)
 	assert.Nil(t, err)
+
 	// Check the json first but only if supported...
-	jsonSupported, err := conn.AtLeastVersion("5.6.5")
+	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
+	// https://mariadb.com/kb/en/mariadb/explain-format-json/
+	jsonSupported, err := conn.VersionConstraint(">= 5.6.5, < 10.0.0 || >= 10.1.2")
 	if jsonSupported {
 		assert.JSONEq(t, string(expectedJSON), gotExplainResult.JSON)
 	}
@@ -269,7 +272,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
 		Classic: []*proto.ExplainRow{
@@ -340,9 +343,12 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	gotExplainResult, err := Explain(conn, db, query, true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
+
 	// Check the json first but only if supported...
-	jsonSupported, err := conn.AtLeastVersion("5.6.5")
+	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
+	// https://mariadb.com/kb/en/mariadb/explain-format-json/
+	jsonSupported, err := conn.VersionConstraint(">= 5.6.5, < 10.0.0 || >= 10.1.2")
 	if jsonSupported {
 		assert.JSONEq(t, string(expectedJSON), gotExplainResult.JSON)
 	}
