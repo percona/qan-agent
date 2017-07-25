@@ -225,10 +225,16 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	mariaDB101, err := conn.VersionConstraint(">= 10.1")
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	if mariaDB101 {
 		expectedJsonQuery.QueryBlock.Table.ScannedDatabases = float64(1)
 		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "(`tables`.`TABLE_NAME` = 'tables')"
+	}
+
+	mariaDB103, err := conn.VersionConstraint(">= 10.3")
+	assert.NoError(t, err)
+	if mariaDB103 {
+		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "`tables`.`TABLE_NAME` = 'tables'"
 	}
 
 	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
