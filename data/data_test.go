@@ -1163,11 +1163,13 @@ func (s *ManagerTestSuite) TestStatus(t *C) {
 	t.Assert(err, IsNil)
 
 	// Get its status directly.
-	if !test.WaitStatus(5, m, "data", "Running") {
+	if !test.WaitStatus(1, m, "data", "Running") {
 		t.Fatal("test.WaitStatus() timeout")
 	}
-	status := m.Status()
-	t.Check(status["data"], Equals, "Running")
-	t.Check(status["data-spooler"], Equals, "Idle")
-	t.Check(status["data-sender"], Equals, "Idle")
+	if !test.WaitStatus(1, m, "data-spooler", "Idle") {
+		t.Fatal("test.WaitStatus() timeout")
+	}
+	if !test.WaitStatus(1, m, "data-sender", "Idle") {
+		t.Fatal("test.WaitStatus() timeout")
+	}
 }
