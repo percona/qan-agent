@@ -147,7 +147,7 @@ func testGetDefaultsBoolValues(
 				// Check if variable is supported in this MySQL version.
 				variableIsSupported := true
 				if keys[i].constraint != "" {
-          var err error
+					var err error
 					variableIsSupported, err = conn.VersionConstraint(keys[i].constraint)
 					assert.Nil(t, err)
 				}

@@ -222,8 +222,8 @@ func (c *Connection) VersionConstraint(constraint string) (bool, error) {
 
 	// Strip everything after the first dash
 	re := regexp.MustCompile("-.*$")
-	version = re.ReplaceAllString(version, "")
-	v, err := semver.NewVersion(version)
+	version.String = re.ReplaceAllString(version.String, "")
+	v, err := semver.NewVersion(version.String)
 	if err != nil {
 		return false, err
 	}

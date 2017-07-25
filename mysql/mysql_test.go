@@ -88,9 +88,9 @@ func (s *MysqlTestSuite) TestGetGlobalInteger(t *C) {
 	})
 	t.Check(err, IsNil)
 
-	globalVarNumber, err := conn.GetGlobalVarInteger("connect_timeout")
+	globalVarInteger, err := conn.GetGlobalVarInteger("connect_timeout")
 	t.Check(err, IsNil)
-	t.Check(globalVarNumber, Equals, int64(3))
+	t.Check(globalVarInteger.Int64, Equals, int64(3))
 }
 
 func (s *MysqlTestSuite) TestGetGlobalIntegerWhenNotConnected(t *C) {
