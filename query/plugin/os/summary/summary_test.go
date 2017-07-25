@@ -21,13 +21,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSummary(t *testing.T) {
 	t.Parallel()
 
 	output, err := Summary()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	assert.Regexp(t, "# Percona Toolkit System Summary Report #", output)
 }

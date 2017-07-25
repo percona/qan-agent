@@ -23,6 +23,7 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -46,7 +47,7 @@ func TestHandle(t *testing.T) {
 		Query: `{"name":"Alicja"}`,
 	}
 	data, err := json.Marshal(q)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	cmdExplain := &proto.Cmd{
 		Cmd:  "Explain",
 		Data: data,
@@ -69,7 +70,7 @@ func TestHandle(t *testing.T) {
 		{
 			cmdSummary, in,
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Regexp(t, "# Instances #", data)
 			},
 		},
@@ -80,7 +81,7 @@ func TestHandle(t *testing.T) {
 				DSN: "127.0.0.1:27017",
 			},
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				// unpack data
 				explainResult := data.(*proto.ExplainResult)

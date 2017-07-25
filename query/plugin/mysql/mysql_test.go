@@ -62,7 +62,7 @@ func TestHandle(t *testing.T) {
 					Query: `SELECT 1`,
 				}
 				data, err := json.Marshal(q)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				cmd := &proto.Cmd{
 					Cmd:  "Explain",
 					Data: data,
@@ -73,7 +73,7 @@ func TestHandle(t *testing.T) {
 				return cmd, in
 			},
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 
 				// unpack data
 				explainResult := data.(*proto.ExplainResult)
@@ -93,7 +93,7 @@ func TestHandle(t *testing.T) {
 				return cmd, in
 			},
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Regexp(t, "# Percona Toolkit MySQL Summary Report #", data)
 			},
 		},
@@ -108,7 +108,7 @@ func TestHandle(t *testing.T) {
 					Status: []proto.Table{{db, table}},
 				}
 				data, err := json.Marshal(tables)
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				cmd := &proto.Cmd{
 					Cmd:  "TableInfo",
 					Data: data,
@@ -120,7 +120,7 @@ func TestHandle(t *testing.T) {
 				return cmd, in
 			},
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.NotEmpty(t, data)
 			},
 		},

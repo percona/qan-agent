@@ -20,11 +20,11 @@ package mock
 import (
 	"database/sql"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/mysql"
-	"sync"
 )
 
 var ERR_NOT_FOUND = errors.New("var not found in NullMySQL mock")

@@ -22,11 +22,12 @@ import (
 
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSlowLogMySQLBasic(t *testing.T) {
 	on, off, err := GetMySQLConfig(pc.QAN{CollectFrom: "slowlog"})
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, []string{
 		"SET GLOBAL slow_query_log=OFF",
 		"SET GLOBAL log_output='file'",

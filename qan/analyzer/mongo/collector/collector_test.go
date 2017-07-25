@@ -7,6 +7,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -53,7 +54,7 @@ func TestCollector_StartStop(t *testing.T) {
 
 	collector1 := New(dialInfo, dialer)
 	docsChan, err := collector1.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, docsChan)
 
 	defer collector1.Stop()
@@ -71,7 +72,7 @@ func TestCollector_Stop(t *testing.T) {
 	// #2
 	started := New(dialInfo, dialer)
 	_, err := started.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name string
@@ -110,7 +111,7 @@ func TestCollector(t *testing.T) {
 
 	collector := New(dialInfo, dialer)
 	docsChan, err := collector.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	defer collector.Stop()
 
 	people := []map[string]string{
@@ -119,10 +120,10 @@ func TestCollector(t *testing.T) {
 	}
 	go func() {
 		session, err := dialer.DialWithInfo(dialInfo)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		for _, person := range people {
 			err = session.DB("test").C("people").Insert(&person)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 		}
 	}()
 

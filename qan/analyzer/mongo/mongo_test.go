@@ -9,6 +9,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -16,11 +17,11 @@ import (
 func TestMongo_StartStopStatus(t *testing.T) {
 	{
 		dialInfo, err := pmgo.ParseURL("")
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		dialer := pmgo.NewDialer()
 
 		session, err := dialer.DialWithInfo(dialInfo)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		defer session.Close()
 
 		session.SetMode(mgo.Eventual, true)
@@ -36,10 +37,10 @@ func TestMongo_StartStopStatus(t *testing.T) {
 			},
 			&result,
 		)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		err = session.DB(dialInfo.Database).C("system.profile").DropCollection()
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		err = session.DB(dialInfo.Database).Run(
 			bson.M{
@@ -47,7 +48,7 @@ func TestMongo_StartStopStatus(t *testing.T) {
 			},
 			&result,
 		)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 	}
 
 	dataChan := make(chan interface{})
@@ -68,7 +69,7 @@ func TestMongo_StartStopStatus(t *testing.T) {
 
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 	err := plugin.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
 	expect := map[string]string{
@@ -94,6 +95,6 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	assert.Equal(t, expect, actual)
 
 	err = plugin.Stop()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 }

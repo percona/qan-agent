@@ -19,10 +19,10 @@ package mock
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
-	"sync"
 )
 
 type MockServiceManager struct {

@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	pc "github.com/percona/pmm/proto/config"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValidateConfig(t *testing.T) {
@@ -18,5 +18,5 @@ func TestValidateConfig(t *testing.T) {
 		CollectFrom:    "slowlog",
 	}
 	_, err := ValidateConfig(cfg)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }

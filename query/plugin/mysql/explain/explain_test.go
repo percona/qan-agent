@@ -122,7 +122,7 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 		}
 	}
 	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
 		Classic: []*proto.ExplainRow{
@@ -193,7 +193,7 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	gotExplainResult, err := Explain(conn, db, query, true)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	// Check the json first but only if supported...
 	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
@@ -241,7 +241,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	}
 
 	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	if newFormat {
 		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
 			QueryCost: "10.50",

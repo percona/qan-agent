@@ -9,15 +9,16 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAggregator_Add(t *testing.T) {
 	t.Parallel()
 
 	timeStart, err := time.Parse("2006-01-02 15:04:05", "2017-07-02 07:55:00")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	timeEnd, err := time.Parse("2006-01-02 15:04:05", "2017-07-02 07:56:00")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	config := pc.QAN{
 		UUID:     "abc",
@@ -31,7 +32,7 @@ func TestAggregator_Add(t *testing.T) {
 			Ts: timeStart,
 		}
 		report, err := aggregator.Add(doc)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.Nil(t, report)
 	}
 
@@ -79,7 +80,7 @@ func TestAggregator_Add(t *testing.T) {
 			},
 		}
 		report, err := aggregator.Add(doc)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, expected, *report)
 	}
 }
@@ -89,9 +90,9 @@ func TestAggregator_Add_EmptyInterval(t *testing.T) {
 	t.Parallel()
 
 	timeStart, err := time.Parse("2006-01-02 15:04:05", "2017-07-02 07:55:00")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	timeEnd, err := time.Parse("2006-01-02 15:04:05", "2017-07-02 07:56:00")
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	config := pc.QAN{
 		UUID:     "abc",
@@ -106,7 +107,7 @@ func TestAggregator_Add_EmptyInterval(t *testing.T) {
 			Ts: timeEnd,
 		}
 		report, err := aggregator.Add(doc)
-		assert.Nil(t, err)
+		require.NoError(t, err)
 
 		// no report should be returned
 		assert.Nil(t, report)

@@ -140,7 +140,7 @@ func (c *Connection) Set(queries []Query) error {
 					"Global variable '%s' is set to '%s' but needs to be '%s'. "+
 						"Consult the MySQL manual, or contact Percona Support, "+
 						"for help configuring this variable, then try again.",
-					query.Verify, got, query.Expect)
+					query.Verify, got.String, query.Expect)
 			}
 		}
 	}

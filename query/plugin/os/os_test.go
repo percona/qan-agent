@@ -23,6 +23,7 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestHandle(t *testing.T) {
@@ -56,7 +57,7 @@ func TestHandle(t *testing.T) {
 				return cmd, in
 			},
 			func(data interface{}, err error) {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 				assert.Regexp(t, "# Percona Toolkit System Summary Report #", data)
 			},
 		},

@@ -55,7 +55,7 @@ func TestTableInfo(t *testing.T) {
 			}
 
 			got, err := TableInfo(conn, tables)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			tableInfo, ok := got[db+"."+table]
 			assert.Equal(t, true, ok)
@@ -95,7 +95,7 @@ func TestTableInfo(t *testing.T) {
 			}
 
 			got, err := TableInfo(conn, tables)
-			assert.Nil(t, err)
+			require.NoError(t, err)
 
 			tableInfo, ok := got[db+"."+table]
 			assert.Equal(t, true, ok)

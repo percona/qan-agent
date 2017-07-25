@@ -9,6 +9,7 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -52,12 +53,12 @@ func TestParser_StartStop(t *testing.T) {
 
 	parser1 := New(docsChan, pcQan)
 	reportChan1, err := parser1.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, reportChan1)
 
 	// running multiple Start() should be idempotent
 	reportChan2, err := parser1.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, reportChan2)
 
 	assert.Exactly(t, reportChan1, reportChan2)
@@ -76,7 +77,7 @@ func TestParser_running(t *testing.T) {
 
 	parser1 := New(docsChan, pcQan)
 	reportChan1, err := parser1.Start()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.NotNil(t, reportChan1)
 
 	now := time.Now().UTC()

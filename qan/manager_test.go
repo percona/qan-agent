@@ -33,6 +33,7 @@ import (
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	. "gopkg.in/check.v1"
 )
 
@@ -373,12 +374,12 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	pcQANSet := pc.QAN{}
 	err = json.Unmarshal([]byte(gotConfig[0].Set), &pcQANSet)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcQANSetExpected, pcQANSet)
 
 	pcQANRunning := pc.QAN{}
 	err = json.Unmarshal([]byte(gotConfig[0].Running), &pcQANRunning)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, pcQANRunningExpected, pcQANRunning)
 
 	// We checked json structure earlier, we don't compare json as string because properties can be in unknown order

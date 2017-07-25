@@ -70,7 +70,7 @@ func TestWithRealMySQL(t *testing.T) {
 		DSN:       dsn,
 	}
 	err = instanceRepo.Add(protoInstance, false)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	defer instanceRepo.Remove(protoInstance.UUID)
 	analyzerFactory := factory.New(
 		logChan,
@@ -88,7 +88,7 @@ func TestWithRealMySQL(t *testing.T) {
 		WorkerRunTime: 270,
 	}
 	err = pct.Basedir.WriteConfig("qan-"+protoInstance.UUID, &pcQANSetExpected)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	t.Run("real-mysql", func(t *testing.T) {
 		testGetDefaultsBoolValues(t, logger, instanceRepo, analyzerFactory, protoInstance)
@@ -149,7 +149,7 @@ func testGetDefaultsBoolValues(
 				if keys[i].constraint != "" {
 					var err error
 					variableIsSupported, err = conn.VersionConstraint(keys[i].constraint)
-					assert.Nil(t, err)
+					require.NoError(t, err)
 				}
 
 				if variableIsSupported {
@@ -192,5 +192,5 @@ func testGetDefaultsBoolValues(
 
 	// Stop the manager.
 	err = m.Stop()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 }
