@@ -19,9 +19,10 @@ package checker
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/percona/qan-agent/mysql"
 	"github.com/percona/qan-agent/pct"
-	"time"
 )
 
 type MySQL struct {

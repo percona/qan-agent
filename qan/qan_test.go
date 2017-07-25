@@ -144,36 +144,48 @@ func testGetDefaultsBoolValues(
 			t.Run(keys[i].json, func(t *testing.T) {
 				t.Parallel()
 
-				// Skip testing variable if it was introduced in higher MySQL version
+				// Check if variable is supported in this MySQL version.
+				variableIsSupported := true
 				if keys[i].constraint != "" {
-					variableIsSupported, err := conn.VersionConstraint(keys[i].constraint)
+          var err error
+					variableIsSupported, err = conn.VersionConstraint(keys[i].constraint)
 					assert.Nil(t, err)
-					if !variableIsSupported {
-						t.Skipf("Variable '%s' is unsupported, it's supported in MySQL %s.", keys[i].db, keys[i].constraint)
-					}
 				}
 
-				// GetDefaults returns current configuration
-				// let's be sure log_slow_slave_statements=0 returns `false`
-				err = conn.Set([]mysql.Query{
-					{
-						Set: fmt.Sprintf("SET GLOBAL %s=0", keys[i].db),
-					},
-				})
-				require.Nil(t, err)
-				got := m.GetDefaults(protoInstance.UUID)
-				assert.Equal(t, false, got[keys[i].json])
+				if variableIsSupported {
+					// GetDefaults returns current configuration
+					// let's be sure log_slow_slave_statements=0 returns `false`
+					err = conn.Set([]mysql.Query{
+						{
+							Set: fmt.Sprintf("SET GLOBAL %s=0", keys[i].db),
+						},
+					})
+					require.Nil(t, err)
+					got := m.GetDefaults(protoInstance.UUID)
+					assert.Equal(t, false, got[keys[i].json])
 
-				// GetDefaults returns current configuration
-				// let's be sure log_slow_slave_statements=1 returns `true`
-				err = conn.Set([]mysql.Query{
-					{
-						Set: fmt.Sprintf("SET GLOBAL %s=1", keys[i].db),
-					},
-				})
-				require.Nil(t, err)
-				got = m.GetDefaults(protoInstance.UUID)
-				assert.Equal(t, true, got[keys[i].json])
+					// GetDefaults returns current configuration
+					// let's be sure log_slow_slave_statements=1 returns `true`
+					err = conn.Set([]mysql.Query{
+						{
+							Set: fmt.Sprintf("SET GLOBAL %s=1", keys[i].db),
+						},
+					})
+					require.Nil(t, err)
+					got = m.GetDefaults(protoInstance.UUID)
+					assert.Equal(t, true, got[keys[i].json])
+				} else {
+					// GetDefaults returns current configuration
+					// let's be sure non existing log_slow_slave_statements returns `nil`
+					err = conn.Set([]mysql.Query{
+						{
+							Set: fmt.Sprintf("SET GLOBAL %s=0", keys[i].db),
+						},
+					})
+					require.Error(t, err)
+					got := m.GetDefaults(protoInstance.UUID)
+					assert.Equal(t, nil, got[keys[i].json])
+				}
 			})
 		}
 	})

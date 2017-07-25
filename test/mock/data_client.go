@@ -18,9 +18,10 @@
 package mock
 
 import (
+	"reflect"
+
 	"github.com/percona/pmm/proto"
 	"golang.org/x/net/websocket"
-	"reflect"
 )
 
 type DataClient struct {
