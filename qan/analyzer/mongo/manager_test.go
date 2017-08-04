@@ -24,7 +24,6 @@ func TestRealStartTool(t *testing.T) {
 	dbNames := []string{
 		"admin",
 		"local",
-		"samples",
 		"test",
 	}
 

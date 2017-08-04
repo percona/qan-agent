@@ -17,7 +17,6 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	dbNames := []string{
 		"admin",
 		"local",
-		"samples",
 		"test",
 	}
 

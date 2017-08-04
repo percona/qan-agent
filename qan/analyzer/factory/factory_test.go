@@ -37,7 +37,6 @@ func TestFactory_MakeMongo(t *testing.T) {
 	dbNames := []string{
 		"admin",
 		"local",
-		"samples",
 		"test",
 	}
 
