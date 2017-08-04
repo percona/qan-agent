@@ -2,52 +2,29 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
-	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/percona/qan-agent/test/profiling"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestMongo_StartStopStatus(t *testing.T) {
-	{
-		dialInfo, err := pmgo.ParseURL("")
-		require.NoError(t, err)
-		dialer := pmgo.NewDialer()
+	dbNames := []string{
+		"admin",
+		"local",
+		"samples",
+		"test",
+	}
 
-		session, err := dialer.DialWithInfo(dialInfo)
-		require.NoError(t, err)
-		defer session.Close()
-
-		session.SetMode(mgo.Eventual, true)
-
-		result := struct {
-			Was       int
-			Slowms    int
-			Ratelimit int
-		}{}
-		err = session.DB(dialInfo.Database).Run(
-			bson.M{
-				"profile": 0,
-			},
-			&result,
-		)
-		require.NoError(t, err)
-
-		err = session.DB(dialInfo.Database).C("system.profile").DropCollection()
-		require.NoError(t, err)
-
-		err = session.DB(dialInfo.Database).Run(
-			bson.M{
-				"profile": 2,
-			},
-			&result,
-		)
+	// disable profiling as we only want to test if factory works
+	for _, dbName := range dbNames {
+		url := "/" + dbName
+		err := profiling.Disable(url)
 		require.NoError(t, err)
 	}
 
@@ -72,16 +49,26 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	require.NoError(t, err)
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
+
 	expect := map[string]string{
-		"plugin":                            "Running",
-		"plugin-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
-		"plugin-collector-iterator-counter": "1",
-		"plugin-collector-iterator-created": shouldExist,
-		"plugin-collector-started":          shouldExist,
-		"plugin-parser-started":             shouldExist,
-		"plugin-parser-interval-start":      shouldExist,
-		"plugin-parser-interval-end":        shouldExist,
-		"plugin-sender-started":             shouldExist,
+		"plugin": "Running",
+	}
+	for _, dbName := range dbNames {
+		t := map[string]string{
+			"plugin-%s-collector-profile":          "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
+			"plugin-%s-collector-iterator-counter": "1",
+			"plugin-%s-collector-iterator-created": shouldExist,
+			"plugin-%s-collector-started":          shouldExist,
+			"plugin-%s-parser-started":             shouldExist,
+			"plugin-%s-parser-interval-start":      shouldExist,
+			"plugin-%s-parser-interval-end":        shouldExist,
+			"plugin-%s-sender-started":             shouldExist,
+		}
+		m := map[string]string{}
+		for k, v := range t {
+			m[fmt.Sprintf(k, dbName)] = v
+		}
+		expect = merge(expect, m)
 	}
 
 	actual := plugin.Status()
@@ -97,4 +84,15 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	err = plugin.Stop()
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
+}
+
+// merge merges map[string]string maps
+func merge(maps ...map[string]string) map[string]string {
+	result := make(map[string]string)
+	for _, m := range maps {
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
 }

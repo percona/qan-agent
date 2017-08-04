@@ -11,9 +11,8 @@ import (
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/collector"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/parser"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/sender"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/parser"
 )
 
 func New(ctx context.Context, protoInstance proto.Instance) analyzer.Analyzer {
@@ -38,18 +37,18 @@ type MongoAnalyzer struct {
 	protoInstance proto.Instance
 
 	// dependencies from ctx
-	spool  data.Spooler
 	logger *pct.Logger
+	spool  data.Spooler
 
 	// dependency from setter SetConfig
 	config pc.QAN
 
-	// internal services
-	services []services
+	// profiler
+	profiler Profiler
 
 	// state
-	running bool
-	sync.RWMutex
+	sync.RWMutex      // Lock() to protect internal consistency of the service
+	running      bool // Is this service running?
 }
 
 // SetConfig sets the config
@@ -70,17 +69,6 @@ func (m *MongoAnalyzer) Start() error {
 		return nil
 	}
 
-	defer func() {
-		// if we failed to start
-		if !m.running {
-			// be sure that any started internal service is shutdown
-			for _, s := range m.services {
-				s.Stop()
-			}
-			m.services = nil
-		}
-	}()
-
 	// get the dsn from instance
 	dsn := m.protoInstance.DSN
 
@@ -91,29 +79,14 @@ func (m *MongoAnalyzer) Start() error {
 	}
 	dialer := pmgo.NewDialer()
 
-	// create collector and start it
-	collector := collector.New(dialInfo, dialer)
-	docsChan, err := collector.Start()
-	if err != nil {
-		return err
-	}
-	m.services = append(m.services, collector)
-
-	// create parser and start it
-	parser := parser.New(docsChan, m.config)
-	reportChan, err := parser.Start()
-	if err != nil {
-		return err
-	}
-	m.services = append(m.services, parser)
-
-	// create sender and start it
-	sender := sender.New(reportChan, m.spool, m.logger)
-	err = sender.Start()
-	if err != nil {
-		return err
-	}
-	m.services = append(m.services, sender)
+	m.profiler = profiler.New(
+		dialInfo,
+		dialer,
+		m.logger,
+		m.spool,
+		m.config,
+	)
+	m.profiler.Start()
 
 	m.running = true
 	return nil
@@ -124,21 +97,19 @@ func (m *MongoAnalyzer) Status() map[string]string {
 	m.RLock()
 	defer m.RUnlock()
 
-	service := m.logger.Service()
-	status := "Not running"
-	if m.running {
-		status = "Running"
-	}
-
 	statuses := map[string]string{}
+	service := m.logger.Service()
 
-	for _, s := range m.services {
-		for k, v := range s.Status() {
-			statuses[fmt.Sprintf("%s-%s-%s", service, s.Name(), k)] = v
-		}
+	if !m.running {
+		statuses[service] = "Not running"
+		return statuses
 	}
 
-	statuses[service] = status
+	for k, v := range m.profiler.Status() {
+		statuses[fmt.Sprintf("%s-%s", service, k)] = v
+	}
+
+	statuses[service] = "Running"
 	return statuses
 }
 
@@ -150,11 +121,9 @@ func (m *MongoAnalyzer) Stop() error {
 		return nil
 	}
 
-	// stop internal services
-	for _, s := range m.services {
-		s.Stop()
-	}
-	m.services = nil
+	// stop monitoring databases
+	m.profiler.Stop()
+	m.profiler = nil
 
 	m.running = false
 	return nil
@@ -178,8 +147,8 @@ func (m *MongoAnalyzer) String() string {
 	return ""
 }
 
-type services interface {
+type Profiler interface {
+	Start() error
+	Stop() error
 	Status() map[string]string
-	Stop()
-	Name() string
 }

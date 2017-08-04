@@ -18,6 +18,7 @@
 package factory
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/percona/pmm/proto"
@@ -25,12 +26,27 @@ import (
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/percona/qan-agent/test/profiling"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFactory_MakeMongo(t *testing.T) {
 	t.Parallel()
+
+	dbNames := []string{
+		"admin",
+		"local",
+		"samples",
+		"test",
+	}
+
+	// disable profiling as we only want to test if factory works
+	for _, dbName := range dbNames {
+		url := "/" + dbName
+		err := profiling.Disable(url)
+		require.NoError(t, err)
+	}
 
 	logChan := make(chan proto.LogEntry)
 	dataChan := make(chan interface{})
@@ -62,16 +78,29 @@ func TestFactory_MakeMongo(t *testing.T) {
 	require.NoError(t, err)
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
+
+	pluginName := "plugin"
 	expect := map[string]string{
-		"plugin":                            "Running",
-		"plugin-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
-		"plugin-collector-iterator-counter": "1",
-		"plugin-collector-iterator-created": shouldExist,
-		"plugin-collector-started":          shouldExist,
-		"plugin-parser-started":             shouldExist,
-		"plugin-parser-interval-start":      shouldExist,
-		"plugin-parser-interval-end":        shouldExist,
-		"plugin-sender-started":             shouldExist,
+		pluginName: "Running",
+	}
+	for _, dbName := range dbNames {
+		t := map[string]string{
+			"%s-collector-profile":          "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
+			"%s-collector-iterator-counter": "1",
+			"%s-collector-iterator-created": shouldExist,
+			"%s-collector-started":          shouldExist,
+			"%s-parser-started":             shouldExist,
+			"%s-parser-interval-start":      shouldExist,
+			"%s-parser-interval-end":        shouldExist,
+			"%s-sender-started":             shouldExist,
+		}
+		m := map[string]string{}
+		for k, v := range t {
+			prefix := fmt.Sprintf("%s-%s", pluginName, dbName)
+			key := fmt.Sprintf(k, prefix)
+			m[key] = v
+		}
+		expect = merge(expect, m)
 	}
 
 	actual := plugin.Status()
@@ -136,4 +165,15 @@ func TestFactory_MakeMySQL(t *testing.T) {
 	err = plugin.Stop()
 	require.NoError(t, err)
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
+}
+
+// merge merges map[string]string maps
+func merge(maps ...map[string]string) map[string]string {
+	result := make(map[string]string)
+	for _, m := range maps {
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
 }
