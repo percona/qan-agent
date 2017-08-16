@@ -5,19 +5,36 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/test/profiling"
+	"github.com/percona/qan-agent/test/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2"
 )
 
 func TestMongo_StartStopStatus(t *testing.T) {
+	dialer := pmgo.NewDialer()
+	dialInfo, _ := pmgo.ParseURL("")
+
+	session, err := dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
+	defer session.Close()
+	session.SetMode(mgo.Eventual, true)
+	bi, err := session.BuildInfo()
+	require.NoError(t, err)
+	atLeast34, err := version.Constraint(">= 3.4", bi.Version)
+	require.NoError(t, err)
+
 	dbNames := []string{
-		"admin",
 		"local",
 		"test",
+	}
+	if atLeast34 {
+		dbNames = append(dbNames, "admin")
 	}
 
 	// disable profiling as we only want to test if factory works
@@ -44,7 +61,7 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	plugin := New(ctx, protoInstance)
 
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
-	err := plugin.Start()
+	err = plugin.Start()
 	require.NoError(t, err)
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
