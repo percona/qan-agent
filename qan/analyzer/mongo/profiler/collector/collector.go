@@ -243,7 +243,7 @@ func connectAndCollect(
 	for {
 		query := bson.M{
 			"ts": bson.M{"$gt": now},
-			"op": bson.M{"$nin": []string{"getmore", "delete"}},
+			"op": bson.M{"$nin": []string{"getmore"}},
 		}
 		collect(
 			collection,
