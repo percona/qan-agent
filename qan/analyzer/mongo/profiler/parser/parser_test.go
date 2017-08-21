@@ -10,6 +10,7 @@ import (
 	"github.com/percona/pmm/proto/qan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func TestNew(t *testing.T) {
@@ -87,8 +88,8 @@ func TestParser_running(t *testing.T) {
 	select {
 	case docsChan <- pm.SystemProfile{
 		Ts: timeStart,
-		Query: map[string]interface{}{
-			"query": "",
+		Query: pm.BsonD{
+			bson.D{{"find", "test"}},
 		},
 		ResponseLength: 100,
 		DocsExamined:   200,

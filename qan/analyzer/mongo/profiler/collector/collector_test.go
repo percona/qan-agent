@@ -129,7 +129,7 @@ func TestCollector(t *testing.T) {
 
 	actual := []proto.SystemProfile{}
 	for doc := range docsChan {
-		if doc.Ns == "test.people" && doc.Query["insert"] == "people" {
+		if doc.Ns == "test.people" && doc.Op == "insert" {
 			actual = append(actual, doc)
 		}
 		if len(actual) == len(people) {

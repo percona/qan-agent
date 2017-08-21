@@ -61,7 +61,7 @@ func TestAggregator_Add(t *testing.T) {
 			},
 			Class: []*event.Class{
 				{
-					Id:            "328db4ecb7776156bd52599d25a93a1f",
+					Id:            "d41d8cd98f00b204e9800998ecf8427e",
 					TotalQueries:  1,
 					UniqueQueries: 1,
 					Metrics: &event.Metrics{
