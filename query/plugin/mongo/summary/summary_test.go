@@ -21,7 +21,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSummary(t *testing.T) {
@@ -30,7 +29,7 @@ func TestSummary(t *testing.T) {
 	dsn := "127.0.0.1:27017"
 
 	output, err := Summary(dsn)
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 	assert.Regexp(t, "# Instances #", output)
 }

@@ -42,13 +42,17 @@ func Summary(dsn string) (string, error) {
 
 // authArgs returns authentication arguments for cmd
 func authArgs(username, password, authDatabase string) (args []string) {
-	flags := []string{
-		"--username=" + username,                   // -u, --username=Username to use for optional MongoDB authentication
-		"--password=" + password,                   // -p, --password[=Password to use for optional MongoDB authentication]
-		"--authenticationDatabase=" + authDatabase, // -a, --authenticationDatabase=Database to use for optional MongoDB authentication.
+	if username != "" {
+		args = append(args, "--username="+username)
+	}
+	if password != "" {
+		args = append(args, "--password="+password)
+	}
+	if authDatabase != "" {
+		args = append(args, "--authenticationDatabase="+password)
 	}
 
-	return flags
+	return args
 }
 
 // addrArgs returns host[:port] arguments for cmd
