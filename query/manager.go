@@ -131,7 +131,7 @@ func (m *Manager) Handle(cmd *proto.Cmd) *proto.Reply {
 		case plugin.UnknownCmdError:
 			return cmd.Reply(nil, err)
 		}
-		return cmd.Reply(nil, fmt.Errorf("cmd '%s' for subsystem '%s' failed: %s", cmd.Cmd, in.Subsystem, err))
+		return cmd.Reply(data, fmt.Errorf("cmd '%s' for subsystem '%s' failed: %s", cmd.Cmd, in.Subsystem, err))
 	}
 
 	return cmd.Reply(data)
