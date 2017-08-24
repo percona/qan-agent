@@ -1,5 +1,5 @@
-hash: 7cfc133ea60f4fc51b46dae7e55d6ee949d37b2f1c39e0bd82abff25d8da9275
-updated: 2017-08-21T20:54:12.637722159+02:00
+hash: 7299df370db720f04ffb2a0b133eea488d4cbc2a343edfa0e1dab1186f7740c1
+updated: 2017-08-24T10:33:54.089049575+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -26,7 +26,7 @@ imports:
   - log/slow
   - query
 - name: github.com/percona/percona-toolkit
-  version: 92ce29acfa7549a8d6f22bd866134065d387ff34
+  version: 04f95917ae2c727dbda27e35f915815ce92e82ee
   subpackages:
   - src/go/mongolib/fingerprinter
   - src/go/mongolib/proto
