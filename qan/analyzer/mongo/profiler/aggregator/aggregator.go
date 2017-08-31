@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"time"
+	"strings"
 
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
@@ -106,9 +107,15 @@ func (self *Aggregator) createResult() *report.Result {
 	for _, queryInfo := range queryStats {
 		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, self.config.ExampleQueries)
 		if self.config.ExampleQueries {
+			db := ""
+			s := strings.SplitN(queryInfo.Namespace, ".", 2)
+			if len(s) == 2 {
+				db = s[0]
+			}
+
 			class.Example = &event.Example{
 				QueryTime: queryInfo.QueryTime.Total,
-				Db:        queryInfo.Namespace,
+				Db:        db,
 				Query:     queryInfo.Query,
 			}
 		}

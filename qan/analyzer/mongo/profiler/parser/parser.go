@@ -165,8 +165,6 @@ func start(
 				stats.OkDocs.Add(1)
 			case *mstats.StatsFingerprintError:
 				stats.ErrFingerprint.Add(1)
-			case *mstats.StatsGetQueryFieldError:
-				stats.ErrGetQuery.Add(1)
 			default:
 				stats.ErrParse.Add(1)
 			}

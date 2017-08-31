@@ -1,5 +1,5 @@
-hash: 7299df370db720f04ffb2a0b133eea488d4cbc2a343edfa0e1dab1186f7740c1
-updated: 2017-08-24T10:33:54.089049575+02:00
+hash: 335d3a585da78df55bf60c8c9b4dd545383b6f9cc6c2733f8ffc5e96f5361c7a
+updated: 2017-08-31T18:05:23.1354588+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -26,8 +26,9 @@ imports:
   - log/slow
   - query
 - name: github.com/percona/percona-toolkit
-  version: 04f95917ae2c727dbda27e35f915815ce92e82ee
+  version: 6f57f094002dbf5d2360392f4e3b2b158592fb7a
   subpackages:
+  - src/go/mongolib/explain
   - src/go/mongolib/fingerprinter
   - src/go/mongolib/proto
   - src/go/mongolib/stats

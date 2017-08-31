@@ -13,6 +13,5 @@ type stats struct {
 	IntervalEnd    *expvar.String `name:"interval-end"`
 	ErrFingerprint *expvar.Int    `name:"err-fingerprint"`
 	ErrParse       *expvar.Int    `name:"err-parse"`
-	ErrGetQuery    *expvar.Int    `name:"err-get-query"`
 	SkippedDocs    *expvar.Int    `name:"skipped-docs"`
 }

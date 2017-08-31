@@ -43,8 +43,8 @@ func TestHandle(t *testing.T) {
 	}
 
 	q := &proto.ExplainQuery{
-		Db:    "test.people",
-		Query: `{"name":"Alicja"}`,
+		Db:    "test",
+		Query: `{"ns":"test.col1","op":"query","query":{"find":"col1","filter":{"name":"Alicja"}}}`,
 	}
 	data, err := json.Marshal(q)
 	require.NoError(t, err)
