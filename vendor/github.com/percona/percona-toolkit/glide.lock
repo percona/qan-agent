@@ -1,14 +1,14 @@
-hash: 7cc97c518c04beac5926bfef5fafc2c291d1c8eff945390edb5e71fecbf461f2
-updated: 2017-04-11T11:01:58.383683464-03:00
+hash: 203838fffdc6549caf8a6a439df2e2df48fe15449dedc702b632f2b06f66ae72
+updated: 2017-08-18T11:00:19.296275985+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/go-ole/go-ole
-  version: de8695c8edbf8236f30d6e1376e20b198a028d42
+  version: 085abb85892dc1949567b726dff00fa226c60c45
   subpackages:
   - oleutil
 - name: github.com/golang/mock
-  version: bd3c8e81be01eef76d4b503f5e687d2d1354d2d9
+  version: 1df903b45f27b0b3685fa78609b653a54c7eead8
   subpackages:
   - gomock
 - name: github.com/hashicorp/go-version
@@ -18,7 +18,7 @@ imports:
 - name: github.com/kr/pretty
   version: cfb55aafdaf3ec08f0db22699ab822c50091b1c4
 - name: github.com/montanaflynn/stats
-  version: eeaced052adbcfeea372c749c281099ed7fdaa38
+  version: 4a163274fa4ca0b524ccee24757d7bec79475aca
 - name: github.com/pborman/getopt
   version: 7148bc3a4c3008adfcab60cbebfd0576018f330b
   subpackages:
@@ -28,11 +28,11 @@ imports:
   subpackages:
   - pmgomock
 - name: github.com/pkg/errors
-  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+  version: c605e284fe17294bda444b34710735b29d1a9d90
 - name: github.com/satori/go.uuid
-  version: 879c5887cd475cd7864858769793b2ceb0d44feb
+  version: 5bf94b69c6b68ee1b541973bb8e1144db23a194b
 - name: github.com/shirou/gopsutil
-  version: e49a95f3d5f824c3f9875ca49e54e4fef17f82cf
+  version: 1c211f0807a3436707409fa313599dd8c7a48664
   subpackages:
   - cpu
   - host
@@ -43,25 +43,26 @@ imports:
 - name: github.com/shirou/w32
   version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
 - name: github.com/sirupsen/logrus
-  version: ba1b36c82c5e05c4f912a88eab0dcd91a171688f
+  version: 68806b4b77355d6c8577a2c8bbc6d547a5272491
 - name: github.com/StackExchange/wmi
-  version: e542ed97d15e640bdc14b5c12162d59e8fc67324
+  version: ea383cf3ba6ec950874b8486cd72356d007c768f
 - name: go4.org
-  version: 7ce08ca145dbe0e66a127c447b80ee7914f3e4f9
+  version: 034d17a462f7b2dcd1a4a73553ec5357ff6e6c6e
   subpackages:
   - reflectutil
 - name: golang.org/x/crypto
-  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
+  version: b176d7def5d71bdd214203491f89843ed217f420
   subpackages:
   - ssh/terminal
 - name: golang.org/x/net
-  version: 61557ac0112b576429a0df080e1c2cef5dfbb642
+  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: e24f485414aeafb646f6fca458b0bf869c0880a1
+  version: 43e60d72a8e2bd92ee98319ba9a384a0e9837c08
   subpackages:
   - unix
+  - windows
 - name: gopkg.in/mgo.v2
   version: 3f83fa5005286a7fe593b055f0d7771a7dce4655
   subpackages:

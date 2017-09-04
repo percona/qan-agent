@@ -1,0 +1,31 @@
+dist: trusty
+sudo: required
+
+language: go
+
+go:
+  - 1.8.x
+  - tip
+
+install:
+  - go get -u github.com/Masterminds/glide
+  # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
+  - rm -rf vendor/
+  - glide install
+
+before_script:
+  # check if vendor dir is correct
+  - git diff --exit-code
+
+script:
+  - go test -timeout 1m $(glide nv)
+
+notifications:
+  email:
+    on_success: never
+    on_failure: never
+  slack:
+    on_success: change
+    on_failure: change
+    rooms:
+      secure: E5ZRDFtbVmQCo2SLCdvecpaRIZPC35+0srkyA9jVq0BJpvVY6pm4OQceAugy/g5cd6c2reTN9oNSjNF62BKpoJxPuIuu8/JdlvUMMxgxnGkCC1R6hAddbapvIe4EXlybLPGy8kAG7OkYVpGHtWwN3U5MfF7/tGeqL2y8C3fCDZA=

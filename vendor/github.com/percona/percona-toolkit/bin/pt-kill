@@ -47,7 +47,7 @@ BEGIN {
 {
 package Percona::Toolkit;
 
-our $VERSION = '3.0.2';
+our $VERSION = '3.0.4';
 
 use strict;
 use warnings FATAL => 'all';
@@ -2934,7 +2934,7 @@ sub parse {
    my ($name)     = $ddl =~ m/CREATE (?:TEMPORARY )?TABLE\s+(`.+?`)/;
    (undef, $name) = $self->{Quoter}->split_unquote($name) if $name;
 
-   $ddl =~ s/(`[^`]+`)/\L$1/g;
+   $ddl =~ s/(`[^`\n]+`)/\L$1/gm;
 
    my $engine = $self->get_engine($ddl);
 
@@ -3065,6 +3065,8 @@ sub check_table {
    my $db_tbl = $q->quote($db, $tbl);
    PTDEBUG && _d('Checking', $db_tbl);
 
+   $self->{check_table_error} = undef;
+
    my $sql = "SHOW TABLES FROM " . $q->quote($db)
            . ' LIKE ' . $q->literal_like($tbl);
    PTDEBUG && _d($sql);
@@ -3072,8 +3074,9 @@ sub check_table {
    eval {
       $row = $dbh->selectrow_arrayref($sql);
    };
-   if ( $EVAL_ERROR ) {
-      PTDEBUG && _d($EVAL_ERROR);
+   if ( my $e = $EVAL_ERROR ) {
+      PTDEBUG && _d($e);
+      $self->{check_table_error} = $e;
       return 0;
    }
    if ( !$row->[0] || $row->[0] ne $tbl ) {
@@ -5300,7 +5303,8 @@ sub lost_connection {
    my ($self, $e) = @_;
    return 0 unless $e;
    return $e =~ m/MySQL server has gone away/
-       || $e =~ m/Lost connection to MySQL server/;
+       || $e =~ m/Lost connection to MySQL server/
+       || $e =~ m/Server shutdown in progress/;
 }
 
 sub dbh {
@@ -5317,6 +5321,11 @@ sub name {
    my ($self) = @_;
    return $self->{dsn_name} if PERCONA_TOOLKIT_TEST_USE_DSN_NAMES;
    return $self->{hostname} || $self->{dsn_name} || 'unknown host';
+}
+
+sub description {
+   my ($self) = @_;
+   return sprintf("%s -> %s:%s", $self->name(), $self->{dsn}->{h}, $self->{dsn}->{P} || 'socket');
 }
 
 sub get_id {
@@ -5350,9 +5359,20 @@ sub is_cluster_node {
    my ($self, $cxn) = @_;
 
    $cxn ||= $self;
+
    my $sql = "SHOW VARIABLES LIKE 'wsrep\_on'";
-   PTDEBUG && _d($cxn->name, $sql);
-   my $row = $cxn->dbh->selectrow_arrayref($sql);
+
+   my $dbh;
+   if ($cxn->isa('DBI::db')) {
+      $dbh = $cxn;
+      PTDEBUG && _d($sql); #don't invoke name() if it's not a Cxn!
+   }
+   else {
+      $dbh = $cxn->dbh();      
+      PTDEBUG && _d($cxn->name, $sql);
+   }
+
+   my $row = $dbh->selectrow_arrayref($sql);
    return $row && $row->[1] && ($row->[1] eq 'ON' || $row->[1] eq '1') ? 1 : 0;
 
 }
@@ -8356,6 +8376,6 @@ Place, Suite 330, Boston, MA  02111-1307  USA.
 
 =head1 VERSION
 
-pt-kill 3.0.2
+pt-kill 3.0.4
 
 =cut

@@ -87,8 +87,8 @@ func TestParser_running(t *testing.T) {
 	select {
 	case docsChan <- pm.SystemProfile{
 		Ts: timeStart,
-		Query: map[string]interface{}{
-			"query": "",
+		Query: pm.BsonD{
+			{"find", "test"},
 		},
 		ResponseLength: 100,
 		DocsExamined:   200,
