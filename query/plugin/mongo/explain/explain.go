@@ -18,25 +18,20 @@
 package explain
 
 import (
-	"fmt"
-	"strings"
 	"time"
 
+	"github.com/percona/percona-toolkit/src/go/mongolib/explain"
 	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const (
-	MgoTimeoutDialInfo      = 1 * time.Second
-	MgoTimeoutSessionSync   = 1 * time.Second
-	MgoTimeoutSessionSocket = 1 * time.Second
+	MgoTimeoutDialInfo      = 5 * time.Second
+	MgoTimeoutSessionSync   = 5 * time.Second
+	MgoTimeoutSessionSocket = 5 * time.Second
 )
 
-type DecodeQueryError struct{ *MongoExplainError }
-type DecodeNamespaceError struct{ *MongoExplainError }
-
-func Explain(dsn, namespace, query string) (*proto.ExplainResult, error) {
+func Explain(dsn, db, query string) (*proto.ExplainResult, error) {
 	// if dsn is incorrect we should exit immediately as this is not gonna correct itself
 	dialInfo, err := pmgo.ParseURL(dsn)
 	if err != nil {
@@ -53,31 +48,14 @@ func Explain(dsn, namespace, query string) (*proto.ExplainResult, error) {
 	session.SetSyncTimeout(MgoTimeoutSessionSync)
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
-	q := bson.M{}
-	err = bson.UnmarshalJSON([]byte(query), &q)
-	if err != nil {
-		return nil, &DecodeQueryError{&MongoExplainError{err, fmt.Sprintf("unable to decode query %s", query)}}
-	}
-
-	s := strings.Split(namespace, ".")
-	if len(s) != 2 {
-		return nil, &DecodeNamespaceError{&MongoExplainError{nil, fmt.Sprintf("unable to decode db and collection from namespace %s", namespace)}}
-	}
-	db, collection := s[0], s[1]
-
-	result := bson.M{}
-	err = session.DB(db).C(collection).Find(q).Explain(&result)
+	ex := explain.New(session)
+	resultJson, err := ex.Explain(db, []byte(query))
 	if err != nil {
 		return nil, err
 	}
 
-	resultJson, err := bson.MarshalJSON(result)
-	if err != nil {
-		return nil, err
-	}
-
-	explain := &proto.ExplainResult{
+	explainResult := &proto.ExplainResult{
 		JSON: string(resultJson),
 	}
-	return explain, nil
+	return explainResult, nil
 }

@@ -32,10 +32,10 @@ func TestExplain(t *testing.T) {
 
 	dsn := "127.0.0.1:27017"
 
-	namespace := "test.people"
-	query := `{"name":"Alicja"}`
+	db := "test"
+	query := `{"ns":"test.col1","op":"query","query":{"find":"col1","filter":{"name":"Alicja"}}}`
 
-	explainResult, err := Explain(dsn, namespace, query)
+	explainResult, err := Explain(dsn, db, query)
 	require.NoError(t, err)
 
 	got := bson.M{}
@@ -57,29 +57,11 @@ func TestExplainDecodeQueryError(t *testing.T) {
 
 	dsn := "127.0.0.1:27017"
 
-	namespace := "test.people"
-	query := `{"name":"Alicja"`
+	db := "test"
+	query := `{Jas`
 
-	explainResult, err := Explain(dsn, namespace, query)
+	explainResult, err := Explain(dsn, db, query)
 	assert.Nil(t, explainResult)
 	assert.Error(t, err)
-	assert.Equal(t, "explain: unable to decode query {\"name\":\"Alicja\": unexpected EOF", err.Error())
-	assert.IsType(t, &DecodeQueryError{}, err)
-}
-
-func TestExplainDecodeNamespaceError(t *testing.T) {
-	t.Parallel()
-
-	var err error
-
-	dsn := "127.0.0.1:27017"
-
-	namespace := "testpeople"
-	query := `{"name":"Alicja"}`
-
-	explainResult, err := Explain(dsn, namespace, query)
-	assert.Nil(t, explainResult)
-	assert.Error(t, err)
-	assert.Equal(t, "explain: unable to decode db and collection from namespace testpeople", err.Error())
-	assert.IsType(t, &DecodeNamespaceError{}, err)
+	assert.Equal(t, "explain: unable to decode query {Jas: unexpected EOF", err.Error())
 }
