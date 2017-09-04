@@ -2,6 +2,7 @@ package mongo_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -15,46 +16,41 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/factory"
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
+	"github.com/percona/qan-agent/test/profiling"
+	"github.com/percona/qan-agent/test/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func TestRealStartTool(t *testing.T) {
-	{
-		dialInfo, err := pmgo.ParseURL("")
+	dialer := pmgo.NewDialer()
+	dialInfo, _ := pmgo.ParseURL("")
+
+	session, err := dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
+	defer session.Close()
+	session.SetMode(mgo.Eventual, true)
+	bi, err := session.BuildInfo()
+	require.NoError(t, err)
+	atLeast34, err := version.Constraint(">= 3.4", bi.Version)
+	require.NoError(t, err)
+
+	dbNames := []string{
+		"local",
+		"test",
+	}
+	if atLeast34 {
+		dbNames = append(dbNames, "admin")
+	}
+
+	// disable profiling as we only want to test if factory works
+	for _, dbName := range dbNames {
+		url := "/" + dbName
+		err := profiling.Disable(url)
 		require.NoError(t, err)
-		dialer := pmgo.NewDialer()
-
-		session, err := dialer.DialWithInfo(dialInfo)
-		require.NoError(t, err)
-		defer session.Close()
-
-		session.SetMode(mgo.Eventual, true)
-
-		result := struct {
-			Was       int
-			Slowms    int
-			Ratelimit int
-		}{}
-		err = session.DB(dialInfo.Database).Run(
-			bson.M{
-				"profile": 0,
-			},
-			&result,
-		)
-		require.NoError(t, err)
-
-		err = session.DB(dialInfo.Database).C("system.profile").DropCollection()
-		require.NoError(t, err)
-
-		err = session.DB(dialInfo.Database).Run(
-			bson.M{
-				"profile": 2,
-			},
-			&result,
-		)
+		profiling.Drop(url)
+		err = profiling.Enable(url)
 		require.NoError(t, err)
 	}
 
@@ -75,7 +71,7 @@ func TestRealStartTool(t *testing.T) {
 		instanceRepo,
 	)
 	m := qan.NewManager(logger, instanceRepo, f)
-	err := m.Start()
+	err = m.Start()
 	require.NoError(t, err)
 
 	protoInstance := proto.Instance{
@@ -117,18 +113,32 @@ func TestRealStartTool(t *testing.T) {
 	// Now the manager and analyzer should be running.
 	shouldExist := "<should exist>"
 	actual := m.Status()
+
+	pluginName := fmt.Sprintf("%s-analyzer-%s-%s", cmd.Service, protoInstance.Subsystem, protoInstance.UUID)
 	expect := map[string]string{
-		"qan": "Running",
-		"qan-analyzer-mongo-12345678":                            "Running",
-		"qan-analyzer-mongo-12345678-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
-		"qan-analyzer-mongo-12345678-collector-iterator-counter": "1",
-		"qan-analyzer-mongo-12345678-collector-iterator-created": shouldExist,
-		"qan-analyzer-mongo-12345678-collector-started":          shouldExist,
-		"qan-analyzer-mongo-12345678-parser-started":             shouldExist,
-		"qan-analyzer-mongo-12345678-parser-interval-start":      shouldExist,
-		"qan-analyzer-mongo-12345678-parser-interval-end":        shouldExist,
-		"qan-analyzer-mongo-12345678-sender-started":             shouldExist,
+		"qan":      "Running",
+		pluginName: "Running",
 	}
+	for _, dbName := range dbNames {
+		t := map[string]string{
+			"%s-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
+			"%s-collector-iterator-counter": "1",
+			"%s-collector-iterator-created": shouldExist,
+			"%s-collector-started":          shouldExist,
+			"%s-parser-started":             shouldExist,
+			"%s-parser-interval-start":      shouldExist,
+			"%s-parser-interval-end":        shouldExist,
+			"%s-sender-started":             shouldExist,
+		}
+		m := map[string]string{}
+		for k, v := range t {
+			prefix := fmt.Sprintf("%s-%s", pluginName, dbName)
+			key := fmt.Sprintf(k, prefix)
+			m[key] = v
+		}
+		expect = merge(expect, m)
+	}
+
 	for k, v := range expect {
 		if v == shouldExist {
 			assert.Contains(t, actual, k)
@@ -178,4 +188,15 @@ func TestRealStartTool(t *testing.T) {
 	// Stop the manager.
 	err = m.Stop()
 	require.NoError(t, err)
+}
+
+// merge merges map[string]string maps
+func merge(maps ...map[string]string) map[string]string {
+	result := make(map[string]string)
+	for _, m := range maps {
+		for k, v := range m {
+			result[k] = v
+		}
+	}
+	return result
 }

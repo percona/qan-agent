@@ -155,7 +155,7 @@ func getProfile(
 	}
 
 	if result.Was == 0 {
-		return "Profiling disabled. Please enable profiling with `db.setProfilingLevel(2)` (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/)."
+		return "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/)."
 	}
 
 	if result.Was == 1 {
