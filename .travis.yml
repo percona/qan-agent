@@ -51,12 +51,10 @@ install:
   - glide install
 
 before_script:
-  # run docker containers
-  - docker-compose up -d
   # check if vendor dir is correct
   - git diff --exit-code
-  # turn on profiling on MongoDB instance
-  - docker-compose exec mongo mongo --eval 'db.setProfilingLevel(2)'
+  # run docker containers
+  - docker-compose up -d
   # wait for MySQL to become available
   - |
     until docker-compose exec mysql mysql -u"${MYSQL_USER}" -e 'SELECT 1' > /dev/null; do
@@ -74,9 +72,7 @@ script:
   - test/runner.sh
 
 notifications:
-  email:
-    on_success: change
-    on_failure: change
+  email: false
   slack:
     on_success: change
     on_failure: change

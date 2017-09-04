@@ -13,3 +13,5 @@ services:
     image: ${MONGODB_IMAGE:-percona/percona-server-mongodb:3.4}
     ports:
       - ${MONGODB_HOST:-127.0.0.1}:${MONGODB_PORT:-27017}:27017
+    # MongoDB doesn't enable profiling by default
+    command: --profile 2

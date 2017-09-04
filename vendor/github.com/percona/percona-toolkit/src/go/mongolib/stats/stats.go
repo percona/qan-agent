@@ -2,6 +2,7 @@ package stats
 
 import (
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync"
@@ -114,6 +115,7 @@ func (s *Stats) Queries() Queries {
 		keys = append(keys, key)
 	}
 	sort.Sort(keys)
+
 	queries := []QueryInfoAndCounters{}
 	for _, key := range keys {
 		queries = append(queries, *s.queryInfoAndCounters[key])
