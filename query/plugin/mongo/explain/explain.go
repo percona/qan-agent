@@ -23,6 +23,7 @@ import (
 	"github.com/percona/percona-toolkit/src/go/mongolib/explain"
 	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
+	"gopkg.in/mgo.v2"
 )
 
 const (
@@ -45,6 +46,7 @@ func Explain(dsn, db, query string) (*proto.ExplainResult, error) {
 		return nil, err
 	}
 	defer session.Close()
+	session.SetMode(mgo.Eventual, true)
 	session.SetSyncTimeout(MgoTimeoutSessionSync)
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
