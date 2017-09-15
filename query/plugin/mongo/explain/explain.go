@@ -37,9 +37,9 @@ func Explain(dsn, db, query string) (*proto.ExplainResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	dialInfo.Timeout = MgoTimeoutDialInfo
 	dialer := pmgo.NewDialer()
 
+	dialInfo.Timeout = MgoTimeoutDialInfo
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err

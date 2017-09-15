@@ -141,17 +141,14 @@ func start(
 	// stop all monitors
 	defer monitors.StopAll()
 
-	firstTry := true
+	// monitor all databases
+	monitors.MonitorAll()
+
+	// signal we started monitoring
+	signalReady(ready)
+
+	// loop to periodically refresh monitors
 	for {
-		// update
-		monitors.MonitorAll()
-
-		if firstTry {
-			// signal we started monitoring
-			signalReady(ready)
-			firstTry = false
-		}
-
 		// check if we should shutdown
 		select {
 		case <-doneChan:
@@ -159,6 +156,9 @@ func start(
 		case <-time.After(1 * time.Minute):
 			// just continue after delay if not
 		}
+
+		// update monitors
+		monitors.MonitorAll()
 	}
 }
 

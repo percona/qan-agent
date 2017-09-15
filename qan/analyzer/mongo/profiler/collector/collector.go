@@ -130,6 +130,7 @@ func getProfile(
 	dialInfo *pmgo.DialInfo,
 	dialer pmgo.Dialer,
 ) string {
+	dialInfo.Timeout = MgoTimeoutDialInfo
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return fmt.Sprintf("%s", err)
@@ -189,7 +190,6 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	dialInfo.Timeout = MgoTimeoutDialInfo
 	firstTry := true
 	for {
 		// make a connection and collect data
@@ -227,6 +227,7 @@ func connectAndCollect(
 	stats *stats,
 	ready *sync.Cond,
 ) {
+	dialInfo.Timeout = MgoTimeoutDialInfo
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return
