@@ -1,8 +1,8 @@
 package aggregator
 
 import (
-	"time"
 	"strings"
+	"time"
 
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"

@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	MgoTimeoutDialInfo      = 5 * time.Second
 	MgoTimeoutSessionSync   = 5 * time.Second
 	MgoTimeoutSessionSocket = 5 * time.Second
 )
@@ -82,7 +83,7 @@ func (self *monitors) MonitorAll() error {
 		self.monitors[dbName] = m
 	}
 
-	// if databases is no longer present then stop monitoring it
+	// if database is no longer present then stop monitoring it
 	for dbName := range self.monitors {
 		if _, ok := databases[dbName]; !ok {
 			self.monitors[dbName].Stop()
@@ -130,10 +131,10 @@ func (self *monitors) GetAll() map[string]*monitor {
 }
 
 func listDatabases(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) ([]string, error) {
+	dialInfo.Timeout = MgoTimeoutDialInfo
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err
-
 	}
 	defer session.Close()
 
