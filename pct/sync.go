@@ -18,10 +18,7 @@
 package pct
 
 import (
-	"fmt"
-	golog "log"
 	"os"
-	"time"
 )
 
 type SyncChan struct {
@@ -89,20 +86,4 @@ func MakeStartLock() error {
 		return err
 	}
 	return file.Close()
-}
-
-func WaitStartLock() error {
-	startLockFile := Basedir.File("start-lock")
-	if startLockExists := FileExists(startLockFile); startLockExists {
-		golog.Printf("Start-lock file %s exists; agent starts when removed, else aborts in 1 minute...",
-			startLockFile)
-		for i := 0; i < 60 && startLockExists; i++ {
-			time.Sleep(500 * time.Millisecond)
-			startLockExists = FileExists(startLockFile)
-		}
-		if startLockExists {
-			return fmt.Errorf("Start-lock file %s not removed after 1 minute", startLockFile)
-		}
-	}
-	return nil
 }
