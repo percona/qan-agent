@@ -56,8 +56,8 @@ type RealAnalyzer struct {
 	mysqlConfiguredChan chan bool
 	workerDoneChan      chan *iter.Interval
 	status              *pct.Status
-	runSync             *pct.SyncChan
-	configureMySQLSync  *pct.SyncChan
+	closeChan           chan struct{}
+	runWg               *sync.WaitGroup
 	running             bool
 	mux                 *sync.RWMutex
 	start               []string
@@ -92,8 +92,6 @@ func NewRealAnalyzer(
 		mysqlConfiguredChan: make(chan bool), // note: this channel can't be buffered
 		workerDoneChan:      make(chan *iter.Interval, 1),
 		status:              pct.NewStatus([]string{name, name + "-last-interval", name + "-next-interval"}),
-		runSync:             pct.NewSyncChan(),
-		configureMySQLSync:  pct.NewSyncChan(),
 		mux:                 &sync.RWMutex{},
 	}
 	return a
@@ -111,6 +109,10 @@ func (a *RealAnalyzer) Start() error {
 	if a.running {
 		return nil
 	}
+
+	a.closeChan = make(chan struct{})
+	a.runWg = &sync.WaitGroup{}
+	a.runWg.Add(1)
 	go a.run()
 	a.running = true
 	return nil
@@ -124,8 +126,9 @@ func (a *RealAnalyzer) Stop() error {
 	if !a.running {
 		return nil
 	}
-	a.runSync.Stop()
-	a.runSync.Wait()
+
+	close(a.closeChan)
+	a.runWg.Wait()
 	a.running = false
 	return nil
 }
@@ -205,10 +208,11 @@ func (a *RealAnalyzer) setMySQLConfig() error {
 func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 	a.logger.Debug("configureMySQL:" + action + ":call")
 	defer func() {
-		if err := recover(); err != nil {
-			a.logger.Error(a.name+":configureMySQL "+action+" crashed: ", err)
+		select {
+		case a.mysqlConfiguredChan <- true:
+		case <-a.closeChan:
 		}
-		a.logger.Debug("configureMySQL:" + action + ":return")
+		a.logger.Debug("configureMySQL:" + action + ":stop")
 	}()
 
 	var lastErr error
@@ -225,11 +229,9 @@ func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 		try++
 		if try > 1 {
 			select {
-			case <-a.configureMySQLSync.StopChan:
-				a.logger.Debug("configureMySQL:" + action + ":stop")
-				a.configureMySQLSync.Done()
+			case <-a.closeChan:
 				return
-			case <-time.After(5 * time.Second):
+			case <-time.After(1 * time.Second):
 			}
 		}
 
@@ -241,13 +243,12 @@ func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 		}
 
 		if err := a.TakeOverPerconaServerRotation(); err != nil {
-			lastErr = fmt.Errorf("Cannot takeover slow log rotation: %s", err)
-			panic(lastErr)
+			lastErr = fmt.Errorf("cannot takeover slow log rotation: %s", err)
 			continue
 		}
 
 		if err := a.setMySQLConfig(); err != nil {
-			lastErr = fmt.Errorf("Cannot detect how to configure MySQL: %s", err)
+			lastErr = fmt.Errorf("cannot detect how to configure MySQL: %s", err)
 			continue
 		}
 		a.worker.SetConfig(a.config)
@@ -264,7 +265,7 @@ func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 			panic("Invalid action in call to qan.Analyzer.configureMySQL: " + action)
 		}
 		if err := a.mysqlConn.Exec(queries); err != nil {
-			lastErr = fmt.Errorf("Error configuring MySQL: %s", err)
+			lastErr = fmt.Errorf("error configuring MySQL: %s", err)
 			continue
 		}
 
@@ -273,16 +274,11 @@ func (a *RealAnalyzer) configureMySQL(action string, tryLimit int) {
 		a.mysqlConn.Close()
 		break
 	}
-
-	select {
-	case a.mysqlConfiguredChan <- true:
-	case <-a.configureMySQLSync.StopChan:
-		a.logger.Debug("configureMySQL:" + action + ":stop")
-		a.configureMySQLSync.Done()
-	}
 }
 
 func (a *RealAnalyzer) run() {
+	defer a.runWg.Done()
+
 	a.logger.Debug("run:call")
 	defer a.logger.Debug("run:return")
 
@@ -300,15 +296,7 @@ func (a *RealAnalyzer) run() {
 			a.iter.Stop()
 
 			a.status.Update(a.name, "Stopping QAN on MySQL")
-			go a.configureMySQL("stop", 1) // try once
-			select {
-			case <-a.mysqlConfiguredChan:
-			}
-		} else {
-			a.logger.Debug("run:stop configureMySQL goroutine")
-			a.status.Update(a.name, "Stopping MySQL config (can take up to 10 seconds)")
-			a.configureMySQLSync.Stop()
-			a.configureMySQLSync.Wait()
+			a.configureMySQL("stop", 1) // try once
 		}
 
 		if err := recover(); err != nil {
@@ -318,8 +306,6 @@ func (a *RealAnalyzer) run() {
 			a.status.Update(a.name, "Stopped")
 			a.logger.Info("Stopped")
 		}
-
-		a.runSync.Done()
 	}()
 
 	workerRunning := false
@@ -405,7 +391,7 @@ func (a *RealAnalyzer) run() {
 				a.iter.Stop()
 				go a.configureMySQL("start", 0) // try forever
 			}
-		case <-a.runSync.StopChan:
+		case <-a.closeChan:
 			a.logger.Debug("run:stop")
 			return
 		}
