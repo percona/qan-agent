@@ -33,7 +33,9 @@ matrix:
   include:
     - go: 1.7.x
       env:
-    - go: tip
+    - go: 1.9.x
+      env:
+    - go: master
       env:
 
 addons:
