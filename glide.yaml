@@ -13,7 +13,7 @@ import:
   - log/slow
   - query
 - package: github.com/percona/percona-toolkit
-  version: QAN_MongoDB_GA
+  version: PMM-1.3
   subpackages:
   - src/go/mongolib/explain
   - src/go/mongolib/fingerprinter

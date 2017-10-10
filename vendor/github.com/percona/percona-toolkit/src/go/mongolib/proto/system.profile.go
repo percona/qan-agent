@@ -7,11 +7,13 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// docsExamined is renamed from nscannedObjects in 3.2.0
 type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
 	CursorExhausted bool          `bson:"cursorExhausted"`
 	DocsExamined    int           `bson:"docsExamined"`
+	NscannedObjects int           `bson:"nscannedObjects"`
 	ExecStats       struct {
 		Advanced                    int `bson:"advanced"`
 		ExecutionTimeMillisEstimate int `bson:"executionTimeMillisEstimate"`
@@ -120,6 +122,22 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 		if cmd.Len() == 0 {
 			cmd = self.Query
 		}
+
+		// MongoDB 2.6:
+		//
+		// "query" : {
+		//   "query" : {
+		//
+		//   },
+		//	 "$explain" : true
+		// },
+		if _, ok := cmd.Map()["$explain"]; ok {
+			cmd = BsonD{
+				{"explain", ""},
+			}
+			break
+		}
+
 		if cmd.Len() == 0 || cmd[0].Name != "find" {
 			var filter interface{}
 			if cmd.Len() > 0 && cmd[0].Name == "query" {
