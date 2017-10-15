@@ -8,6 +8,7 @@ import (
 )
 
 // docsExamined is renamed from nscannedObjects in 3.2.0
+// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
 type SystemProfile struct {
 	AllUsers        []interface{} `bson:"allUsers"`
 	Client          string        `bson:"client"`
@@ -72,38 +73,41 @@ type SystemProfile struct {
 			} `bson:"acquireCount"`
 		} `bson:"MMAPV1Journal"`
 	} `bson:"locks"`
-	Millis         int       `bson:"millis"`
-	Nreturned      int       `bson:"nreturned"`
-	Ns             string    `bson:"ns"`
-	NumYield       int       `bson:"numYield"`
-	Op             string    `bson:"op"`
-	Protocol       string    `bson:"protocol"`
-	Query          BsonD     `bson:"query"`
-	UpdateObj      BsonD     `bson:"updateobj"`
-	Command        BsonD     `bson:"command"`
-	ResponseLength int       `bson:"responseLength"`
-	Ts             time.Time `bson:"ts"`
-	User           string    `bson:"user"`
-	WriteConflicts int       `bson:"writeConflicts"`
+	Millis             int       `bson:"millis"`
+	Nreturned          int       `bson:"nreturned"`
+	Ns                 string    `bson:"ns"`
+	NumYield           int       `bson:"numYield"`
+	Op                 string    `bson:"op"`
+	Protocol           string    `bson:"protocol"`
+	Query              BsonD     `bson:"query"`
+	UpdateObj          BsonD     `bson:"updateobj"`
+	Command            BsonD     `bson:"command"`
+	OriginatingCommand BsonD     `bson:"originatingCommand"`
+	ResponseLength     int       `bson:"responseLength"`
+	Ts                 time.Time `bson:"ts"`
+	User               string    `bson:"user"`
+	WriteConflicts     int       `bson:"writeConflicts"`
 }
 
 func NewExampleQuery(doc SystemProfile) ExampleQuery {
 	return ExampleQuery{
-		Ns:        doc.Ns,
-		Op:        doc.Op,
-		Query:     doc.Query,
-		Command:   doc.Command,
-		UpdateObj: doc.UpdateObj,
+		Ns:                 doc.Ns,
+		Op:                 doc.Op,
+		Query:              doc.Query,
+		Command:            doc.Command,
+		OriginatingCommand: doc.OriginatingCommand,
+		UpdateObj:          doc.UpdateObj,
 	}
 }
 
 // ExampleQuery is a subset of SystemProfile
 type ExampleQuery struct {
-	Ns        string `bson:"ns" json:"ns"`
-	Op        string `bson:"op" json:"op"`
-	Query     BsonD  `bson:"query,omitempty" json:"query,omitempty"`
-	Command   BsonD  `bson:"command,omitempty" json:"command,omitempty"`
-	UpdateObj BsonD  `bson:"updateobj,omitempty" json:"updateobj,omitempty"`
+	Ns                 string `bson:"ns" json:"ns"`
+	Op                 string `bson:"op" json:"op"`
+	Query              BsonD  `bson:"query,omitempty" json:"query,omitempty"`
+	Command            BsonD  `bson:"command,omitempty" json:"command,omitempty"`
+	OriginatingCommand BsonD  `bson:"originatingCommand,omitempty" json:"originatingCommand,omitempty"`
+	UpdateObj          BsonD  `bson:"updateobj,omitempty" json:"updateobj,omitempty"`
 }
 
 func (self ExampleQuery) Db() string {
@@ -215,6 +219,25 @@ func (self ExampleQuery) ExplainCmd() bson.D {
 
 			cmd = BsonD{
 				{"insert", coll},
+			}
+		}
+	case "getmore":
+		if self.OriginatingCommand.Len() > 0 {
+			cmd = self.OriginatingCommand
+			for i := range cmd {
+				// drop $db param as it is not supported in MongoDB 3.0
+				if cmd[i].Name == "$db" {
+					if len(cmd)-1 == i {
+						cmd = cmd[:i]
+					} else {
+						cmd = append(cmd[:i], cmd[i+1:]...)
+					}
+					break
+				}
+			}
+		} else {
+			cmd = BsonD{
+				{Name: "getmore", Value: ""},
 			}
 		}
 	case "command":

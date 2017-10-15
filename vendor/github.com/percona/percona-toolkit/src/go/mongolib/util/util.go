@@ -273,40 +273,6 @@ func GetQueryField(doc proto.SystemProfile) (bson.M, error) {
 	//  	"query" : {
 	//  		"query" : {
 	//  			"$and" : [
-	//  				{
-	//  					"k" : {
-	//  						"$gt" : 1
-	//  					}
-	//  				},
-	//  				{
-	//  					"k" : {
-	//  						"$lt" : 2
-	//  					}
-	//  				},
-	//  				{
-	//  					"$or" : [
-	//  						{
-	//  							"c" : {
-	//  								"$in" : [
-	//  									/^0/,
-	//  									/^2/,
-	//  									/^4/,
-	//  									/^6/
-	//  								]
-	//  							}
-	//  						},
-	//  						{
-	//  							"pad" : {
-	//  								"$in" : [
-	//  									/9$/,
-	//  									/7$/,
-	//  									/5$/,
-	//  									/3$/
-	//  								]
-	//  							}
-	//  						}
-	//  					]
-	//  				}
 	//  			]
 	//  		},
 	//  		"orderby" : {
@@ -330,6 +296,11 @@ func GetQueryField(doc proto.SystemProfile) (bson.M, error) {
 			return ssquery, nil
 		}
 		return nil, CANNOT_GET_QUERY_ERROR
+	}
+
+	// {"ns":"test.system.js","op":"query","query":{"find":"system.js"}}
+	if len(query) == 1 && query[0].Name == "find" {
+		return bson.M{}, nil
 	}
 
 	return query.Map(), nil

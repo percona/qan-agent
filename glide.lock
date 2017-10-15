@@ -1,5 +1,5 @@
 hash: f4036d1b8a2485fb27b6fb0abd3d649ce703cc545250d67982708994df3f12f1
-updated: 2017-10-10T13:32:07.343114+02:00
+updated: 2017-10-15T14:10:05.459322+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -26,7 +26,7 @@ imports:
   - log/slow
   - query
 - name: github.com/percona/percona-toolkit
-  version: 392fa04abda986adaceb120c3bd131b8afff2574
+  version: fb86972f9ada285112af05ba9bda66355b7bca4d
   subpackages:
   - src/go/mongolib/explain
   - src/go/mongolib/fingerprinter
