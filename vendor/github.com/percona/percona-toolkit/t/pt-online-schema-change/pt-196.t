@@ -45,9 +45,7 @@ $sb->load_file('master', "$sample/pt-196.sql");
 
 ($output, $exit_status) = full_output(
    sub { pt_online_schema_change::main(@args, "$master_dsn,D=test,t=test",
-         '--execute', '--alter', 'DROP COLUMN test', '--max-load', 
-         'THREADPOOL_IDLE_THREADS=1'
-         ),
+         '--execute', '--alter', 'DROP COLUMN test', ),
       },
 );
 

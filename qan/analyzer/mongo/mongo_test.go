@@ -26,7 +26,6 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	session.SetMode(mgo.Eventual, true)
 	bi, err := session.BuildInfo()
 	require.NoError(t, err)
-	fmt.Println(bi.Version)
 	hasAdminDB, err := version.Constraint(">= 3.4", bi.Version)
 	require.NoError(t, err)
 

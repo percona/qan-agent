@@ -70,9 +70,9 @@ func TestRegularIterator(t *testing.T) {
 	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:20.214+00:00")
 	want := stats.Queries{
 		{
-			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			ID:             "95575e896c2830043dc333cb8ee61339",
 			Namespace:      "samples.col1",
-			Operation:      "query",
+			Operation:      "FIND",
 			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
@@ -86,6 +86,7 @@ func TestRegularIterator(t *testing.T) {
 		},
 	}
 	prof.Start()
+	defer prof.Stop()
 	select {
 	case queries := <-prof.QueriesChan():
 		if !reflect.DeepEqual(queries, want) {
@@ -127,9 +128,9 @@ func TestIteratorTimeout(t *testing.T) {
 	lastSeen, _ := time.Parse(time.RFC3339Nano, "2017-04-01T23:01:19.914+00:00")
 	want := stats.Queries{
 		{
-			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			ID:             "95575e896c2830043dc333cb8ee61339",
 			Namespace:      "samples.col1",
-			Operation:      "query",
+			Operation:      "FIND",
 			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      firstSeen,
@@ -144,6 +145,7 @@ func TestIteratorTimeout(t *testing.T) {
 	}
 
 	prof.Start()
+	defer prof.Stop()
 	gotTimeout := false
 
 	// Get a timeout
@@ -168,8 +170,6 @@ func TestIteratorTimeout(t *testing.T) {
 	case <-time.After(2 * time.Second):
 		t.Error("Didn't get any query after 2 seconds")
 	}
-
-	prof.Stop()
 }
 
 func TestTailIterator(t *testing.T) {
@@ -208,9 +208,9 @@ func TestTailIterator(t *testing.T) {
 
 	want := stats.Queries{
 		{
-			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			ID:             "95575e896c2830043dc333cb8ee61339",
 			Namespace:      "samples.col1",
-			Operation:      "query",
+			Operation:      "FIND",
 			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:20.214+00:00"),
@@ -223,9 +223,9 @@ func TestTailIterator(t *testing.T) {
 			ResponseLength: []float64{1.06123e+06},
 		},
 		{
-			ID:             "16196765fb4c14edb91efdbe4f5c5973",
+			ID:             "95575e896c2830043dc333cb8ee61339",
 			Namespace:      "samples.col1",
-			Operation:      "query",
+			Operation:      "FIND",
 			Query:          "{\"ns\":\"samples.col1\",\"op\":\"query\",\"query\":{\"find\":\"col1\",\"shardVersion\":[0,\"000000000000000000000000\"]}}\n",
 			Fingerprint:    "FIND col1 find",
 			FirstSeen:      parseDate("2017-04-01T23:01:19.914+00:00"),
@@ -239,6 +239,7 @@ func TestTailIterator(t *testing.T) {
 		},
 	}
 	prof.Start()
+	defer prof.Stop()
 	index := 0
 	// Since the mocked iterator has a Sleep(1500 ms) between Next methods calls,
 	// we are going to have two ticker ticks and on every tick it will return one document.
@@ -339,6 +340,7 @@ func TestCalcTotalStats(t *testing.T) {
 	prof := NewProfiler(iter, filters, nil, s)
 
 	prof.Start()
+	defer prof.Stop()
 	select {
 	case queries := <-prof.QueriesChan():
 		s := queries.CalcTotalQueriesStats(1)

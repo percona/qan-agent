@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -31,8 +30,8 @@ func (e *StatsError) Parent() error {
 
 type StatsFingerprintError StatsError
 
-// New creates new instance of stats with given fingerprinter
-func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
+// New creates new instance of stats with given Fingerprinter
+func New(fingerprinter Fingerprinter) *Stats {
 	s := &Stats{
 		fingerprinter: fingerprinter,
 	}
@@ -44,7 +43,7 @@ func New(fingerprinter fingerprinter.Fingerprinter) *Stats {
 // Stats is a collection of MongoDB statistics
 type Stats struct {
 	// dependencies
-	fingerprinter fingerprinter.Fingerprinter
+	fingerprinter Fingerprinter
 
 	// internal
 	queryInfoAndCounters map[GroupKey]*QueryInfoAndCounters
@@ -69,9 +68,9 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 	var ok bool
 
 	key := GroupKey{
-		Operation:   doc.Op,
-		Fingerprint: fp,
-		Namespace:   doc.Ns,
+		Operation:   fp.Operation,
+		Fingerprint: fp.Fingerprint,
+		Namespace:   fp.Namespace,
 	}
 	if qiac, ok = s.getQueryInfoAndCounters(key); !ok {
 		query := proto.NewExampleQuery(doc)
@@ -81,16 +80,22 @@ func (s *Stats) Add(doc proto.SystemProfile) error {
 		}
 		qiac = &QueryInfoAndCounters{
 			ID:          fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s", key)))),
-			Operation:   doc.Op,
-			Fingerprint: fp,
-			Namespace:   doc.Ns,
+			Operation:   fp.Operation,
+			Fingerprint: fp.Fingerprint,
+			Namespace:   fp.Namespace,
 			TableScan:   false,
 			Query:       string(queryBson),
 		}
 		s.setQueryInfoAndCounters(key, qiac)
 	}
 	qiac.Count++
-	qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	// docsExamined is renamed from nscannedObjects in 3.2.0.
+	// https://docs.mongodb.com/manual/reference/database-profiler/#system.profile.docsExamined
+	if doc.NscannedObjects > 0 {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.NscannedObjects))
+	} else {
+		qiac.NScanned = append(qiac.NScanned, float64(doc.DocsExamined))
+	}
 	qiac.NReturned = append(qiac.NReturned, float64(doc.Nreturned))
 	qiac.QueryTime = append(qiac.QueryTime, float64(doc.Millis))
 	qiac.ResponseLength = append(qiac.ResponseLength, float64(doc.ResponseLength))
@@ -269,7 +274,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 		queryStats.QueryTime.Pct = queryStats.QueryTime.Total * 100 / tc.QueryTime
 	}
 	if tc.Bytes > 0 {
-		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total / tc.Bytes
+		queryStats.ResponseLength.Pct = queryStats.ResponseLength.Total * 100 / tc.Bytes
 	}
 	if queryStats.Returned.Total > 0 {
 		queryStats.Ratio = queryStats.Scanned.Total / queryStats.Returned.Total
@@ -281,6 +286,7 @@ func countersToStats(query QueryInfoAndCounters, uptime int64, tc totalCounters)
 func aggregateCounters(queries []QueryInfoAndCounters) QueryInfoAndCounters {
 	qt := QueryInfoAndCounters{}
 	for _, query := range queries {
+		qt.Count += query.Count
 		qt.NScanned = append(qt.NScanned, query.NScanned...)
 		qt.NReturned = append(qt.NReturned, query.NReturned...)
 		qt.QueryTime = append(qt.QueryTime, query.QueryTime...)
