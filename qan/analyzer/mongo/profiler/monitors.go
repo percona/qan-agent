@@ -132,6 +132,8 @@ func (self *monitors) GetAll() map[string]*monitor {
 
 func listDatabases(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) ([]string, error) {
 	dialInfo.Timeout = MgoTimeoutDialInfo
+	// Disable automatic replicaSet detection, connect directly to specified server
+	dialInfo.Direct = true
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err
