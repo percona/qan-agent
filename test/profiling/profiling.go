@@ -84,6 +84,8 @@ func createSession(url string) (pmgo.SessionManager, error) {
 	}
 	dialer := pmgo.NewDialer()
 
+	// Disable automatic replicaSet detection, connect directly to specified server
+	dialInfo.Direct = true
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err
