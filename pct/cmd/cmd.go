@@ -82,7 +82,7 @@ func (c *RealCmd) Run() (output string, err error) {
 	if binfile, err := os.Executable(); err != nil {
 		basepath = path.Dir(binfile)
 		osPath := os.Getenv("PATH")
-		_ = os.Setenv("PATH", basepath+"/bin/"+string(filepath.ListSeparator)+osPath)
+		os.Setenv("PATH", basepath+"/bin/"+string(filepath.ListSeparator)+osPath)
 	}
 	cmd := exec.Command(c.name, c.args...)
 
