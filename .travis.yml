@@ -31,8 +31,6 @@ env:
 
 matrix:
   include:
-    - go: 1.7.x
-      env:
     - go: 1.9.x
       env:
     - go: master
