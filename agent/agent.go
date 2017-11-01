@@ -731,17 +731,13 @@ func (agent *Agent) handleCollectInfo() (interface{}, []error) {
 	zipFilename := path.Join(tmpDir, time.Now().Format("collect_2006-01-02_15_03_04.zip"))
 	zipFiles(zipFilename, outFiles)
 
+	// We cannot send binary data as a json payload. Let's base64 encode the zip.
 	b64data, err := base64Encode(zipFilename)
 	if err != nil {
 		return nil, []error{errors.Wrap(err, "cannot base64 encode the zip file")}
 	}
-	tmpfile, err := ioutil.TempFile("", "encode_")
-	ioutil.WriteFile(tmpfile.Name(), b64data, os.ModePerm)
-	tmpfile.Close()
-	fmt.Printf("temp encoded data file: %s\n", tmpfile.Name())
 
-	fmt.Printf("zip file name: %s\n", zipFilename)
-	//	removeFiles(append(outFiles, zipFilename))
+	removeFiles(append(outFiles, zipFilename))
 
 	return CollectInfoData{
 		Filename: zipFilename,

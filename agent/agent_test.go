@@ -19,10 +19,8 @@ package agent
 
 import (
 	"archive/zip"
-	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -663,43 +661,46 @@ func (s *AgentTestSuite) TestCollectInfo(t *C) {
 	got := test.WaitReplyCmd(s.recvChan, "CollectServicesData")
 	t.Assert(len(got), Equals, 1)
 
-	tmpfile, err := ioutil.TempFile("", "test000")
-	t.Assert(err, IsNil)
-
 	dst := struct {
 		Filename string
 		Data     []byte
 	}{}
 
-	err = json.Unmarshal(got[0].Data, &dst)
+	err := json.Unmarshal(got[0].Data, &dst)
 	t.Assert(err, IsNil)
 
+	// Te response has a zip file encoded as base64 to be able to send
+	// binary data as a json payload.
+	// Let's write that to a file for the zip library
 	tmpfile64, err := ioutil.TempFile("", "decoder_")
 	ioutil.WriteFile(tmpfile64.Name(), dst.Data, os.ModePerm)
 	tmpfile64.Close()
 
-	fmt.Printf("tmp decode: %s\n", tmpfile64.Name())
-	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(dst.Data)))
-	fmt.Printf("len: %d\n", len(dbuf))
-
-	decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(dst.Data))
-	count, err := decoder.Read(dbuf)
-	fmt.Printf("count: %d, err: %v\n", count, err)
+	tmpfile, err := ioutil.TempFile("", "test000")
 	t.Assert(err, IsNil)
 
-	fmt.Printf("tmp file name: %s\n", tmpfile.Name())
-	ioutil.WriteFile(tmpfile.Name(), dbuf, os.ModePerm)
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(dst.Data)))
+
+	size, err := base64.StdEncoding.Decode(dbuf, dst.Data)
+	t.Assert(err, IsNil)
+
+	// DecodedLen(len(dst.Data)) returns the MAXIMUM possible size but
+	// the real size is the one returned by the Decode method so, we need
+	// to write only those bytes.
+	ioutil.WriteFile(tmpfile.Name(), dbuf[:size], os.ModePerm)
 	tmpfile.Close()
 
 	z, err := zip.OpenReader(tmpfile.Name())
 	t.Assert(err, IsNil)
 	defer z.Close()
 
-	// Iterate through the files in the archive,
-	// printing some of their contents.
+	// Check the zip file has the files we requested.
+	wantFiles := []string{"pt-summary.out", "pt-mysql-summary.out"}
+	gotFiles := []string{}
 	for _, f := range z.File {
-		fmt.Printf("Contents of %s:\n", f.Name)
+		gotFiles = append(gotFiles, f.Name)
 	}
+	t.Assert(wantFiles, DeepEquals, gotFiles)
 }
 
 func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {
