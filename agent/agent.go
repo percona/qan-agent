@@ -728,11 +728,14 @@ func (agent *Agent) handleCollectInfo() (interface{}, []error) {
 		}
 	}
 
-	zipFilename := path.Join(tmpDir, time.Now().Format("collect_2006-01-02_15_03_04.zip"))
-	zipFiles(zipFilename, outFiles)
+	// This is the name we send to the API
+	zipFilename := time.Now().Format("collect_2006-01-02_15_03_04.zip")
+	// This is the local temporary file name including the temp dir path
+	zipFilePath := path.Join(tmpDir, zipFilename)
+	zipFiles(zipFilePath, outFiles)
 
 	// We cannot send binary data as a json payload. Let's base64 encode the zip.
-	b64data, err := base64Encode(zipFilename)
+	b64data, err := base64Encode(zipFilePath)
 	if err != nil {
 		return nil, []error{errors.Wrap(err, "cannot base64 encode the zip file")}
 	}
