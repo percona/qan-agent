@@ -178,7 +178,11 @@ func (m *MySQLAnalyzer) Stop() error {
 	// instance are not affected.
 	m.mrms.Remove(m.protoInstance.UUID, restartChan)
 
-	return a.Stop()
+	if nil != a {
+		return a.Stop()
+	} else {
+		return nil
+	}
 }
 
 func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
