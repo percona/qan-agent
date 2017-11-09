@@ -163,6 +163,10 @@ func (m *MySQLAnalyzer) Status() map[string]string {
 
 // Stop stops running analyzer, waits until it stops
 func (m *MySQLAnalyzer) Stop() error {
+	if m.analyzer == nil {
+		return nil
+	}
+	
 	a := m.analyzer
 	tickChan := m.tickChan
 	restartChan := m.restartChan
@@ -178,11 +182,7 @@ func (m *MySQLAnalyzer) Stop() error {
 	// instance are not affected.
 	m.mrms.Remove(m.protoInstance.UUID, restartChan)
 
-	if nil != a {
-		return a.Stop()
-	} else {
-		return nil
-	}
+	return a.Stop()
 }
 
 func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
