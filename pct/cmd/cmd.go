@@ -79,10 +79,17 @@ func NewRealCmd(name string, args ...string) *RealCmd {
 
 func (c *RealCmd) Run() (output string, err error) {
 	var basepath string
+	osPath := os.Getenv("PATH")
+	defer func() {
+		os.Setenv("PATH", osPath)
+	}()
+
 	if binfile, err := os.Executable(); err != nil {
 		basepath = path.Dir(binfile)
-		osPath := os.Getenv("PATH")
 		os.Setenv("PATH", basepath+"/bin/"+string(filepath.ListSeparator)+osPath)
+	} else {
+		basepath = path.Dir(os.Args[0])
+		os.Setenv("PATH", basepath+string(filepath.ListSeparator)+osPath)
 	}
 	cmd := exec.Command(c.name, c.args...)
 
@@ -92,10 +99,6 @@ func (c *RealCmd) Run() (output string, err error) {
 	}
 
 	resultChan := runCmd(cmd)
-	// Restore the path if it was changed
-	if basepath != "" {
-		os.Setenv("PATH", basepath)
-	}
 	select {
 	case <-time.After(c.Timeout):
 		killErr := cmd.Process.Kill()
