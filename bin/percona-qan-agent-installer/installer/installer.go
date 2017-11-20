@@ -20,7 +20,6 @@ package installer
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/nu7hatch/gouuid"
@@ -43,6 +42,7 @@ type Installer struct {
 	api          pct.APIConnector
 	instanceRepo *instance.Repo
 	agentConfig  *pc.Agent
+	hostname     string
 	flags        Flags
 	// --
 	os       *proto.Instance
@@ -60,12 +60,13 @@ func newUUID() string {
 	return strings.Replace(u4.String(), "-", "", -1)
 }
 
-func NewInstaller(basedir string, api pct.APIConnector, instanceRepo *instance.Repo, agentConfig *pc.Agent, flags Flags) (*Installer, error) {
+func NewInstaller(basedir string, api pct.APIConnector, instanceRepo *instance.Repo, agentConfig *pc.Agent, hostname string, flags Flags) (*Installer, error) {
 	installer := &Installer{
 		basedir:      basedir,
 		api:          api,
 		instanceRepo: instanceRepo,
 		agentConfig:  agentConfig,
+		hostname:     hostname,
 		flags:        flags,
 		// --
 		debug: flags.Bool["debug"],
@@ -100,11 +101,10 @@ func (i *Installer) Run() (err error) {
 }
 
 func (i *Installer) CreateOSInstance() error {
-	hostname, _ := os.Hostname()
 	i.os = &proto.Instance{
 		Subsystem: "os",
 		UUID:      newUUID(),
-		Name:      hostname,
+		Name:      i.hostname,
 	}
 	created, err := i.api.CreateInstance("/instances", i.os)
 	if err != nil {

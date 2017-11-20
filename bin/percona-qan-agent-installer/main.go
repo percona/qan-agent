@@ -43,6 +43,8 @@ var (
 	flagServerPass     string
 	flagUseSSL         bool
 	flagUseInsecureSSL bool
+
+	flagHostname string
 )
 
 var fs *flag.FlagSet
@@ -61,6 +63,8 @@ func init() {
 	fs.BoolVar(&flagUseSSL, "use-ssl", false, "Use ssl to connect to the API")
 	fs.BoolVar(&flagUseInsecureSSL, "use-insecure-ssl", false, "Use self signed certs when connecting to the API")
 
+	hostname, _ := os.Hostname()
+	fs.StringVar(&flagHostname, "hostname", hostname, "OS instance hostname, defaults to local hostname")
 }
 
 func main() {
@@ -79,14 +83,14 @@ func main() {
 	args := fs.Args()
 	if len(args) != 1 {
 		fs.PrintDefaults()
-		fmt.Printf("Got %d args, expected 1: API_HOST[:PORT]\n", len(args))
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] API_HOST[:PORT]\n", os.Args[0])
+		fmt.Printf("Got %d args, expected 1: [schema://]host[:port][path]\n", len(args))
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] [schema://]host[:port][path]\n", os.Args[0])
 		os.Exit(1)
 	}
 
 	qanAPIURL, err := parseURLParam(args[0])
 	if err != nil {
-		log.Fatal("expected arg in the form [schema://]host[:port][path]")
+		log.Fatal(err)
 	}
 
 	if qanAPIURL.Scheme == "https" {
@@ -128,7 +132,7 @@ func main() {
 	logChan := make(chan proto.LogEntry, 100)
 	logger := pct.NewLogger(logChan, "instance-repo")
 	instanceRepo := instance.NewRepo(logger, pct.Basedir.Dir("config"), api)
-	agentInstaller, err := installer.NewInstaller(flagBasedir, api, instanceRepo, agentConfig, flags)
+	agentInstaller, err := installer.NewInstaller(flagBasedir, api, instanceRepo, agentConfig, flagHostname, flags)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
