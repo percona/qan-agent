@@ -166,7 +166,7 @@ func (m *MySQLAnalyzer) Stop() error {
 	if m.analyzer == nil {
 		return nil
 	}
-	
+
 	a := m.analyzer
 	tickChan := m.tickChan
 	restartChan := m.restartChan
