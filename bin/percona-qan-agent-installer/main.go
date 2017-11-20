@@ -35,7 +35,8 @@ import (
 var (
 	flagBasedir string
 	flagDebug   bool
-	// @todo remove this flag, it's currently used by pmm as mysql=false
+
+	// TODO remove this flag (it does nothing) after PMM 1.6
 	flagMySQL bool
 
 	flagServerUser     string
