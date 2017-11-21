@@ -18,6 +18,8 @@
 package agent
 
 import (
+	"archive/zip"
+	"encoding/base64"
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -645,6 +647,60 @@ func (s *AgentTestSuite) TestGetMongoSummary(t *C) {
 	// in new version:
 	// t.Assert(string(got[0].Data), Matches, ".*# Mongo Executable.*")
 	t.Assert(string(got[0].Data), Matches, ".*# Instances.*")
+}
+
+func (s *AgentTestSuite) TestCollectInfo(t *C) {
+	cmd := &proto.Cmd{
+		Ts:      time.Now(),
+		User:    "zapp brannigan",
+		Cmd:     "CollectServicesData",
+		Service: "agent",
+	}
+	s.sendChan <- cmd
+
+	got := test.WaitReplyCmd(s.recvChan, "CollectServicesData")
+	t.Assert(len(got), Equals, 1)
+
+	dst := struct {
+		Filename string
+		Data     []byte
+	}{}
+
+	err := json.Unmarshal(got[0].Data, &dst)
+	t.Assert(err, IsNil)
+
+	// Te response has a zip file encoded as base64 to be able to send
+	// binary data as a json payload.
+	// Let's write that to a file for the zip library
+	tmpfile64, err := ioutil.TempFile("", "decoder_")
+	ioutil.WriteFile(tmpfile64.Name(), dst.Data, os.ModePerm)
+	tmpfile64.Close()
+
+	tmpfile, err := ioutil.TempFile("", "test000")
+	t.Assert(err, IsNil)
+
+	dbuf := make([]byte, base64.StdEncoding.DecodedLen(len(dst.Data)))
+
+	size, err := base64.StdEncoding.Decode(dbuf, dst.Data)
+	t.Assert(err, IsNil)
+
+	// DecodedLen(len(dst.Data)) returns the MAXIMUM possible size but
+	// the real size is the one returned by the Decode method so, we need
+	// to write only those bytes.
+	ioutil.WriteFile(tmpfile.Name(), dbuf[:size], os.ModePerm)
+	tmpfile.Close()
+
+	z, err := zip.OpenReader(tmpfile.Name())
+	t.Assert(err, IsNil)
+	defer z.Close()
+
+	// Check the zip file has the files we requested.
+	wantFiles := []string{"pt-summary.out", "pt-mysql-summary.out"}
+	gotFiles := []string{}
+	for _, f := range z.File {
+		gotFiles = append(gotFiles, f.Name)
+	}
+	t.Assert(wantFiles, DeepEquals, gotFiles)
 }
 
 func (s *AgentTestSuite) TestSetConfigApiHostname(t *C) {

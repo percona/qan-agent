@@ -18,12 +18,16 @@
 package agent
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -34,6 +38,7 @@ import (
 	"github.com/percona/qan-agent/agent/release"
 	"github.com/percona/qan-agent/pct"
 	pctCmd "github.com/percona/qan-agent/pct/cmd"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -70,6 +75,11 @@ type Agent struct {
 	status            *pct.Status
 	statusChan        chan *proto.Cmd
 	statusHandlerSync *pct.SyncChan
+}
+
+type CollectInfoData struct {
+	Filename string
+	Data     []byte
 }
 
 func NewAgent(config *pc.Agent, logger *pct.Logger, client pct.WebsocketClient, addr string, services map[string]pct.ServiceManager) *Agent {
@@ -500,6 +510,8 @@ func (agent *Agent) Handle(cmd *proto.Cmd) *proto.Reply {
 	// TODO @obsolete by query/plugin/mongo/summary
 	case "GetMongoSummary":
 		data, errs = agent.handleGetMongoSummary()
+	case "CollectServicesData":
+		data, errs = agent.handleCollectInfo()
 	default:
 		errs = append(errs, pct.UnknownCmdError{Cmd: cmd.Cmd})
 	}
@@ -696,6 +708,109 @@ func (agent *Agent) handleGetMySQLSummary() (interface{}, []error) {
 
 func (agent *Agent) handleGetMongoSummary() (interface{}, []error) {
 	return runRealCmd("pt-mongodb-summary")
+}
+
+func (agent *Agent) handleCollectInfo() (interface{}, []error) {
+	tmpDir, err := ioutil.TempDir("", "data_collection")
+	if err != nil {
+		return nil, []error{errors.Wrap(err, "cannot create temp dir for data collection")}
+	}
+
+	outFiles := []string{}
+	cmds := []string{"pt-summary", "pt-mysql-summary"}
+
+	for _, cmd := range cmds {
+		outFile := path.Join(tmpDir, cmd+".out")
+		outFiles = append(outFiles, outFile)
+		_, err := runRealCmd(cmd, "> "+outFile)
+		if err != nil && len(err) > 0 {
+			return nil, err
+		}
+	}
+
+	// This is the name we send to the API
+	zipFilename := time.Now().Format("collect_2006-01-02_15_03_04.zip")
+	// This is the local temporary file name including the temp dir path
+	zipFilePath := path.Join(tmpDir, zipFilename)
+	zipFiles(zipFilePath, outFiles)
+
+	// We cannot send binary data as a json payload. Let's base64 encode the zip.
+	b64data, err := base64Encode(zipFilePath)
+	if err != nil {
+		return nil, []error{errors.Wrap(err, "cannot base64 encode the zip file")}
+	}
+
+	removeFiles(append(outFiles, zipFilename))
+
+	return CollectInfoData{
+		Filename: zipFilename,
+		Data:     b64data,
+	}, nil
+}
+
+func removeFiles(filenames []string) error {
+	for _, filename := range filenames {
+		err := os.Remove(filename)
+		if err != nil {
+			return errors.Wrap(err, fmt.Sprintf("cannot remove temporary file %s", filename))
+		}
+	}
+	return nil
+}
+
+func base64Encode(filename string) ([]byte, error) {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot open zip file")
+	}
+	var dst bytes.Buffer
+	w := base64.NewEncoder(base64.StdEncoding, &dst)
+	w.Write(data)
+	w.Close()
+
+	return dst.Bytes(), nil
+}
+
+func zipFiles(filename string, files []string) error {
+	newfile, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer newfile.Close()
+
+	zipWriter := zip.NewWriter(newfile)
+	defer zipWriter.Close()
+
+	for _, file := range files {
+
+		zipfile, err := os.Open(file)
+		if err != nil {
+			return err
+		}
+		defer zipfile.Close()
+
+		info, err := zipfile.Stat()
+		if err != nil {
+			return err
+		}
+
+		header, err := zip.FileInfoHeader(info)
+		if err != nil {
+			return err
+		}
+
+		header.Method = zip.Deflate
+
+		writer, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return err
+		}
+		_, err = io.Copy(writer, zipfile)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 //---------------------------------------------------------------------------

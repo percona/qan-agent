@@ -18,6 +18,8 @@
 package cmd_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/percona/qan-agent/pct/cmd"
@@ -39,4 +41,33 @@ func (s *TestSuite) TestCmdNotFound(t *C) {
 	output, err := unknownCmd.Run()
 	t.Assert(output, Equals, "")
 	t.Assert(err, Equals, cmd.ErrNotFound)
+}
+
+func (s *TestSuite) TestCmdRedirectOutput(t *C) {
+	// we are going to run cat file > file1
+	// 1st step is to create a temp file and put some content in it
+	content := []byte("I am the man with no name. Zapp Brannigan, at your service.")
+	tmpfile, err := ioutil.TempFile("", "test000")
+	t.Assert(err, Equals, nil)
+
+	defer os.Remove(tmpfile.Name())
+
+	_, err = tmpfile.Write(content)
+	t.Assert(err, IsNil)
+
+	err = tmpfile.Close()
+	t.Assert(err, IsNil)
+
+	// This is the file where we are going to redirect cat's output
+	tmpRedirFile, err := ioutil.TempFile("", "test000")
+	t.Assert(err, IsNil)
+
+	cat := cmd.NewRealCmd("cat", tmpfile.Name(), "> "+tmpRedirFile.Name())
+	output, err := cat.Run()
+	t.Assert(output, Not(Equals), "")
+	t.Assert(err, IsNil)
+
+	gotContent, err := ioutil.ReadFile(output)
+	t.Assert(string(content), Equals, string(gotContent))
+	os.Remove(output)
 }

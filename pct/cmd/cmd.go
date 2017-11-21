@@ -23,6 +23,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -91,14 +92,36 @@ func (c *RealCmd) Run() (output string, err error) {
 		basepath = path.Dir(os.Args[0])
 		os.Setenv("PATH", basepath+string(filepath.ListSeparator)+osPath)
 	}
-	cmd := exec.Command(c.name, c.args...)
 
+	// Redirection using > is a shell/bash feature, not part of a command
+	// Here we try to detect output redirection and if there is a redirection,
+	// we need to create the output file and set cmd.Stout to that file
+	args := []string{}
+	outFilename := ""
+	var outfile *os.File
+
+	for _, arg := range c.args {
+		if strings.HasPrefix(arg, ">") {
+			outFilename = strings.TrimSpace(strings.TrimPrefix(arg, ">"))
+			break
+		}
+		args = append(args, arg)
+	}
+	cmd := exec.Command(c.name, args...)
+	if outFilename != "" {
+		outfile, err = os.Create(outFilename)
+		if err != nil {
+			return "", err
+		}
+		defer outfile.Close()
+		cmd.Stdout = outfile
+	}
 	// Workaround for "HOME: parameter not set"
 	if os.Getenv("HOME") == "" {
 		cmd.Env = append(os.Environ(), "HOME=/root")
 	}
 
-	resultChan := runCmd(cmd)
+	resultChan := runCmd(cmd, outFilename)
 	select {
 	case <-time.After(c.Timeout):
 		killErr := cmd.Process.Kill()
@@ -122,12 +145,20 @@ func (c *RealCmd) Run() (output string, err error) {
 	}
 }
 
-func runCmd(cmd *exec.Cmd) (resultChan chan result) {
+func runCmd(cmd *exec.Cmd, redirectFile string) (resultChan chan result) {
 	// Below channels has buffer
 	// because we might get data before we would be waiting on this channel
 	resultChan = make(chan result, 1)
 	go func() {
-		output, err := cmd.CombinedOutput()
+		var output []byte
+		var err error
+
+		if redirectFile == "" {
+			output, err = cmd.CombinedOutput()
+		} else {
+			output = []byte(redirectFile)
+			err = cmd.Run()
+		}
 		select {
 		case resultChan <- result{output: string(output), err: err}:
 		default:
