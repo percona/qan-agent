@@ -163,6 +163,10 @@ func (m *MySQLAnalyzer) Status() map[string]string {
 
 // Stop stops running analyzer, waits until it stops
 func (m *MySQLAnalyzer) Stop() error {
+	if m.analyzer == nil {
+		return nil
+	}
+
 	a := m.analyzer
 	tickChan := m.tickChan
 	restartChan := m.restartChan

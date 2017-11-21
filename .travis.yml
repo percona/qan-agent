@@ -4,7 +4,7 @@ sudo: required
 language: go
 
 go:
-  - 1.8.x
+  - 1.9.x
 
 services:
   - docker
@@ -31,10 +31,10 @@ env:
 
 matrix:
   include:
-    - go: 1.9.x
-      env:
     - go: master
       env:
+  allow_failures:
+    - go: master
 
 addons:
   apt:

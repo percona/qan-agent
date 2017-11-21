@@ -66,6 +66,24 @@ func (self *monitors) MonitorAll() error {
 		dialInfo := &pmgo.DialInfo{}
 		*dialInfo = *self.dialInfo
 
+		// When using `mongodb://admin:admin@localhost:27017/admin_db` and with databases [abc,test,xyz],
+		// we should authenticate to each [abc,test,xyz] database through `admin_db`.
+		// Instead we authenticated through database we were accessing e.g. for `abc` we authenticated through `abc`.
+		//
+		// The reason is that `ParseURL` doesn't set dialInfo.Source to default value when Source was not provided.
+		// Default authentication database is determined when calling `DialWithInfo` but still Source is left empty.
+		// https://github.com/go-mgo/mgo/issues/495
+		//
+		// If Source is empty it defaults to the value of Database, if that is set, or "admin" otherwise.
+		sourcedb := dialInfo.Source
+		if sourcedb == "" {
+			sourcedb = dialInfo.Database
+			if sourcedb == "" {
+				sourcedb = "admin"
+			}
+		}
+		dialInfo.Source = sourcedb
+
 		// set database name for connection
 		dialInfo.Database = dbName
 
@@ -132,6 +150,8 @@ func (self *monitors) GetAll() map[string]*monitor {
 
 func listDatabases(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) ([]string, error) {
 	dialInfo.Timeout = MgoTimeoutDialInfo
+	// Disable automatic replicaSet detection, connect directly to specified server
+	dialInfo.Direct = true
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err

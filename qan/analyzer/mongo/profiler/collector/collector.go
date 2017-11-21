@@ -131,6 +131,8 @@ func getProfile(
 	dialer pmgo.Dialer,
 ) string {
 	dialInfo.Timeout = MgoTimeoutDialInfo
+	// Disable automatic replicaSet detection, connect directly to specified server
+	dialInfo.Direct = true
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return fmt.Sprintf("%s", err)
@@ -228,6 +230,8 @@ func connectAndCollect(
 	ready *sync.Cond,
 ) {
 	dialInfo.Timeout = MgoTimeoutDialInfo
+	// Disable automatic replicaSet detection, connect directly to specified server
+	dialInfo.Direct = true
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return
@@ -237,13 +241,12 @@ func connectAndCollect(
 	session.SetSyncTimeout(MgoTimeoutSessionSync)
 	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
-	now := bson.Now()
 	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
 
-	collection := session.DB(dialInfo.Database).C("system.profile")
 	for {
+		collection := session.DB(dialInfo.Database).C("system.profile")
 		query := bson.M{
-			"ts": bson.M{"$gt": now},
+			"ts": bson.M{"$gt": bson.Now()},
 		}
 		collect(
 			collection,
@@ -261,6 +264,11 @@ func connectAndCollect(
 		// wait some time before retrying
 		case <-time.After(1 * time.Second):
 		}
+
+		// Refresh the session after an error
+		// https://groups.google.com/forum/#!topic/mgo-users/XM0rc6p-V-8
+		// https://github.com/go-mgo/mgo/issues/49
+		session.Refresh()
 	}
 }
 

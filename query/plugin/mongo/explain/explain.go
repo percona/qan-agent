@@ -41,6 +41,8 @@ func Explain(dsn, db, query string) (*proto.ExplainResult, error) {
 	dialer := pmgo.NewDialer()
 
 	dialInfo.Timeout = MgoTimeoutDialInfo
+	// Disable automatic replicaSet detection, connect directly to specified server
+	dialInfo.Direct = true
 	session, err := dialer.DialWithInfo(dialInfo)
 	if err != nil {
 		return nil, err
