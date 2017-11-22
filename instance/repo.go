@@ -153,7 +153,7 @@ func (r *Repo) Get(uuid string, cache bool) (proto.Instance, error) {
 
 	// Use low-level add() because we've already locked the mutex.
 	if err := r.add(in, cache); err != nil {
-		return in, fmt.Errorf("mFailed to add new instance: %s", err)
+		return in, fmt.Errorf("Failed to add new instance %s: %s", uuid, err)
 	}
 
 	return in, nil
