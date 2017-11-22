@@ -127,7 +127,7 @@ func main() {
 	// -ping and exit.
 	if flagPing {
 		t0 := time.Now()
-		code, err := pct.Ping(apiURL, nil)
+		code, err := pct.Ping(apiURL)
 		d := time.Now().Sub(t0)
 		if err != nil || code != 200 {
 			fmt.Printf("Ping FAIL (%d %d %s)", d, code, err)
