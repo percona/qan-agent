@@ -334,7 +334,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	w.Setup(i2)
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
-	expectSet = append(expectSet, "FLUSH SLOW LOGS")
+	expectSet = append(expectSet, "FLUSH NO_WRITE_TO_BINLOG SLOW LOGS")
 	assert.Equal(t, expectSet, gotSet)
 
 	// When rotated, the interval end offset is extended to end of file.
@@ -432,7 +432,7 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	w.Setup(i2)
 	gotSet = s.nullmysql.GetExec()
 	expectSet := append(config.Stop, config.Start...)
-	expectSet = append(expectSet, "FLUSH SLOW LOGS")
+	expectSet = append(expectSet, "FLUSH NO_WRITE_TO_BINLOG SLOW LOGS")
 	assert.Equal(t, expectSet, gotSet)
 
 	// When rotated, the interval end offset is extended to end of file.
@@ -515,7 +515,7 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 			Set: "SET GLOBAL slow_query_log=0",
 		},
 		{
-			Set: "FLUSH SLOW LOGS",
+			Set: "FLUSH NO_WRITE_TO_BINLOG SLOW LOGS",
 		},
 		{
 			Set:    fmt.Sprintf("SET GLOBAL slow_query_log_file='%s'", slowlogFile),
@@ -546,7 +546,7 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 		},
 		Stop: []string{
 			"SET GLOBAL slow_query_log=0",
-			"FLUSH SLOW LOGS",
+			"FLUSH NO_WRITE_TO_BINLOG SLOW LOGS",
 		},
 		CollectFrom: "slowlog",
 	}

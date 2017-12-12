@@ -416,7 +416,7 @@ func (w *Worker) rotateSlowLog(interval *iter.Interval) error {
 		return err
 	}
 
-	if err := w.mysqlConn.Exec([]string{"FLUSH SLOW LOGS"}); err != nil {
+	if err := w.mysqlConn.Exec([]string{"FLUSH NO_WRITE_TO_BINLOG SLOW LOGS"}); err != nil {
 		// MySQL 5.1 support.
 		if err := w.mysqlConn.Exec([]string{"FLUSH LOGS"}); err != nil {
 			return err
