@@ -488,7 +488,6 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		UUID:        "abc-123-def",
 		ApiHostname: "localhost",
 		Keepalive:   DEFAULT_KEEPALIVE,
-		PidFile:     DEFAULT_PIDFILE,
 	}
 	assert.Equal(t, expect, got)
 
@@ -508,7 +507,6 @@ func (s *AgentTestSuite) TestLoadConfig(t *C) {
 		ApiHostname: "agent hostname",
 		UUID:        "agent uuid",
 		Keepalive:   DEFAULT_KEEPALIVE,
-		PidFile:     "pid file",
 	}
 	assert.Equal(t, expect, got)
 }

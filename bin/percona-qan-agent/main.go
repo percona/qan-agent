@@ -63,8 +63,12 @@ func init() {
 	golog.SetFlags(golog.Ldate | golog.Ltime | golog.Lmicroseconds | golog.Lshortfile)
 	golog.SetOutput(os.Stdout)
 
-	flag.StringVar(&flagBasedir, "basedir", pct.DEFAULT_BASEDIR, "Agent basedir")
+	// PMM-1842: TODO: pid-file is now dummy flag to keep backward compatibility, it's not used anymore.
+	// Remove it after we decide v1.0.5 is old enough to not be supported.
+	// https://github.com/percona/pmm-client/commit/2dd9f028e6f8930f9f0185d13f2053d3683b8e64#diff-10f4cb4dc1c681a08cdba7b20c30b3f1
 	flag.StringVar(&flagPidFile, "pid-file", "", "PID file")
+
+	flag.StringVar(&flagBasedir, "basedir", pct.DEFAULT_BASEDIR, "Agent basedir")
 	flag.StringVar(&flagListen, "listen", agent.DEFAULT_LISTEN, "Agent interface address")
 	flag.BoolVar(&flagPing, "ping", false, "Ping API")
 	flag.BoolVar(&flagVersion, "version", false, "Print version")
@@ -137,21 +141,7 @@ func main() {
 	// Run the agent
 	// //////////////////////////////////////////////////////////////////////
 
-	// Create PID file or die trying.
-	var pidFile *pct.PidFile
-	if flagPidFile != "" {
-		pidFile = pct.NewPidFile()
-		if err := pidFile.Set(flagPidFile); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-
 	err = run(agentConfig) // run the agent
-
-	if flagPidFile != "" {
-		pidFile.Remove() // always remove PID file
-	}
 
 	if err != nil {
 		golog.Println(err)
