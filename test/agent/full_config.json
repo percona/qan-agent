@@ -1,5 +1,5 @@
 {
 	"ApiHostname": "agent hostname",
 	"ApiKey":      "api key",
-	"UUID":   "agent uuid",
+	"UUID":   "agent uuid"
 }
