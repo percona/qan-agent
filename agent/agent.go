@@ -43,7 +43,6 @@ import (
 
 const (
 	DEFAULT_KEEPALIVE = 76
-	DEFAULT_PIDFILE   = "percona-agent.pid"
 	DEFAULT_LISTEN    = "127.0.0.1:9000"
 )
 
@@ -615,8 +614,7 @@ func (agent *Agent) GetDefaults(cmd *proto.Cmd) (interface{}, []error) {
 
 	defaults := map[string]map[string]interface{}{
 		"bin": {
-			"pid-file": DEFAULT_PIDFILE,
-			"basedir":  pct.DEFAULT_BASEDIR,
+			"basedir": pct.DEFAULT_BASEDIR,
 		},
 		"agent": {
 			"KeepAlive": DEFAULT_KEEPALIVE,

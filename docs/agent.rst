@@ -119,8 +119,6 @@ ServerPassword              Password for the API server
 
 Keepalive       76          How often to ping API on cmd websocket
 
-PidFile         agent.pid   PID file (relative to basedir)
-
 Links                       API links sent by API; do not edit, but safe to remove (agent gets/sets them when it connects to API)
 =============== ==========  =========================================
 
