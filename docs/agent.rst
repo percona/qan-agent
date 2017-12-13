@@ -4,41 +4,6 @@ Percona Query Analytics Agent
 
 Percona Query Analytics Agent is the client-side tool for collecting and sending MySQL query metrics to a Percona Datastore. It uses either the MySQL slow log or Performance Schema. It is a static binary with no external dependencies.
 
-Install
-=======
-
-Requirements
-------------
-
-* Linux OS (Debian, Ubuntu, CentOS, Red Hat, etc.)
-* Root/sudo access
-* Outbound HTTP and websocket connections to a Percona Datastore (port 9001 by default)
-* MySQL 5.1 or later for slow log
-* MySQL 5.6.9 or later for Performance Schema
-
-Note: the agent must run as root because the MySQL slow log file has restricted permissions.
-
-Quick
------
-
-As root on a server running MySQL locally:
-
-.. code-block:: bash
-
-    ./install <datastore hostname>
-
-The only required argument is the Percona Datastore hostname (with optional ``:PORT`` suffix) to use.
-
-For the quick install to work, the installer must able to auto-detect and connect to the local MySQL instance with grant privileges to create a MySQL user for the agent. This usually requires that your MySQL credentials are set in ``~/.my.cnf`` and MySQL is running on its standard port (3306) or has a detectable socket file. Often times, the following command is needed:
-
-.. code-block:: bash
-
-    ./install -user=root -pass=root <datastore hostname>
-
-Where ``root`` is an actual user and password with grant privileges. (Note: those are single '-' not double.)
-
-Run ``./install help`` to see all command line options.
-
 Logging
 =======
 
