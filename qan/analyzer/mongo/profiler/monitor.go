@@ -8,6 +8,7 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/collector"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/parser"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/sender"
@@ -16,26 +17,29 @@ import (
 func NewMonitor(
 	dialInfo *pmgo.DialInfo,
 	dialer pmgo.Dialer,
+	aggregator *aggregator.Aggregator,
 	logger *pct.Logger,
 	spool data.Spooler,
 	config pc.QAN,
 ) *monitor {
 	return &monitor{
-		dialInfo: dialInfo,
-		dialer:   dialer,
-		logger:   logger,
-		spool:    spool,
-		config:   config,
+		dialInfo:   dialInfo,
+		dialer:     dialer,
+		aggregator: aggregator,
+		logger:     logger,
+		spool:      spool,
+		config:     config,
 	}
 }
 
 type monitor struct {
 	// dependencies
-	dialInfo *pmgo.DialInfo
-	dialer   pmgo.Dialer
-	spool    data.Spooler
-	logger   *pct.Logger
-	config   pc.QAN
+	dialInfo   *pmgo.DialInfo
+	dialer     pmgo.Dialer
+	aggregator *aggregator.Aggregator
+	spool      data.Spooler
+	logger     *pct.Logger
+	config     pc.QAN
 
 	// internal services
 	services []services
@@ -73,7 +77,7 @@ func (self *monitor) Start() error {
 	self.services = append(self.services, c)
 
 	// create parser and start it
-	p := parser.New(docsChan, self.config)
+	p := parser.New(docsChan, self.aggregator)
 	reportChan, err := p.Start()
 	if err != nil {
 		return err

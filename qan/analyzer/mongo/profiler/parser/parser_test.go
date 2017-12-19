@@ -8,6 +8,7 @@ import (
 	pm "github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,10 +18,11 @@ func TestNew(t *testing.T) {
 	pcQan := pc.QAN{
 		Interval: 60,
 	}
+	a := aggregator.New(time.Now(), pcQan)
 
 	type args struct {
-		docsChan <-chan pm.SystemProfile
-		config   pc.QAN
+		docsChan   <-chan pm.SystemProfile
+		aggregator *aggregator.Aggregator
 	}
 	tests := []struct {
 		name string
@@ -30,16 +32,16 @@ func TestNew(t *testing.T) {
 		{
 			name: "TestNew",
 			args: args{
-				docsChan: docsChan,
-				config:   pcQan,
+				docsChan:   docsChan,
+				aggregator: a,
 			},
-			want: New(docsChan, pcQan),
+			want: New(docsChan, a),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.docsChan, tt.args.config); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New(%v, %v) = %v, want %v", tt.args.docsChan, tt.args.config, got, tt.want)
+			if got := New(tt.args.docsChan, tt.args.aggregator); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("New(%v, %v) = %v, want %v", tt.args.docsChan, tt.args.aggregator, got, tt.want)
 			}
 		})
 	}
@@ -50,8 +52,9 @@ func TestParser_StartStop(t *testing.T) {
 	pcQan := pc.QAN{
 		Interval: 60,
 	}
+	a := aggregator.New(time.Now(), pcQan)
 
-	parser1 := New(docsChan, pcQan)
+	parser1 := New(docsChan, a)
 	reportChan1, err := parser1.Start()
 	require.NoError(t, err)
 	assert.NotNil(t, reportChan1)
@@ -73,9 +76,10 @@ func TestParser_running(t *testing.T) {
 	pcQan := pc.QAN{
 		Interval: 1,
 	}
+	a := aggregator.New(time.Now(), pcQan)
 	d := time.Duration(pcQan.Interval) * time.Second
 
-	parser1 := New(docsChan, pcQan)
+	parser1 := New(docsChan, a)
 	reportChan1, err := parser1.Start()
 	require.NoError(t, err)
 	assert.NotNil(t, reportChan1)

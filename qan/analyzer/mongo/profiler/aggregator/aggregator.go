@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/percona/go-mysql/event"
@@ -13,8 +14,19 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
+const (
+	DefaultInterval       = 60 // in seconds
+	DefaultExampleQueries = true
+)
+
 // New returns configured *Aggregator
 func New(timeStart time.Time, config pc.QAN) *Aggregator {
+	// verify config
+	if config.Interval == 0 {
+		config.Interval = DefaultInterval
+		config.ExampleQueries = DefaultExampleQueries
+	}
+
 	aggregator := &Aggregator{
 		config: config,
 	}
@@ -42,10 +54,16 @@ type Aggregator struct {
 	timeEnd   time.Time
 	d         time.Duration
 	stats     *stats.Stats
+
+	// make it safe to use from different threads
+	sync.Mutex
 }
 
 // Add aggregates new system.profile document and returns report if it's ready
 func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
+	self.Lock()
+	defer self.Unlock()
+
 	ts := doc.Ts.UTC()
 
 	// skip old metrics
@@ -53,11 +71,11 @@ func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
 		return nil, nil
 	}
 
-	return self.Interval(ts), self.stats.Add(doc)
+	return self.interval(ts), self.stats.Add(doc)
 }
 
-// Interval sets interval if necessary and returns *qan.Report for old interval if not empty
-func (self *Aggregator) Interval(ts time.Time) *qan.Report {
+// interval sets interval if necessary and returns *qan.Report for old interval if not empty
+func (self *Aggregator) interval(ts time.Time) *qan.Report {
 	// if time is before interval end then we are still in the same interval, nothing to do
 	if ts.Before(self.timeEnd) {
 		return nil

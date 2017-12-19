@@ -6,28 +6,25 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	mstats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
-	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 )
 
-const (
-	DefaultInterval       = 60 // in seconds
-	DefaultExampleQueries = true
-)
-
-func New(docsChan <-chan proto.SystemProfile, config pc.QAN) *Parser {
+func New(
+	docsChan <-chan proto.SystemProfile,
+	aggregator *aggregator.Aggregator,
+) *Parser {
 	return &Parser{
-		docsChan: docsChan,
-		config:   config,
+		docsChan:   docsChan,
+		aggregator: aggregator,
 	}
 }
 
 type Parser struct {
 	// dependencies
-	docsChan <-chan proto.SystemProfile
-	config   pc.QAN
+	docsChan   <-chan proto.SystemProfile
+	aggregator *aggregator.Aggregator
 
 	// provides
 	reportChan chan *qan.Report
@@ -56,12 +53,6 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
 
-	// verify config
-	if self.config.Interval == 0 {
-		self.config.Interval = DefaultInterval
-		self.config.ExampleQueries = DefaultExampleQueries
-	}
-
 	// set status
 	stats := &stats{}
 	self.status = status.New(stats)
@@ -74,7 +65,7 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 		self.wg,
 		self.docsChan,
 		self.reportChan,
-		self.config,
+		self.aggregator,
 		self.doneChan,
 		stats,
 	)
@@ -125,19 +116,16 @@ func start(
 	wg *sync.WaitGroup,
 	docsChan <-chan proto.SystemProfile,
 	reportChan chan<- *qan.Report,
-	config pc.QAN,
+	aggregator *aggregator.Aggregator,
 	doneChan <-chan struct{},
 	stats *stats,
 ) {
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	// create aggregator which collects documents and aggregates them into qan report
-	a := aggregator.New(time.Now(), config)
-
 	// update stats
-	stats.IntervalStart.Set(a.TimeStart().Format("2006-01-02 15:04:05"))
-	stats.IntervalEnd.Set(a.TimeEnd().Format("2006-01-02 15:04:05"))
+	stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
+	stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
 	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
 	for {
 		// check if we should shutdown
@@ -159,7 +147,7 @@ func start(
 			stats.InDocs.Add(1)
 
 			// aggregate the doc
-			report, err := a.Add(doc)
+			report, err := aggregator.Add(doc)
 			switch err.(type) {
 			case nil:
 				stats.OkDocs.Add(1)
@@ -182,8 +170,8 @@ func start(
 					return
 				}
 				// update stats
-				stats.IntervalStart.Set(a.TimeStart().Format("2006-01-02 15:04:05"))
-				stats.IntervalEnd.Set(a.TimeEnd().Format("2006-01-02 15:04:05"))
+				stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
+				stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
 			}
 
 		// doneChan needs to be repeated in this select as docsChan can block

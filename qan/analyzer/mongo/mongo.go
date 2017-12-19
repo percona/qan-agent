@@ -12,7 +12,7 @@ import (
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/parser"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 )
 
 func New(ctx context.Context, protoInstance proto.Instance) analyzer.Analyzer {
@@ -132,8 +132,8 @@ func (m *MongoAnalyzer) Stop() error {
 func (m *MongoAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 	// verify config
 	if m.config.Interval == 0 {
-		m.config.Interval = parser.DefaultInterval
-		m.config.ExampleQueries = parser.DefaultExampleQueries
+		m.config.Interval = aggregator.DefaultInterval
+		m.config.ExampleQueries = aggregator.DefaultExampleQueries
 	}
 
 	return map[string]interface{}{

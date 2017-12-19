@@ -9,6 +9,7 @@ import (
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 )
 
 func New(
@@ -18,6 +19,9 @@ func New(
 	spool data.Spooler,
 	config pc.QAN,
 ) *profiler {
+	// create aggregator which collects documents and aggregates them into qan report
+	aggregator := aggregator.New(time.Now(), config)
+
 	f := func(
 		dialInfo *pmgo.DialInfo,
 		dialer pmgo.Dialer,
@@ -25,11 +29,13 @@ func New(
 		return NewMonitor(
 			dialInfo,
 			dialer,
+			aggregator,
 			logger,
 			spool,
 			config,
 		)
 	}
+
 	m := NewMonitors(
 		dialInfo,
 		dialer,
