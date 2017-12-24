@@ -50,7 +50,7 @@ type ConnectionConfig struct {
 
 type APIConnector interface {
 	Connect(hostname, basePath, agentUuid string) error
-	Init(hostname string, headers map[string]string) (code int, err error)
+	Init(hostname string) (code int, err error)
 	Get(url string) (int, []byte, error)
 	Post(url string, data []byte) (*http.Response, []byte, error)
 	Put(url string, data []byte) (*http.Response, []byte, error)
@@ -135,8 +135,8 @@ func (a *API) GetConnectionConfig() ConnectionConfig {
 	}
 }
 
-func Ping(hostname string, headers map[string]string) (int, error) {
-	url := hostname + "/ping"
+func Ping(apiURL string) (int, error) {
+	url := apiURL + "/ping"
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return 0, fmt.Errorf("Ping %s error: http.NewRequest: %s", url, err)
@@ -144,11 +144,6 @@ func Ping(hostname string, headers map[string]string) (int, error) {
 
 	req.Header.Add("X-Percona-Agent-Version", release.VERSION)
 	req.Header.Add("X-Percona-Protocol-Version", proto.VERSION)
-	if headers != nil {
-		for k, v := range headers {
-			req.Header.Add(k, v)
-		}
-	}
 
 	client := &http.Client{
 		Transport: &http.Transport{
@@ -235,8 +230,8 @@ func (a *API) Connect(hostname, basePath, agentUuid string) error {
 	return nil
 }
 
-func (a *API) Init(hostname string, headers map[string]string) (int, error) {
-	code, err := Ping(hostname, headers)
+func (a *API) Init(hostname string) (int, error) {
+	code, err := Ping(hostname)
 	if err != nil {
 		return 0, err
 	}

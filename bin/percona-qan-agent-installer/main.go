@@ -117,7 +117,7 @@ func main() {
 	requestURL := qanAPIURL.String()
 	fmt.Printf("API host: %s\n", requestURL)
 
-	if _, err := api.Init(requestURL, nil); err != nil {
+	if _, err := api.Init(requestURL); err != nil {
 		fmt.Printf("Cannot connect to API %s: %s\n", requestURL, err)
 		os.Exit(1)
 	}
