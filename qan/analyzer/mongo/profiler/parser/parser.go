@@ -49,7 +49,7 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 
 	// create new channels over which we will communicate to...
 	// ... outside world by sending collected docs
-	self.reportChan = make(chan *qan.Report)
+	self.reportChan = make(chan *qan.Report, 100)
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
 

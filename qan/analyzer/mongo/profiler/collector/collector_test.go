@@ -15,10 +15,12 @@ func TestNew(t *testing.T) {
 
 	dialer := pmgo.NewDialer()
 	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
+	session, err := dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
 
 	type args struct {
-		dialInfo *pmgo.DialInfo
-		dialer   pmgo.Dialer
+		session pmgo.SessionManager
+		dbName  string
 	}
 	tests := []struct {
 		name string
@@ -28,19 +30,19 @@ func TestNew(t *testing.T) {
 		{
 			name: "127.0.0.1:27017",
 			args: args{
-				dialInfo: dialInfo,
-				dialer:   dialer,
+				session: session,
+				dbName:  "",
 			},
 			want: &Collector{
-				dialInfo: dialInfo,
-				dialer:   dialer,
+				session: session,
+				dbName:  "",
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.dialInfo, tt.args.dialer); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("New(%v, %v) = %v, want %v", tt.args.dialInfo, tt.args.dialer, got, tt.want)
+			if got := New(tt.args.session, tt.args.dbName); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("New(%v, %v) = %v, want %v", tt.args.session, tt.args.dbName, got, tt.want)
 			}
 		})
 	}
@@ -51,8 +53,10 @@ func TestCollector_StartStop(t *testing.T) {
 
 	dialer := pmgo.NewDialer()
 	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
+	session, err := dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
 
-	collector1 := New(dialInfo, dialer)
+	collector1 := New(session, "")
 	docsChan, err := collector1.Start()
 	require.NoError(t, err)
 	assert.NotNil(t, docsChan)
@@ -65,13 +69,15 @@ func TestCollector_Stop(t *testing.T) {
 
 	dialer := pmgo.NewDialer()
 	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
+	session, err := dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
 
 	// #1
-	notStarted := New(dialInfo, dialer)
+	notStarted := New(session, "")
 
 	// #2
-	started := New(dialInfo, dialer)
-	_, err := started.Start()
+	started := New(session, "")
+	_, err = started.Start()
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -108,8 +114,10 @@ func TestCollector(t *testing.T) {
 
 	dialer := pmgo.NewDialer()
 	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
+	session, err := dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
 
-	collector := New(dialInfo, dialer)
+	collector := New(session, "")
 	docsChan, err := collector.Start()
 	require.NoError(t, err)
 	defer collector.Stop()

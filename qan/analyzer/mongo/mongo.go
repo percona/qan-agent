@@ -86,7 +86,10 @@ func (m *MongoAnalyzer) Start() error {
 		m.spool,
 		m.config,
 	)
-	m.profiler.Start()
+
+	if err := m.profiler.Start(); err != nil {
+		return err
+	}
 
 	m.running = true
 	return nil

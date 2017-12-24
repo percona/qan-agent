@@ -1,11 +1,11 @@
 package profiler
 
 import (
+	"log"
 	"sync"
 	"time"
 
 	"github.com/percona/pmgo"
-	"gopkg.in/mgo.v2"
 )
 
 const (
@@ -15,27 +15,24 @@ const (
 )
 
 type newMonitor func(
-	dialInfo *pmgo.DialInfo,
-	dialer pmgo.Dialer,
+	session pmgo.SessionManager,
+	dbName string,
 ) *monitor
 
 func NewMonitors(
-	dialInfo *pmgo.DialInfo,
-	dialer pmgo.Dialer,
+	session pmgo.SessionManager,
 	newMonitor newMonitor,
 ) *monitors {
 	return &monitors{
-		dialInfo:   dialInfo,
-		dialer:     dialer,
-		monitors:   map[string]*monitor{},
+		session:    session,
 		newMonitor: newMonitor,
+		monitors:   map[string]*monitor{},
 	}
 }
 
 type monitors struct {
 	// dependencies
-	dialInfo   *pmgo.DialInfo
-	dialer     pmgo.Dialer
+	session    pmgo.SessionManager
 	newMonitor newMonitor
 
 	// monitors
@@ -47,11 +44,18 @@ type monitors struct {
 
 func (self *monitors) MonitorAll() error {
 	databases := map[string]struct{}{}
-	databasesSlice, err := listDatabases(self.dialInfo, self.dialer)
+	databasesSlice, err := self.listDatabases()
 	if err != nil {
 		return err
 	}
 	for _, dbName := range databasesSlice {
+		// Skip admin and local databases to avoid collecting queries from replication and mongodb_exporter
+		//switch dbName {
+		//case "admin", "local":
+		//	continue
+		//default:
+		//}
+
 		// change slice to map for easier lookup
 		databases[dbName] = struct{}{}
 
@@ -60,40 +64,15 @@ func (self *monitors) MonitorAll() error {
 			continue
 		}
 
-		// if database is not monitored yet then we need to create new profiler
-
-		// create copy of dialInfo
-		dialInfo := &pmgo.DialInfo{}
-		*dialInfo = *self.dialInfo
-
-		// When using `mongodb://admin:admin@localhost:27017/admin_db` and with databases [abc,test,xyz],
-		// we should authenticate to each [abc,test,xyz] database through `admin_db`.
-		// Instead we authenticated through database we were accessing e.g. for `abc` we authenticated through `abc`.
-		//
-		// The reason is that `ParseURL` doesn't set dialInfo.Source to default value when Source was not provided.
-		// Default authentication database is determined when calling `DialWithInfo` but still Source is left empty.
-		// https://github.com/go-mgo/mgo/issues/495
-		//
-		// If Source is empty it defaults to the value of Database, if that is set, or "admin" otherwise.
-		sourcedb := dialInfo.Source
-		if sourcedb == "" {
-			sourcedb = dialInfo.Database
-			if sourcedb == "" {
-				sourcedb = "admin"
-			}
-		}
-		dialInfo.Source = sourcedb
-
-		// set database name for connection
-		dialInfo.Database = dbName
-
-		// create new monitor and start it
+		// if database is not monitored yet then we need to create new monitor
 		m := self.newMonitor(
-			dialInfo,
-			self.dialer,
+			self.session,
+			dbName,
 		)
+		// ... and start it
 		err := m.Start()
 		if err != nil {
+			log.Println(err)
 			return err
 		}
 
@@ -148,18 +127,8 @@ func (self *monitors) GetAll() map[string]*monitor {
 	return list
 }
 
-func listDatabases(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) ([]string, error) {
-	dialInfo.Timeout = MgoTimeoutDialInfo
-	// Disable automatic replicaSet detection, connect directly to specified server
-	dialInfo.Direct = true
-	session, err := dialer.DialWithInfo(dialInfo)
-	if err != nil {
-		return nil, err
-	}
+func (self *monitors) listDatabases() ([]string, error) {
+	session := self.session.Copy()
 	defer session.Close()
-
-	session.SetMode(mgo.Eventual, true)
-	session.SetSyncTimeout(MgoTimeoutSessionSync)
-	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 	return session.DatabaseNames()
 }

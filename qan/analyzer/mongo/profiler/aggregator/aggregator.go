@@ -140,7 +140,7 @@ func (self *Aggregator) createResult() *report.Result {
 
 		metrics := event.NewMetrics()
 
-		metrics.TimeMetrics["Query_time"] = newEventTimeStats(queryInfo.QueryTime)
+		metrics.TimeMetrics["Query_time"] = newEventTimeStatsInMilliseconds(queryInfo.QueryTime)
 
 		// @todo we map below metrics to MySQL equivalents according to PMM-830
 		metrics.NumberMetrics["Bytes_sent"] = newEventNumberStats(queryInfo.ResponseLength)
@@ -174,13 +174,13 @@ func newEventNumberStats(s stats.Statistics) *event.NumberStats {
 	}
 }
 
-func newEventTimeStats(s stats.Statistics) *event.TimeStats {
+func newEventTimeStatsInMilliseconds(s stats.Statistics) *event.TimeStats {
 	return &event.TimeStats{
-		Sum: s.Total,
-		Min: s.Min,
-		Avg: s.Avg,
-		Med: s.Median,
-		P95: s.Pct95,
-		Max: s.Max,
+		Sum: s.Total / 1000,
+		Min: s.Min / 1000,
+		Avg: s.Avg / 1000,
+		Med: s.Median / 1000,
+		P95: s.Pct95 / 1000,
+		Max: s.Max / 1000,
 	}
 }

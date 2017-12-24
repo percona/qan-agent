@@ -19,35 +19,12 @@ func New(
 	spool data.Spooler,
 	config pc.QAN,
 ) *profiler {
-	// create aggregator which collects documents and aggregates them into qan report
-	aggregator := aggregator.New(time.Now(), config)
-
-	f := func(
-		dialInfo *pmgo.DialInfo,
-		dialer pmgo.Dialer,
-	) *monitor {
-		return NewMonitor(
-			dialInfo,
-			dialer,
-			aggregator,
-			logger,
-			spool,
-			config,
-		)
-	}
-
-	m := NewMonitors(
-		dialInfo,
-		dialer,
-		f,
-	)
 	return &profiler{
 		dialInfo: dialInfo,
 		dialer:   dialer,
 		logger:   logger,
 		spool:    spool,
 		config:   config,
-		monitors: m,
 	}
 }
 
@@ -61,6 +38,7 @@ type profiler struct {
 
 	// monitors
 	monitors *monitors
+	session  pmgo.SessionManager
 
 	// state
 	sync.RWMutex                 // Lock() to protect internal consistency of the service
@@ -76,6 +54,36 @@ func (self *profiler) Start() error {
 	if self.running {
 		return nil
 	}
+
+	// create new session
+	session, err := createSession(self.dialInfo, self.dialer)
+	if err != nil {
+		return err
+	}
+	self.session = session
+
+	// create aggregator which collects documents and aggregates them into qan report
+	aggregator := aggregator.New(time.Now(), self.config)
+
+	f := func(
+		session pmgo.SessionManager,
+		dbName string,
+	) *monitor {
+		return NewMonitor(
+			session,
+			dbName,
+			aggregator,
+			self.logger,
+			self.spool,
+			self.config,
+		)
+	}
+
+	// create monitors service which we use to periodically scan server for new/removed databases
+	self.monitors = NewMonitors(
+		session,
+		f,
+	)
 
 	// create new channel over which
 	// we will tell goroutine it should close
@@ -107,13 +115,31 @@ func (self *profiler) Start() error {
 
 // Status returns list of statuses
 func (self *profiler) Status() map[string]string {
-	statuses := map[string]string{}
-	for dbName, p := range self.monitors.GetAll() {
-		for k, v := range p.Status() {
-			statuses[fmt.Sprintf("%s-%s", dbName, k)] = v
-		}
+	self.RLock()
+	defer self.RUnlock()
+
+	statuses := &sync.Map{}
+	monitors := self.monitors.GetAll()
+
+	wg := &sync.WaitGroup{}
+	wg.Add(len(monitors))
+	for dbName, m := range monitors {
+		go func(dbName string, m *monitor) {
+			defer wg.Done()
+			for k, v := range m.Status() {
+				key := fmt.Sprintf("%s-%s", dbName, k)
+				statuses.Store(key, v)
+			}
+		}(dbName, m)
 	}
-	return statuses
+	wg.Wait()
+
+	statusesMap := map[string]string{}
+	statuses.Range(func(key, value interface{}) bool {
+		statusesMap[key.(string)] = value.(string)
+		return true
+	})
+	return statusesMap
 }
 
 // Stop stops running analyzer, waits until it stops
@@ -129,6 +155,9 @@ func (self *profiler) Stop() error {
 
 	// wait for goroutine to exit
 	self.wg.Wait()
+
+	// close the session; do it after goroutine is closed
+	self.session.Close()
 
 	// set state to "not running"
 	self.running = false

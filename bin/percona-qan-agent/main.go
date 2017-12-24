@@ -22,6 +22,8 @@ import (
 	"flag"
 	"fmt"
 	golog "log"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"os/user"
@@ -75,7 +77,7 @@ func init() {
 
 	flag.Parse()
 
-	// We don't accept any possitional arguments
+	// We don't accept any positional arguments
 	if len(flag.Args()) != 0 {
 		flag.Usage()
 		os.Exit(1)
@@ -303,6 +305,11 @@ func run(agentConfig *pc.Agent) error {
 			"query":    queryManager,
 		},
 	)
+
+	// Start http server for pprof
+	go func() {
+		golog.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	// Run the agent, wait for it to stop, signal, or crash.
 	stopChan := make(chan error, 2)
