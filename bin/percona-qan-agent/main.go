@@ -22,8 +22,6 @@ import (
 	"flag"
 	"fmt"
 	golog "log"
-	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/signal"
 	"os/user"
@@ -305,11 +303,6 @@ func run(agentConfig *pc.Agent) error {
 			"query":    queryManager,
 		},
 	)
-
-	// Start http server for pprof
-	go func() {
-		golog.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
 
 	// Run the agent, wait for it to stop, signal, or crash.
 	stopChan := make(chan error, 2)
