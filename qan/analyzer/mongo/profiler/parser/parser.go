@@ -123,6 +123,9 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
+	// timeout after not receiving data for interval time
+	t := time.NewTimer(aggregator.D)
+
 	// update stats
 	stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
 	stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
@@ -136,6 +139,8 @@ func start(
 			// just continue if not
 		}
 
+		// aggregate documents and create report
+		var report *qan.Report
 		select {
 		case doc, ok := <-docsChan:
 			// if channel got closed we should exit as there is nothing we can listen to
@@ -143,11 +148,18 @@ func start(
 				return
 			}
 
+			// reset timer
+			for !t.Stop() {
+				<-t.C
+			}
+			t.Reset(aggregator.D)
+
 			// we got new doc, increase stats
 			stats.InDocs.Add(1)
 
 			// aggregate the doc
-			report, err := aggregator.Add(doc)
+			var err error
+			report, err = aggregator.Add(doc)
 			switch err.(type) {
 			case nil:
 				stats.OkDocs.Add(1)
@@ -156,29 +168,36 @@ func start(
 			default:
 				stats.ErrParse.Add(1)
 			}
+		case <-t.C:
+			// When Tail()ing system.profile collection you don't know if sample
+			// is last sample in the collection until you get sample with higher timestamp than interval.
+			// For this, in cases where we generate only few test queries,
+			// but still expect them to show after interval expires, we need to implement timeout.
+			// This introduces another issue, that in case something goes wrong, and we get metrics for old interval too late, they will be skipped.
+			// A proper solution would be to allow fixing old samples, but API and qan-agent doesn't allow this, yet.
+			report = aggregator.Report()
+		case <-doneChan:
+			// doneChan needs to be repeated in this select as docsChan can block
+			// doneChan needs to be also in separate select statement
+			// as docsChan could be always picked since select picks channels pseudo randomly
+			return
+		}
 
-			// check if we have new report
-			if report != nil {
-				// sent report over reportChan.
-				select {
-				case reportChan <- report:
-					stats.OutReports.Add(1)
+		// check if we have new report
+		if report != nil {
+			// sent report over reportChan.
+			select {
+			case reportChan <- report:
+				stats.OutReports.Add(1)
 				// or exit if we can't push over the channel and we should shutdown
 				// note that if we can push over the channel then exiting is not guaranteed
 				// that's why we have separate `select <-doneChan`
-				case <-doneChan:
-					return
-				}
-				// update stats
-				stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
-				stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
+			case <-doneChan:
+				return
 			}
-
-		// doneChan needs to be repeated in this select as docsChan can block
-		// doneChan needs to be also in separate select statement
-		// as docsChan could be always picked since select picks channels pseudo randomly
-		case <-doneChan:
-			return
+			// update stats
+			stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
+			stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
 		}
 	}
 

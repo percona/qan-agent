@@ -32,7 +32,7 @@ func New(timeStart time.Time, config pc.QAN) *Aggregator {
 	}
 
 	// create duration from interval
-	aggregator.d = time.Duration(config.Interval) * time.Second
+	aggregator.D = time.Duration(config.Interval) * time.Second
 
 	// create mongolib stats
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
@@ -52,7 +52,7 @@ type Aggregator struct {
 	// interval
 	timeStart time.Time
 	timeEnd   time.Time
-	d         time.Duration
+	D         time.Duration
 	stats     *stats.Stats
 
 	// make it safe to use from different threads
@@ -72,6 +72,14 @@ func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
 	}
 
 	return self.interval(ts), self.stats.Add(doc)
+}
+
+// Report generates report for current interval and starts new one
+func (self *Aggregator) Report() *qan.Report {
+	self.Lock()
+	defer self.Unlock()
+
+	return self.interval(time.Now())
 }
 
 // interval sets interval if necessary and returns *qan.Report for old interval if not empty
@@ -112,9 +120,9 @@ func (self *Aggregator) newInterval(ts time.Time) {
 	self.stats.Reset()
 
 	// truncate to the duration e.g 12:15:35 with 1 minute duration it will be 12:15:00
-	self.timeStart = ts.UTC().Truncate(self.d)
+	self.timeStart = ts.UTC().Truncate(self.D)
 	// create ending time by adding interval
-	self.timeEnd = self.timeStart.Add(self.d)
+	self.timeEnd = self.timeStart.Add(self.D)
 }
 
 func (self *Aggregator) createResult() *report.Result {
