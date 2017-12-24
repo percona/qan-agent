@@ -66,23 +66,28 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
 
+	pluginName := "plugin"
 	expect := map[string]string{
-		"plugin": "Running",
+		pluginName: "Running",
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"plugin-%s-collector-profile":          "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
-			"plugin-%s-collector-iterator-counter": "1",
-			"plugin-%s-collector-iterator-created": shouldExist,
-			"plugin-%s-collector-started":          shouldExist,
-			"plugin-%s-parser-started":             shouldExist,
-			"plugin-%s-parser-interval-start":      shouldExist,
-			"plugin-%s-parser-interval-end":        shouldExist,
-			"plugin-%s-sender-started":             shouldExist,
+			"%s-collector-profile":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
+			"%s-collector-iterator-counter":         "1",
+			"%s-collector-iterator-restart-counter": shouldExist,
+			"%s-collector-iterator-created":         shouldExist,
+			"%s-collector-started":                  shouldExist,
+			"%s-collector-servers":                  shouldExist,
+			"%s-parser-started":                     shouldExist,
+			"%s-parser-interval-start":              shouldExist,
+			"%s-parser-interval-end":                shouldExist,
+			"%s-sender-started":                     shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {
-			m[fmt.Sprintf(k, dbName)] = v
+			prefix := fmt.Sprintf("%s-%s", pluginName, dbName)
+			key := fmt.Sprintf(k, prefix)
+			m[key] = v
 		}
 		expect = merge(expect, m)
 	}
