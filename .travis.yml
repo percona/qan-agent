@@ -39,7 +39,7 @@ matrix:
 addons:
   apt:
     sources:
-      - sourceline: "deb http://repo.percona.com/apt $(lsb_release -s -c) testing"
+      - sourceline: "deb http://repo.percona.com/apt $(lsb_release -s -c) main"
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0x8507EFA5'
     packages:
       - percona-toolkit
