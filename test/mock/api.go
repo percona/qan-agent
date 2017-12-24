@@ -146,7 +146,7 @@ func (a *API) Hostname() string {
 	return a.hostname
 }
 
-func (a *API) Init(hostname string, headers map[string]string) (code int, err error) {
+func (a *API) Init(hostname string) (code int, err error) {
 	return http.StatusOK, nil
 }
 
