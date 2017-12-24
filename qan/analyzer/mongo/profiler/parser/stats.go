@@ -5,7 +5,6 @@ import (
 )
 
 type stats struct {
-	Started        *expvar.String `name:"started"`
 	InDocs         *expvar.Int    `name:"docs-in"`
 	OkDocs         *expvar.Int    `name:"docs-ok"`
 	OutReports     *expvar.Int    `name:"reports-out"`

@@ -121,16 +121,12 @@ func TestRealStartTool(t *testing.T) {
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"%s-collector-profile":                  "Profiling enabled for all queries (ratelimit: 1)",
-			"%s-collector-iterator-counter":         "1",
-			"%s-collector-iterator-restart-counter": shouldExist,
-			"%s-collector-iterator-created":         shouldExist,
-			"%s-collector-started":                  shouldExist,
-			"%s-collector-servers":                  shouldExist,
-			"%s-parser-started":                     shouldExist,
-			"%s-parser-interval-start":              shouldExist,
-			"%s-parser-interval-end":                shouldExist,
-			"%s-sender-started":                     shouldExist,
+			"%s-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
+			"%s-collector-iterator-counter": "1",
+			"%s-collector-iterator-created": shouldExist,
+			"%s-collector-servers":          shouldExist,
+			"%s-parser-interval-start":      shouldExist,
+			"%s-parser-interval-end":        shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {

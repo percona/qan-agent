@@ -129,7 +129,6 @@ func start(
 	// update stats
 	stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
 	stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
-	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
 	for {
 		// check if we should shutdown
 		select {
