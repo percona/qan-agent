@@ -112,6 +112,7 @@ func TestRealStartTool(t *testing.T) {
 
 	// Now the manager and analyzer should be running.
 	shouldExist := "<should exist>"
+	mayExist := "<may exist>"
 	actual := m.Status()
 
 	pluginName := fmt.Sprintf("%s-analyzer-%s-%s", cmd.Service, protoInstance.Subsystem, protoInstance.UUID)
@@ -121,12 +122,13 @@ func TestRealStartTool(t *testing.T) {
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"%s-collector-profile":          "Profiling enabled for all queries (ratelimit: 1)",
-			"%s-collector-iterator-counter": "1",
-			"%s-collector-iterator-created": shouldExist,
-			"%s-collector-servers":          shouldExist,
-			"%s-parser-interval-start":      shouldExist,
-			"%s-parser-interval-end":        shouldExist,
+			"%s-collector-profile":                  "Profiling enabled for all queries (ratelimit: 1)",
+			"%s-collector-iterator-counter":         "1",
+			"%s-collector-iterator-restart-counter": mayExist,
+			"%s-collector-iterator-created":         shouldExist,
+			"%s-collector-servers":                  shouldExist,
+			"%s-parser-interval-start":              shouldExist,
+			"%s-parser-interval-end":                shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {
@@ -138,11 +140,15 @@ func TestRealStartTool(t *testing.T) {
 	}
 
 	for k, v := range expect {
-		if v == shouldExist {
+		switch v {
+		case shouldExist:
 			assert.Contains(t, actual, k)
-			delete(actual, k)
-			delete(expect, k)
+		case mayExist:
+		default:
+			continue
 		}
+		delete(actual, k)
+		delete(expect, k)
 	}
 	expectJSON, err := json.Marshal(expect)
 	require.NoError(t, err)

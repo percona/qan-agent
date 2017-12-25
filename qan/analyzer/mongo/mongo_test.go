@@ -65,6 +65,7 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	require.NoError(t, err)
 	// some values are unpredictable, e.g. time but they should exist
 	shouldExist := "<should exist>"
+	mayExist := "<may exist>"
 
 	pluginName := "plugin"
 	expect := map[string]string{
@@ -72,12 +73,13 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"%s-collector-profile":          "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
-			"%s-collector-iterator-counter": "1",
-			"%s-collector-iterator-created": shouldExist,
-			"%s-collector-servers":          shouldExist,
-			"%s-parser-interval-start":      shouldExist,
-			"%s-parser-interval-end":        shouldExist,
+			"%s-collector-profile":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
+			"%s-collector-iterator-counter":         "1",
+			"%s-collector-iterator-restart-counter": mayExist,
+			"%s-collector-iterator-created":         shouldExist,
+			"%s-collector-servers":                  shouldExist,
+			"%s-parser-interval-start":              shouldExist,
+			"%s-parser-interval-end":                shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {
@@ -90,11 +92,15 @@ func TestMongo_StartStopStatus(t *testing.T) {
 
 	actual := plugin.Status()
 	for k, v := range expect {
-		if v == shouldExist {
+		switch v {
+		case shouldExist:
 			assert.Contains(t, actual, k)
-			delete(actual, k)
-			delete(expect, k)
+		case mayExist:
+		default:
+			continue
 		}
+		delete(actual, k)
+		delete(expect, k)
 	}
 	assert.Equal(t, expect, actual)
 
