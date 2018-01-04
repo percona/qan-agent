@@ -2,7 +2,6 @@ package sender
 
 import (
 	"sync"
-	"time"
 
 	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/data"
@@ -113,7 +112,6 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
 	for {
 
 		select {

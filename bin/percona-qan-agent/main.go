@@ -75,7 +75,7 @@ func init() {
 
 	flag.Parse()
 
-	// We don't accept any possitional arguments
+	// We don't accept any positional arguments
 	if len(flag.Args()) != 0 {
 		flag.Usage()
 		os.Exit(1)

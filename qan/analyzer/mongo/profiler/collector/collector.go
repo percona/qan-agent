@@ -2,34 +2,31 @@ package collector
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 const (
-	MgoTimeoutDialInfo      = 5 * time.Second
-	MgoTimeoutSessionSync   = 5 * time.Second
-	MgoTimeoutSessionSocket = 5 * time.Second
-	MgoTimeoutTail          = 1 * time.Second
+	MgoTimeoutTail = 1 * time.Second
 )
 
-func New(dialInfo *pmgo.DialInfo, dialer pmgo.Dialer) *Collector {
+func New(session pmgo.SessionManager, dbName string) *Collector {
 	return &Collector{
-		dialInfo: dialInfo,
-		dialer:   dialer,
+		session: session,
+		dbName:  dbName,
 	}
 }
 
 type Collector struct {
 	// dependencies
-	dialInfo *pmgo.DialInfo
-	dialer   pmgo.Dialer
+	session pmgo.SessionManager
+	dbName  string
 
 	// provides
 	docsChan chan proto.SystemProfile
@@ -54,7 +51,7 @@ func (self *Collector) Start() (<-chan proto.SystemProfile, error) {
 
 	// create new channels over which we will communicate to...
 	// ... outside world by sending collected docs
-	self.docsChan = make(chan proto.SystemProfile)
+	self.docsChan = make(chan proto.SystemProfile, 100)
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
 
@@ -74,8 +71,8 @@ func (self *Collector) Start() (<-chan proto.SystemProfile, error) {
 
 	go start(
 		self.wg,
-		self.dialInfo,
-		self.dialer,
+		self.session,
+		self.dbName,
 		self.docsChan,
 		self.doneChan,
 		stats,
@@ -121,33 +118,22 @@ func (self *Collector) Status() map[string]string {
 	}
 
 	s := self.status.Map()
-	s["profile"] = getProfile(self.dialInfo, self.dialer)
+	s["profile"] = getProfile(self.session, self.dbName)
+	s["servers"] = strings.Join(self.session.LiveServers(), ", ")
 
 	return s
 }
 
-func getProfile(
-	dialInfo *pmgo.DialInfo,
-	dialer pmgo.Dialer,
-) string {
-	dialInfo.Timeout = MgoTimeoutDialInfo
-	// Disable automatic replicaSet detection, connect directly to specified server
-	dialInfo.Direct = true
-	session, err := dialer.DialWithInfo(dialInfo)
-	if err != nil {
-		return fmt.Sprintf("%s", err)
-	}
+func getProfile(session pmgo.SessionManager, dbName string) string {
+	session = session.Copy()
 	defer session.Close()
-	session.SetMode(mgo.Eventual, true)
-	session.SetSyncTimeout(MgoTimeoutSessionSync)
-	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
 	result := struct {
 		Was       int
 		Slowms    int
 		Ratelimit int
 	}{}
-	err = session.DB(dialInfo.Database).Run(
+	err := session.DB(dbName).Run(
 		bson.M{
 			"profile": -1,
 		},
@@ -182,8 +168,8 @@ func (self *Collector) Name() string {
 
 func start(
 	wg *sync.WaitGroup,
-	dialInfo *pmgo.DialInfo,
-	dialer pmgo.Dialer,
+	session pmgo.SessionManager,
+	dbName string,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
 	stats *stats,
@@ -196,8 +182,8 @@ func start(
 	for {
 		// make a connection and collect data
 		connectAndCollect(
-			dialInfo,
-			dialer,
+			session,
+			dbName,
 			docsChan,
 			doneChan,
 			stats,
@@ -222,65 +208,19 @@ func start(
 }
 
 func connectAndCollect(
-	dialInfo *pmgo.DialInfo,
-	dialer pmgo.Dialer,
+	session pmgo.SessionManager,
+	dbName string,
 	docsChan chan<- proto.SystemProfile,
 	doneChan <-chan struct{},
 	stats *stats,
 	ready *sync.Cond,
 ) {
-	dialInfo.Timeout = MgoTimeoutDialInfo
-	// Disable automatic replicaSet detection, connect directly to specified server
-	dialInfo.Direct = true
-	session, err := dialer.DialWithInfo(dialInfo)
-	if err != nil {
-		return
-	}
+	session = session.Copy()
 	defer session.Close()
-	session.SetMode(mgo.Eventual, true)
-	session.SetSyncTimeout(MgoTimeoutSessionSync)
-	session.SetSocketTimeout(MgoTimeoutSessionSocket)
 
-	stats.Started.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
-
-	for {
-		collection := session.DB(dialInfo.Database).C("system.profile")
-		query := bson.M{
-			"ts": bson.M{"$gt": bson.Now()},
-		}
-		collect(
-			collection,
-			query,
-			docsChan,
-			doneChan,
-			stats,
-			ready,
-		)
-
-		select {
-		// check if we should shutdown
-		case <-doneChan:
-			return
-		// wait some time before retrying
-		case <-time.After(1 * time.Second):
-		}
-
-		// Refresh the session after an error
-		// https://groups.google.com/forum/#!topic/mgo-users/XM0rc6p-V-8
-		// https://github.com/go-mgo/mgo/issues/49
-		session.Refresh()
-	}
-}
-
-func collect(
-	collection pmgo.CollectionManager,
-	query bson.M,
-	docsChan chan<- proto.SystemProfile,
-	doneChan <-chan struct{},
-	stats *stats,
-	ready *sync.Cond,
-) {
-	iterator := collection.Find(query).Sort("$natural").Tail(MgoTimeoutTail)
+	collection := session.DB(dbName).C("system.profile")
+	query := createQuery(dbName)
+	iterator := createIterator(collection, query)
 	defer iterator.Close()
 
 	stats.IteratorCreated.Set(time.Now().UTC().Format("2006-01-02 15:04:05"))
@@ -330,7 +270,29 @@ func collect(
 			stats.IteratorTimeout.Add(1)
 			continue
 		}
+
+		// If Next() and Timeout() are false it means iterator is no longer valid
+		// and the query needs to be restarted.
+
+		// Close the old iterator.
+		iterator.Close()
+
+		// Create new query and new iterator
+		query := createQuery(dbName)
+		iterator = createIterator(collection, query)
+		stats.IteratorRestartCounter.Add(1)
 	}
+}
+
+func createQuery(dbName string) bson.M {
+	return bson.M{
+		"ns": bson.M{"$ne": dbName + ".system.profile"},
+		"ts": bson.M{"$gt": bson.Now()},
+	}
+}
+
+func createIterator(collection pmgo.CollectionManager, query bson.M) pmgo.IterManager {
+	return collection.Find(query).Sort("$natural").Tail(MgoTimeoutTail)
 }
 
 func signalReady(ready *sync.Cond) {
