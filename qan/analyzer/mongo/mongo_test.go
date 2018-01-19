@@ -37,19 +37,16 @@ func TestMongo_StartStopStatus(t *testing.T) {
 		dbNames = append(dbNames, "admin")
 	}
 
-	// disable profiling as we only want to test if factory works
-	for _, dbName := range dbNames {
-		url := "/" + dbName
-		err := profiling.Disable(url)
-		require.NoError(t, err)
-	}
+	// Disable profiling as we only want to test if factory works.
+	err = profiling.New("").DisableAll()
+	require.NoError(t, err)
 
 	dataChan := make(chan interface{})
 	logChan := make(chan proto.LogEntry)
 
 	serviceName := "plugin"
 
-	// Expose some global services to plugins
+	// Expose some global services to plugins.
 	ctx := context.Background()
 	ctx = context.WithValue(ctx, "services", map[string]interface{}{
 		"logger": pct.NewLogger(logChan, serviceName),
@@ -63,28 +60,28 @@ func TestMongo_StartStopStatus(t *testing.T) {
 	assert.Equal(t, map[string]string{serviceName: "Not running"}, plugin.Status())
 	err = plugin.Start()
 	require.NoError(t, err)
-	// some values are unpredictable, e.g. time but they should exist
+
+	// Some values are unpredictable, e.g. time but they should exist.
 	shouldExist := "<should exist>"
 	mayExist := "<may exist>"
 
 	pluginName := "plugin"
 	expect := map[string]string{
 		pluginName: "Running",
+		pluginName + "-aggregator-interval-start": shouldExist,
+		pluginName + "-aggregator-interval-end":   shouldExist,
+		pluginName + "-servers":                   shouldExist,
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"%s-collector-profile":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
-			"%s-collector-iterator-counter":         "1",
-			"%s-collector-iterator-restart-counter": mayExist,
-			"%s-collector-iterator-created":         shouldExist,
-			"%s-collector-servers":                  shouldExist,
-			"%s-parser-interval-start":              shouldExist,
-			"%s-parser-interval-end":                shouldExist,
+			"%s-collector-profile-%s":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
+			"%s-collector-iterator-counter-%s":         "1",
+			"%s-collector-iterator-restart-counter-%s": mayExist,
+			"%s-collector-iterator-created-%s":         shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {
-			prefix := fmt.Sprintf("%s-%s", pluginName, dbName)
-			key := fmt.Sprintf(k, prefix)
+			key := fmt.Sprintf(k, pluginName, dbName)
 			m[key] = v
 		}
 		expect = merge(expect, m)

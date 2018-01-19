@@ -211,7 +211,7 @@ func run(agentConfig *pc.Agent) error {
 		logChan,
 	)
 	if err := logManager.Start(); err != nil {
-		return fmt.Errorf("Error starting log manager: %s", err)
+		return fmt.Errorf("error starting log manager: %s", err)
 	}
 
 	// MRMS (MySQL Restart Monitoring Service)
@@ -224,7 +224,7 @@ func run(agentConfig *pc.Agent) error {
 		mrmsMonitor,
 	)
 	if err := mrmsManager.Start(); err != nil {
-		return fmt.Errorf("Error starting mrms manager: %s", err)
+		return fmt.Errorf("error starting mrms manager: %s", err)
 	}
 
 	// Instance manager
@@ -235,7 +235,7 @@ func run(agentConfig *pc.Agent) error {
 		mrmsMonitor,
 	)
 	if err := itManager.Start(); err != nil {
-		return fmt.Errorf("Error starting instance manager: %s", err)
+		return fmt.Errorf("error starting instance manager: %s", err)
 	}
 
 	// Data spooler and sender
@@ -252,7 +252,7 @@ func run(agentConfig *pc.Agent) error {
 		dataClient,
 	)
 	if err := dataManager.Start(); err != nil {
-		return fmt.Errorf("Error starting data manager: %s", err)
+		return fmt.Errorf("error starting data manager: %s", err)
 	}
 
 	// Query (real-time EXPLAIN, SHOW CREATE TABLE, etc.)
@@ -261,7 +261,7 @@ func run(agentConfig *pc.Agent) error {
 		itManager.Repo(),
 	)
 	if err := queryManager.Start(); err != nil {
-		return fmt.Errorf("Error starting query manager: %s", err)
+		return fmt.Errorf("error starting query manager: %s", err)
 	}
 
 	// Query Analytics

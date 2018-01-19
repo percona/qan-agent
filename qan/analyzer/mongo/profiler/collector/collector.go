@@ -2,7 +2,6 @@ package collector
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -106,20 +105,15 @@ func (self *Collector) Stop() {
 	return
 }
 
-func (self *Collector) Running() bool {
+func (self *Collector) Status() map[string]string {
 	self.RLock()
 	defer self.RUnlock()
-	return self.running
-}
-
-func (self *Collector) Status() map[string]string {
-	if !self.Running() {
+	if !self.running {
 		return nil
 	}
 
 	s := self.status.Map()
 	s["profile"] = getProfile(self.session, self.dbName)
-	s["servers"] = strings.Join(self.session.LiveServers(), ", ")
 
 	return s
 }
@@ -273,14 +267,8 @@ func connectAndCollect(
 
 		// If Next() and Timeout() are false it means iterator is no longer valid
 		// and the query needs to be restarted.
-
-		// Close the old iterator.
-		iterator.Close()
-
-		// Create new query and new iterator
-		query := createQuery(dbName)
-		iterator = createIterator(collection, query)
 		stats.IteratorRestartCounter.Add(1)
+		return
 	}
 }
 

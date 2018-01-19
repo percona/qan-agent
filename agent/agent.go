@@ -403,7 +403,9 @@ func (agent *Agent) handleCmd(cmd *proto.Cmd) {
 		}
 	}()
 	agent.status.UpdateRe("agent-cmd-handler", "Handling", cmd)
-	agent.logger.Info("Cmd begin:", cmd)
+	if cmd.Cmd != "Version" {
+		agent.logger.Info("Cmd begin:", cmd)
+	}
 
 	cmdReply := make(chan *proto.Reply, 1)
 	// Handle the cmd in a separate goroutine so if it gets stuck it won't affect us.
@@ -443,7 +445,9 @@ func (agent *Agent) handleCmd(cmd *proto.Cmd) {
 	}
 
 	if reply.Error == "" {
-		agent.logger.Info("Cmd ok:", reply)
+		if reply.Cmd != "Version" {
+			agent.logger.Info("Cmd ok:", reply)
+		}
 	} else {
 		agent.logger.Warn("Cmd fail:", reply)
 	}
