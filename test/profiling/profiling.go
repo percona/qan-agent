@@ -18,49 +18,134 @@
 package profiling
 
 import (
+	"fmt"
+
 	"github.com/percona/pmgo"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-func Enable(url string) error {
-	session, err := createSession(url)
+type run func(session pmgo.SessionManager) error
+type runDB func(session pmgo.SessionManager, dbname string) error
+
+type Profiling struct {
+	url     string
+	session pmgo.SessionManager
+	err     error
+}
+
+func New(url string) *Profiling {
+	p := &Profiling{
+		url: url,
+	}
+	p.session, p.err = createSession(url)
+	return p
+}
+
+func (p *Profiling) Enable(dbname string) error {
+	return p.Run(func(session pmgo.SessionManager) error {
+		return profile(session.DB(dbname), 2)
+	})
+}
+
+func (p *Profiling) Disable(dbname string) error {
+	return p.Run(func(session pmgo.SessionManager) error {
+		return profile(session.DB(dbname), 0)
+	})
+}
+
+func (p *Profiling) Drop(dbname string) error {
+	return p.Run(func(session pmgo.SessionManager) error {
+		if !p.Exist(dbname) {
+			return nil
+		}
+		return session.DB(dbname).C("system.profile").DropCollection()
+	})
+}
+
+func (p *Profiling) Exist(dbnameToLook string) bool {
+	found := fmt.Errorf("found db: %s", dbnameToLook)
+	err := p.RunDB(func(session pmgo.SessionManager, dbname string) error {
+		if dbnameToLook == dbname {
+			return found
+		}
+		return nil
+	})
+
+	return err == found
+}
+
+func (p *Profiling) Reset(dbname string) error {
+	err := p.Disable(dbname)
 	if err != nil {
 		return err
 	}
-	defer session.Close()
-
-	err = profile(session.DB(""), 2)
+	err = p.Drop(dbname)
 	if err != nil {
 		return err
 	}
-
+	err = p.Enable(dbname)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func Disable(url string) error {
-	session, err := createSession(url)
+func (p *Profiling) EnableAll() error {
+	return p.RunDB(func(session pmgo.SessionManager, dbname string) error {
+		return p.Enable(dbname)
+	})
+}
+
+func (p *Profiling) DisableAll() error {
+	return p.RunDB(func(session pmgo.SessionManager, dbname string) error {
+		return p.Disable(dbname)
+	})
+}
+
+func (p *Profiling) DropAll() error {
+	return p.RunDB(func(session pmgo.SessionManager, dbname string) error {
+		return p.Drop(dbname)
+	})
+}
+
+func (p *Profiling) ResetAll() error {
+	err := p.DisableAll()
 	if err != nil {
 		return err
 	}
-	defer session.Close()
-
-	err = profile(session.DB(""), 0)
+	p.DropAll()
+	err = p.EnableAll()
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func Drop(url string) error {
-	session, err := createSession(url)
-	if err != nil {
-		return err
+func (p *Profiling) Run(f run) error {
+	if p.err != nil {
+		return p.err
 	}
+	session := p.session.Copy()
 	defer session.Close()
 
-	return session.DB("").C("system.profile").DropCollection()
+	return f(session)
+}
+
+func (p *Profiling) RunDB(f runDB) error {
+	return p.Run(func(session pmgo.SessionManager) error {
+		databases, err := session.DatabaseNames()
+		if err != nil {
+			return err
+		}
+		for _, dbname := range databases {
+			err := f(session, dbname)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func profile(db pmgo.DatabaseManager, v int) error {

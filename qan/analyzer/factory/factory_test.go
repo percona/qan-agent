@@ -58,11 +58,8 @@ func TestFactory_MakeMongo(t *testing.T) {
 	}
 
 	// disable profiling as we only want to test if factory works
-	for _, dbName := range dbNames {
-		url := "/" + dbName
-		err := profiling.Disable(url)
-		require.NoError(t, err)
-	}
+	err = profiling.New("").DisableAll()
+	require.NoError(t, err)
 
 	logChan := make(chan proto.LogEntry)
 	dataChan := make(chan interface{})
@@ -99,21 +96,20 @@ func TestFactory_MakeMongo(t *testing.T) {
 	pluginName := "plugin"
 	expect := map[string]string{
 		pluginName: "Running",
+		pluginName + "-aggregator-interval-start": shouldExist,
+		pluginName + "-aggregator-interval-end":   shouldExist,
+		pluginName + "-servers":                   shouldExist,
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"%s-collector-profile":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
-			"%s-collector-iterator-counter":         "1",
-			"%s-collector-iterator-restart-counter": mayExist,
-			"%s-collector-iterator-created":         shouldExist,
-			"%s-collector-servers":                  shouldExist,
-			"%s-parser-interval-start":              shouldExist,
-			"%s-parser-interval-end":                shouldExist,
+			"%s-collector-profile-%s":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",
+			"%s-collector-iterator-counter-%s":         "1",
+			"%s-collector-iterator-restart-counter-%s": mayExist,
+			"%s-collector-iterator-created-%s":         shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {
-			prefix := fmt.Sprintf("%s-%s", pluginName, dbName)
-			key := fmt.Sprintf(k, prefix)
+			key := fmt.Sprintf(k, pluginName, dbName)
 			m[key] = v
 		}
 		expect = merge(expect, m)

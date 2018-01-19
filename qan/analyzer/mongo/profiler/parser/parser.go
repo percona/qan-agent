@@ -2,11 +2,9 @@ package parser
 
 import (
 	"sync"
-	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	mstats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
-	"github.com/percona/pmm/proto/qan"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 )
@@ -26,9 +24,6 @@ type Parser struct {
 	docsChan   <-chan proto.SystemProfile
 	aggregator *aggregator.Aggregator
 
-	// provides
-	reportChan chan *qan.Report
-
 	// status
 	status *status.Status
 
@@ -40,16 +35,14 @@ type Parser struct {
 }
 
 // Start starts but doesn't wait until it exits
-func (self *Parser) Start() (<-chan *qan.Report, error) {
+func (self *Parser) Start() error {
 	self.Lock()
 	defer self.Unlock()
 	if self.running {
-		return self.reportChan, nil
+		return nil
 	}
 
 	// create new channels over which we will communicate to...
-	// ... outside world by sending collected docs
-	self.reportChan = make(chan *qan.Report, 100)
 	// ... inside goroutine to close it
 	self.doneChan = make(chan struct{})
 
@@ -64,14 +57,13 @@ func (self *Parser) Start() (<-chan *qan.Report, error) {
 	go start(
 		self.wg,
 		self.docsChan,
-		self.reportChan,
 		self.aggregator,
 		self.doneChan,
 		stats,
 	)
 
 	self.running = true
-	return self.reportChan, nil
+	return nil
 }
 
 // Stop stops running
@@ -88,20 +80,13 @@ func (self *Parser) Stop() {
 
 	// wait for goroutines to exit
 	self.wg.Wait()
-
-	// we can now safely close channels goroutines write to as goroutine is stopped
-	close(self.reportChan)
 	return
 }
 
-func (self *Parser) Running() bool {
+func (self *Parser) Status() map[string]string {
 	self.RLock()
 	defer self.RUnlock()
-	return self.running
-}
-
-func (self *Parser) Status() map[string]string {
-	if !self.Running() {
+	if !self.running {
 		return nil
 	}
 
@@ -115,7 +100,6 @@ func (self *Parser) Name() string {
 func start(
 	wg *sync.WaitGroup,
 	docsChan <-chan proto.SystemProfile,
-	reportChan chan<- *qan.Report,
 	aggregator *aggregator.Aggregator,
 	doneChan <-chan struct{},
 	stats *stats,
@@ -123,12 +107,7 @@ func start(
 	// signal WaitGroup when goroutine finished
 	defer wg.Done()
 
-	// timeout after not receiving data for interval time
-	t := time.NewTimer(aggregator.D)
-
 	// update stats
-	stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
-	stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
 	for {
 		// check if we should shutdown
 		select {
@@ -139,7 +118,6 @@ func start(
 		}
 
 		// aggregate documents and create report
-		var report *qan.Report
 		select {
 		case doc, ok := <-docsChan:
 			// if channel got closed we should exit as there is nothing we can listen to
@@ -147,18 +125,12 @@ func start(
 				return
 			}
 
-			// reset timer
-			for !t.Stop() {
-				<-t.C
-			}
-			t.Reset(aggregator.D)
-
 			// we got new doc, increase stats
 			stats.InDocs.Add(1)
 
 			// aggregate the doc
 			var err error
-			report, err = aggregator.Add(doc)
+			err = aggregator.Add(doc)
 			switch err.(type) {
 			case nil:
 				stats.OkDocs.Add(1)
@@ -167,37 +139,11 @@ func start(
 			default:
 				stats.ErrParse.Add(1)
 			}
-		case <-t.C:
-			// When Tail()ing system.profile collection you don't know if sample
-			// is last sample in the collection until you get sample with higher timestamp than interval.
-			// For this, in cases where we generate only few test queries,
-			// but still expect them to show after interval expires, we need to implement timeout.
-			// This introduces another issue, that in case something goes wrong, and we get metrics for old interval too late, they will be skipped.
-			// A proper solution would be to allow fixing old samples, but API and qan-agent doesn't allow this, yet.
-			report = aggregator.Report()
 		case <-doneChan:
 			// doneChan needs to be repeated in this select as docsChan can block
 			// doneChan needs to be also in separate select statement
 			// as docsChan could be always picked since select picks channels pseudo randomly
 			return
 		}
-
-		// check if we have new report
-		if report != nil {
-			// sent report over reportChan.
-			select {
-			case reportChan <- report:
-				stats.OutReports.Add(1)
-				// or exit if we can't push over the channel and we should shutdown
-				// note that if we can push over the channel then exiting is not guaranteed
-				// that's why we have separate `select <-doneChan`
-			case <-doneChan:
-				return
-			}
-			// update stats
-			stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
-			stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
-		}
 	}
-
 }

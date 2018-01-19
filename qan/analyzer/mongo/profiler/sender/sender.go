@@ -83,14 +83,10 @@ func (self *Sender) Stop() {
 	return
 }
 
-func (self *Sender) Running() bool {
+func (self *Sender) Status() map[string]string {
 	self.RLock()
 	defer self.RUnlock()
-	return self.running
-}
-
-func (self *Sender) Status() map[string]string {
-	if !self.Running() {
+	if !self.running {
 		return nil
 	}
 

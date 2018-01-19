@@ -41,18 +41,20 @@ type Sender struct {
 	sync       *pct.SyncChan
 	status     *pct.Status
 	// --
-	lastStats  *SenderStats
-	dailyStats *SenderStats
+	lastStats   *SenderStats
+	dailyStats  *SenderStats
+	weeklyStats *SenderStats
 }
 
 func NewSender(logger *pct.Logger, client pct.WebsocketClient) *Sender {
 	s := &Sender{
-		logger:     logger,
-		client:     client,
-		sync:       pct.NewSyncChan(),
-		status:     pct.NewStatus([]string{"data-sender", "data-sender-last", "data-sender-1d"}),
-		lastStats:  NewSenderStats(0),
-		dailyStats: NewSenderStats(24 * time.Hour),
+		logger:      logger,
+		client:      client,
+		sync:        pct.NewSyncChan(),
+		status:      pct.NewStatus([]string{"data-sender", "data-sender-last", "data-sender-1d", "data-sender-7d"}),
+		lastStats:   NewSenderStats(0),
+		dailyStats:  NewSenderStats(24 * time.Hour),
+		weeklyStats: NewSenderStats(7 * 24 * time.Hour),
 	}
 	return s
 }
@@ -127,13 +129,18 @@ func (s *Sender) send() {
 		r := s.lastStats.Report()
 		report := fmt.Sprintf("at %s: %s", pct.TimeString(r.Begin), FormatSentReport(r))
 		s.status.Update("data-sender-last", report)
-		s.logger.Info(report)
 
 		// Stats for the last day.
 		s.dailyStats.Sent(sent)
 		r = s.dailyStats.Report()
 		report = fmt.Sprintf("since %s: %s", pct.TimeString(r.Begin), FormatSentReport(r))
 		s.status.Update("data-sender-1d", report)
+
+		// Stats for the last week.
+		s.weeklyStats.Sent(sent)
+		r = s.weeklyStats.Report()
+		report = fmt.Sprintf("since %s: %s", pct.TimeString(r.Begin), FormatSentReport(r))
+		s.status.Update("data-sender-7d", report)
 	}()
 
 	// Connect and send files until too many errors occur.

@@ -1,6 +1,7 @@
 package aggregator
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -8,15 +9,17 @@ import (
 	"github.com/percona/go-mysql/event"
 	"github.com/percona/percona-toolkit/src/go/mongolib/fingerprinter"
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
-	"github.com/percona/percona-toolkit/src/go/mongolib/stats"
+	mongostats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )
 
 const (
 	DefaultInterval       = 60 // in seconds
 	DefaultExampleQueries = true
+	ReportChanBuffer      = 1000
 )
 
 // New returns configured *Aggregator
@@ -32,11 +35,11 @@ func New(timeStart time.Time, config pc.QAN) *Aggregator {
 	}
 
 	// create duration from interval
-	aggregator.D = time.Duration(config.Interval) * time.Second
+	aggregator.d = time.Duration(config.Interval) * time.Second
 
 	// create mongolib stats
 	fp := fingerprinter.NewFingerprinter(fingerprinter.DEFAULT_KEY_FILTERS)
-	aggregator.stats = stats.New(fp)
+	aggregator.mongostats = mongostats.New(fp)
 
 	// create new interval
 	aggregator.newInterval(timeStart)
@@ -49,51 +52,169 @@ type Aggregator struct {
 	// dependencies
 	config pc.QAN
 
-	// interval
-	timeStart time.Time
-	timeEnd   time.Time
-	D         time.Duration
-	stats     *stats.Stats
+	// status
+	status *status.Status
+	stats  *stats
 
-	// make it safe to use from different threads
-	sync.Mutex
+	// provides
+	reportChan chan *qan.Report
+
+	// interval
+	timeStart  time.Time
+	timeEnd    time.Time
+	d          time.Duration
+	t          *time.Timer
+	mongostats *mongostats.Stats
+
+	// state
+	sync.RWMutex                 // Lock() to protect internal consistency of the service
+	running      bool            // Is this service running?
+	doneChan     chan struct{}   // close(doneChan) to notify goroutines that they should shutdown
+	wg           *sync.WaitGroup // Wait() for goroutines to stop after being notified they should shutdown
 }
 
-// Add aggregates new system.profile document and returns report if it's ready
-func (self *Aggregator) Add(doc proto.SystemProfile) (*qan.Report, error) {
+// Add aggregates new system.profile document
+func (self *Aggregator) Add(doc proto.SystemProfile) error {
 	self.Lock()
 	defer self.Unlock()
+	if !self.running {
+		return fmt.Errorf("aggregator is not running")
+	}
 
 	ts := doc.Ts.UTC()
 
 	// skip old metrics
 	if ts.Before(self.timeStart) {
-		return nil, nil
+		self.stats.DocsSkippedOld.Add(1)
+		return nil
 	}
 
-	return self.interval(ts), self.stats.Add(doc)
+	// if new doc is outside of interval then finish old interval and flush it
+	if !ts.Before(self.timeEnd) {
+		self.flush(ts)
+	}
+
+	// we had some activity so reset timer
+	self.t.Reset(self.d)
+
+	// add new doc to stats
+	self.stats.DocsIn.Add(1)
+	return self.mongostats.Add(doc)
 }
 
-// Report generates report for current interval and starts new one
-func (self *Aggregator) Report() *qan.Report {
+func (self *Aggregator) Start() <-chan *qan.Report {
 	self.Lock()
 	defer self.Unlock()
+	if self.running {
+		return self.reportChan
+	}
 
-	return self.interval(time.Now())
+	// create new channels over which we will communicate to...
+	// ... outside world by sending collected docs
+	self.reportChan = make(chan *qan.Report, ReportChanBuffer)
+	// ... inside goroutine to close it
+	self.doneChan = make(chan struct{})
+
+	// set status
+	self.stats = &stats{}
+	self.status = status.New(self.stats)
+
+	// timeout after not receiving data for interval time
+	self.t = time.NewTimer(self.d)
+
+	// start a goroutine and Add() it to WaitGroup
+	// so we could later Wait() for it to finish
+	self.wg = &sync.WaitGroup{}
+	self.wg.Add(1)
+	go start(
+		self.wg,
+		self,
+		self.doneChan,
+		self.stats,
+	)
+
+	self.running = true
+	return self.reportChan
+}
+
+func (self *Aggregator) Stop() {
+	self.Lock()
+	defer self.Unlock()
+	if !self.running {
+		return
+	}
+	self.running = false
+
+	// notify goroutine to close
+	close(self.doneChan)
+
+	// wait for goroutines to exit
+	self.wg.Wait()
+
+	// close reportChan
+	close(self.reportChan)
+}
+
+func (self *Aggregator) Status() map[string]string {
+	self.RLock()
+	defer self.RUnlock()
+	if !self.running {
+		return nil
+	}
+
+	return self.status.Map()
+}
+
+func start(
+	wg *sync.WaitGroup,
+	aggregator *Aggregator,
+	doneChan <-chan struct{},
+	stats *stats,
+) {
+	// signal WaitGroup when goroutine finished
+	defer wg.Done()
+
+	// update stats
+	stats.IntervalStart.Set(aggregator.TimeStart().Format("2006-01-02 15:04:05"))
+	stats.IntervalEnd.Set(aggregator.TimeEnd().Format("2006-01-02 15:04:05"))
+	for {
+		select {
+		case <-aggregator.t.C:
+			// When Tail()ing system.profile collection you don't know if sample
+			// is last sample in the collection until you get sample with higher timestamp than interval.
+			// For this, in cases where we generate only few test queries,
+			// but still expect them to show after interval expires, we need to implement timeout.
+			// This introduces another issue, that in case something goes wrong, and we get metrics for old interval too late, they will be skipped.
+			// A proper solution would be to allow fixing old samples, but API and qan-agent doesn't allow this, yet.
+			aggregator.Flush()
+		case <-doneChan:
+			// Check if we should shutdown.
+			return
+		}
+	}
+}
+
+func (self *Aggregator) Flush() {
+	self.Lock()
+	defer self.Unlock()
+	self.flush(time.Now())
+}
+
+func (self *Aggregator) flush(ts time.Time) {
+	r := self.interval(ts)
+	if r != nil {
+		self.reportChan <- r
+		self.stats.ReportsOut.Add(1)
+	}
 }
 
 // interval sets interval if necessary and returns *qan.Report for old interval if not empty
 func (self *Aggregator) interval(ts time.Time) *qan.Report {
-	// if time is before interval end then we are still in the same interval, nothing to do
-	if ts.Before(self.timeEnd) {
-		return nil
-	}
-
 	// create new interval
 	defer self.newInterval(ts)
 
 	// let's check if we have anything to send for current interval
-	if len(self.stats.Queries()) == 0 {
+	if len(self.mongostats.Queries()) == 0 {
 		// if there are no queries then we don't create report #PMM-927
 		return nil
 	}
@@ -117,16 +238,16 @@ func (self *Aggregator) TimeEnd() time.Time {
 
 func (self *Aggregator) newInterval(ts time.Time) {
 	// reset stats
-	self.stats.Reset()
+	self.mongostats.Reset()
 
 	// truncate to the duration e.g 12:15:35 with 1 minute duration it will be 12:15:00
-	self.timeStart = ts.UTC().Truncate(self.D)
+	self.timeStart = ts.UTC().Truncate(self.d)
 	// create ending time by adding interval
-	self.timeEnd = self.timeStart.Add(self.D)
+	self.timeEnd = self.timeStart.Add(self.d)
 }
 
 func (self *Aggregator) createResult() *report.Result {
-	queries := self.stats.Queries()
+	queries := self.mongostats.Queries()
 	global := event.NewClass("", "", false)
 	queryStats := queries.CalcQueriesStats(int64(self.config.Interval))
 	classes := []*event.Class{}
@@ -171,7 +292,7 @@ func (self *Aggregator) createResult() *report.Result {
 
 }
 
-func newEventNumberStats(s stats.Statistics) *event.NumberStats {
+func newEventNumberStats(s mongostats.Statistics) *event.NumberStats {
 	return &event.NumberStats{
 		Sum: uint64(s.Total),
 		Min: uint64(s.Min),
@@ -182,7 +303,7 @@ func newEventNumberStats(s stats.Statistics) *event.NumberStats {
 	}
 }
 
-func newEventTimeStatsInMilliseconds(s stats.Statistics) *event.TimeStats {
+func newEventTimeStatsInMilliseconds(s mongostats.Statistics) *event.TimeStats {
 	return &event.TimeStats{
 		Sum: s.Total / 1000,
 		Min: s.Min / 1000,

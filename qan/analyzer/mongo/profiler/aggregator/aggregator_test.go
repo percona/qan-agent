@@ -26,14 +26,20 @@ func TestAggregator_Add(t *testing.T) {
 	}
 
 	aggregator := New(timeStart, config)
+	reportChan := aggregator.Start()
+	defer aggregator.Stop()
 
 	{
 		doc := proto.SystemProfile{
 			Ts: timeStart,
 		}
-		report, err := aggregator.Add(doc)
+		err := aggregator.Add(doc)
 		require.NoError(t, err)
-		assert.Nil(t, report)
+		select {
+		case report := <-reportChan:
+			t.Error("didn't expect report but got:", report)
+		default:
+		}
 	}
 
 	{
@@ -79,8 +85,10 @@ func TestAggregator_Add(t *testing.T) {
 				},
 			},
 		}
-		report, err := aggregator.Add(doc)
+		err := aggregator.Add(doc)
 		require.NoError(t, err)
+		report, ok := <-reportChan
+		assert.True(t, ok)
 		assert.Equal(t, expected, *report)
 	}
 }
@@ -100,16 +108,43 @@ func TestAggregator_Add_EmptyInterval(t *testing.T) {
 	}
 
 	aggregator := New(timeStart, config)
+	reportChan := aggregator.Start()
 
 	// finish interval immediately
 	{
 		doc := proto.SystemProfile{
 			Ts: timeEnd,
 		}
-		report, err := aggregator.Add(doc)
+		err := aggregator.Add(doc)
 		require.NoError(t, err)
+		aggregator.Stop()
+		report, ok := <-reportChan
+		assert.False(t, ok)
 
 		// no report should be returned
 		assert.Nil(t, report)
 	}
+}
+
+func TestAggregator_StartStop(t *testing.T) {
+	var err error
+	config := pc.QAN{
+		UUID:     "abc",
+		Interval: 60, // 60s
+	}
+
+	timeStart, err := time.Parse("2006-01-02 15:04:05", "2017-07-02 07:55:00")
+	aggregator := New(timeStart, config)
+	reportChan1 := aggregator.Start()
+	require.NoError(t, err)
+
+	// running multiple Start() should be idempotent
+	reportChan2 := aggregator.Start()
+	require.NoError(t, err)
+
+	assert.Exactly(t, reportChan1, reportChan2)
+
+	// running multiple Stop() should be idempotent
+	aggregator.Stop()
+	aggregator.Stop()
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/collector"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/parser"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/sender"
 )
 
 func NewMonitor(
@@ -76,21 +75,13 @@ func (self *monitor) Start() error {
 	}
 	self.services = append(self.services, c)
 
-	// create parser and start it
+	// create parser and start i
 	p := parser.New(docsChan, self.aggregator)
-	reportChan, err := p.Start()
+	err = p.Start()
 	if err != nil {
 		return err
 	}
 	self.services = append(self.services, p)
-
-	// create sender and start it
-	s := sender.New(reportChan, self.spool, self.logger)
-	err = s.Start()
-	if err != nil {
-		return err
-	}
-	self.services = append(self.services, s)
 
 	self.running = true
 	return nil

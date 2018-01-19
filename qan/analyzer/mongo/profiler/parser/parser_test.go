@@ -48,6 +48,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestParser_StartStop(t *testing.T) {
+	var err error
 	docsChan := make(chan pm.SystemProfile)
 	pcQan := pc.QAN{
 		Interval: 60,
@@ -55,16 +56,12 @@ func TestParser_StartStop(t *testing.T) {
 	a := aggregator.New(time.Now(), pcQan)
 
 	parser1 := New(docsChan, a)
-	reportChan1, err := parser1.Start()
+	err = parser1.Start()
 	require.NoError(t, err)
-	assert.NotNil(t, reportChan1)
 
 	// running multiple Start() should be idempotent
-	reportChan2, err := parser1.Start()
+	err = parser1.Start()
 	require.NoError(t, err)
-	assert.NotNil(t, reportChan2)
-
-	assert.Exactly(t, reportChan1, reportChan2)
 
 	// running multiple Stop() should be idempotent
 	parser1.Stop()
@@ -77,12 +74,13 @@ func TestParser_running(t *testing.T) {
 		Interval: 1,
 	}
 	a := aggregator.New(time.Now(), pcQan)
+	reportChan := a.Start()
+	defer a.Stop()
 	d := time.Duration(pcQan.Interval) * time.Second
 
 	parser1 := New(docsChan, a)
-	reportChan1, err := parser1.Start()
+	err := parser1.Start()
 	require.NoError(t, err)
-	assert.NotNil(t, reportChan1)
 
 	now := time.Now().UTC()
 	timeStart := now.Truncate(d).Add(d)
@@ -113,7 +111,7 @@ func TestParser_running(t *testing.T) {
 	}
 
 	select {
-	case actual := <-reportChan1:
+	case actual := <-reportChan:
 		expected := qan.Report{
 			StartTs: timeStart,
 			EndTs:   timeEnd,

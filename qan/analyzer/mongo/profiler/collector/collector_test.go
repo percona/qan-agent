@@ -3,9 +3,11 @@ package collector
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
+	"github.com/percona/qan-agent/test/profiling"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -110,39 +112,56 @@ func TestCollector_Stop(t *testing.T) {
 }
 
 func TestCollector(t *testing.T) {
-	t.Parallel()
+	// Disable profiling.
+	err := profiling.New("").DisableAll()
+	require.NoError(t, err)
+	// Enable profiling for default db.
+	err = profiling.New("").Enable("")
+	require.NoError(t, err)
 
+	// create separate connection to db for collector
 	dialer := pmgo.NewDialer()
-	dialInfo, _ := pmgo.ParseURL("127.0.0.1:27017")
+	dialInfo, _ := pmgo.ParseURL("")
 	session, err := dialer.DialWithInfo(dialInfo)
 	require.NoError(t, err)
 
+	// create collector
 	collector := New(session, "")
 	docsChan, err := collector.Start()
 	require.NoError(t, err)
 	defer collector.Stop()
 
+	// add some data to mongo e.g. people
 	people := []map[string]string{
 		{"name": "Kamil"},
 		{"name": "Carlos"},
 	}
-	go func() {
-		session, err := dialer.DialWithInfo(dialInfo)
+
+	// add data through separate connection
+	session, err = dialer.DialWithInfo(dialInfo)
+	require.NoError(t, err)
+	for _, person := range people {
+		err = session.DB("test").C("people").Insert(&person)
 		require.NoError(t, err)
-		for _, person := range people {
-			err = session.DB("test").C("people").Insert(&person)
-			require.NoError(t, err)
-		}
-	}()
+	}
 
 	actual := []proto.SystemProfile{}
-	for doc := range docsChan {
-		if doc.Ns == "test.people" && doc.Op == "insert" {
-			actual = append(actual, doc)
-		}
-		if len(actual) == len(people) {
-			// stopping collector should also close docsChan
-			collector.Stop()
+F:
+	for {
+		select {
+		case doc, ok := <-docsChan:
+			if !ok {
+				break F
+			}
+			if doc.Ns == "test.people" && doc.Op == "insert" {
+				actual = append(actual, doc)
+			}
+			if len(actual) == len(people) {
+				// stopping collector should also close docsChan
+				collector.Stop()
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("didn't recieve enough samples before timeout")
 		}
 	}
 	assert.Len(t, actual, len(people))

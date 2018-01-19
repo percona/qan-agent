@@ -44,15 +44,9 @@ func TestRealStartTool(t *testing.T) {
 		dbNames = append(dbNames, "admin")
 	}
 
-	// disable profiling as we only want to test if factory works
-	for _, dbName := range dbNames {
-		url := "/" + dbName
-		err := profiling.Disable(url)
-		require.NoError(t, err)
-		profiling.Drop(url)
-		err = profiling.Enable(url)
-		require.NoError(t, err)
-	}
+	// reset profiling
+	err = profiling.New("").ResetAll()
+	require.NoError(t, err)
 
 	logChan := make(chan proto.LogEntry)
 	dataChan := make(chan interface{})
@@ -119,21 +113,20 @@ func TestRealStartTool(t *testing.T) {
 	expect := map[string]string{
 		"qan":      "Running",
 		pluginName: "Running",
+		pluginName + "-aggregator-interval-start": shouldExist,
+		pluginName + "-aggregator-interval-end":   shouldExist,
+		pluginName + "-servers":                   shouldExist,
 	}
 	for _, dbName := range dbNames {
 		t := map[string]string{
-			"%s-collector-profile":                  "Profiling enabled for all queries (ratelimit: 1)",
-			"%s-collector-iterator-counter":         "1",
-			"%s-collector-iterator-restart-counter": mayExist,
-			"%s-collector-iterator-created":         shouldExist,
-			"%s-collector-servers":                  shouldExist,
-			"%s-parser-interval-start":              shouldExist,
-			"%s-parser-interval-end":                shouldExist,
+			"%s-collector-profile-%s":                  "Profiling enabled for all queries (ratelimit: 1)",
+			"%s-collector-iterator-counter-%s":         "1",
+			"%s-collector-iterator-restart-counter-%s": mayExist,
+			"%s-collector-iterator-created-%s":         shouldExist,
 		}
 		m := map[string]string{}
 		for k, v := range t {
-			prefix := fmt.Sprintf("%s-%s", pluginName, dbName)
-			key := fmt.Sprintf(k, prefix)
+			key := fmt.Sprintf(k, pluginName, dbName)
 			m[key] = v
 		}
 		expect = merge(expect, m)

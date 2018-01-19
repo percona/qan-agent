@@ -2,6 +2,7 @@ package profiler
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/sender"
 )
 
 func New(
@@ -36,9 +38,11 @@ type profiler struct {
 	logger   *pct.Logger
 	config   pc.QAN
 
-	// monitors
-	monitors *monitors
-	session  pmgo.SessionManager
+	// internal deps
+	monitors   *monitors
+	session    pmgo.SessionManager
+	aggregator *aggregator.Aggregator
+	sender     *sender.Sender
 
 	// state
 	sync.RWMutex                 // Lock() to protect internal consistency of the service
@@ -63,7 +67,15 @@ func (self *profiler) Start() error {
 	self.session = session
 
 	// create aggregator which collects documents and aggregates them into qan report
-	aggregator := aggregator.New(time.Now(), self.config)
+	self.aggregator = aggregator.New(time.Now(), self.config)
+	reportChan := self.aggregator.Start()
+
+	// create sender which sends qan reports and start it
+	self.sender = sender.New(reportChan, self.spool, self.logger)
+	err = self.sender.Start()
+	if err != nil {
+		return err
+	}
 
 	f := func(
 		session pmgo.SessionManager,
@@ -72,7 +84,7 @@ func (self *profiler) Start() error {
 		return NewMonitor(
 			session,
 			dbName,
-			aggregator,
+			self.aggregator,
 			self.logger,
 			self.spool,
 			self.config,
@@ -117,6 +129,9 @@ func (self *profiler) Start() error {
 func (self *profiler) Status() map[string]string {
 	self.RLock()
 	defer self.RUnlock()
+	if !self.running {
+		return nil
+	}
 
 	statuses := &sync.Map{}
 	monitors := self.monitors.GetAll()
@@ -127,11 +142,30 @@ func (self *profiler) Status() map[string]string {
 		go func(dbName string, m *monitor) {
 			defer wg.Done()
 			for k, v := range m.Status() {
-				key := fmt.Sprintf("%s-%s", dbName, k)
+				key := fmt.Sprintf("%s-%s", k, dbName)
 				statuses.Store(key, v)
 			}
 		}(dbName, m)
 	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for k, v := range self.aggregator.Status() {
+			key := fmt.Sprintf("%s-%s", "aggregator", k)
+			statuses.Store(key, v)
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for k, v := range self.sender.Status() {
+			key := fmt.Sprintf("%s-%s", "sender", k)
+			statuses.Store(key, v)
+		}
+	}()
+
 	wg.Wait()
 
 	statusesMap := map[string]string{}
@@ -139,6 +173,7 @@ func (self *profiler) Status() map[string]string {
 		statusesMap[key.(string)] = value.(string)
 		return true
 	})
+	statusesMap["servers"] = strings.Join(self.session.LiveServers(), ", ")
 	return statusesMap
 }
 
@@ -155,6 +190,12 @@ func (self *profiler) Stop() error {
 
 	// wait for goroutine to exit
 	self.wg.Wait()
+
+	// stop aggregator; do it after goroutine is closed
+	self.aggregator.Stop()
+
+	// stop sender; do it after goroutine is closed
+	self.sender.Stop()
 
 	// close the session; do it after goroutine is closed
 	self.session.Close()

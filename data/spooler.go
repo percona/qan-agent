@@ -339,7 +339,6 @@ func (s *DiskvSpooler) run() {
 		case <-purgeChan:
 			n, removed := s.purge(time.Now().UTC(), s.limits)
 			if n == 0 {
-				s.logger.Info("Spool size is ok, no files purged")
 				continue
 			}
 			for reason, files := range removed {
