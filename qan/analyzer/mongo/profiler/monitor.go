@@ -75,7 +75,7 @@ func (self *monitor) Start() error {
 	}
 	self.services = append(self.services, c)
 
-	// create parser and start i
+	// create parser and start it
 	p := parser.New(docsChan, self.aggregator)
 	err = p.Start()
 	if err != nil {
