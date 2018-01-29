@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	"github.com/nu7hatch/gouuid"
-	"github.com/percona/go-mysql/dsn"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/agent/release"
@@ -47,7 +46,6 @@ type Installer struct {
 	// --
 	os       *proto.Instance
 	agent    *proto.Instance
-	dsnAgent dsn.DSN
 	debug    bool
 }
 

@@ -18,7 +18,7 @@ imports:
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/percona/go-mysql
-  version: b561fedcb9dd988e592a6fb88bdf05596e598af1
+  version: 1ceeb729b15317323503606228370db5979fbcc2
   subpackages:
   - dsn
   - event

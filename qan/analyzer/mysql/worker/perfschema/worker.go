@@ -571,9 +571,9 @@ ClassLoop:
 		// Time metrics are in picoseconds, so multiply by 10^-12 to convert to seconds.
 		stats.TimeMetrics["Query_time"] = &event.TimeStats{
 			Sum: float64(d.SumTimerWait) * math.Pow10(-12),
-			Min: float64(d.MinTimerWait) * math.Pow10(-12),
-			Avg: float64(d.AvgTimerWait) * math.Pow10(-12),
-			Max: float64(d.MaxTimerWait) * math.Pow10(-12),
+			Min: event.Float64(float64(d.MinTimerWait) * math.Pow10(-12)),
+			Avg: event.Float64(float64(d.AvgTimerWait) * math.Pow10(-12)),
+			Max: event.Float64(float64(d.MaxTimerWait) * math.Pow10(-12)),
 		}
 
 		stats.TimeMetrics["Lock_time"] = &event.TimeStats{

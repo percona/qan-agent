@@ -295,21 +295,21 @@ func (self *Aggregator) createResult() *report.Result {
 func newEventNumberStats(s mongostats.Statistics) *event.NumberStats {
 	return &event.NumberStats{
 		Sum: uint64(s.Total),
-		Min: uint64(s.Min),
-		Avg: uint64(s.Avg),
-		Med: uint64(s.Median),
-		P95: uint64(s.Pct95),
-		Max: uint64(s.Max),
+		Min: event.Uint64(uint64(s.Min)),
+		Avg: event.Uint64(uint64(s.Avg)),
+		Med: event.Uint64(uint64(s.Median)),
+		P95: event.Uint64(uint64(s.Pct95)),
+		Max: event.Uint64(uint64(s.Max)),
 	}
 }
 
 func newEventTimeStatsInMilliseconds(s mongostats.Statistics) *event.TimeStats {
 	return &event.TimeStats{
 		Sum: s.Total / 1000,
-		Min: s.Min / 1000,
-		Avg: s.Avg / 1000,
-		Med: s.Median / 1000,
-		P95: s.Pct95 / 1000,
-		Max: s.Max / 1000,
+		Min: event.Float64(s.Min / 1000),
+		Avg: event.Float64(s.Avg / 1000),
+		Med: event.Float64(s.Median / 1000),
+		P95: event.Float64(s.Pct95 / 1000),
+		Max: event.Float64(s.Max / 1000),
 	}
 }

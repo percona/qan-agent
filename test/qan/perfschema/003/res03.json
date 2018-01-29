@@ -6,31 +6,35 @@
       "TimeMetrics": {
         "Lock_time": {
           "Sum": 0.00022365,
-          "Avg": 5.59125e-05
+          "Avg": 0.0000559125
         },
         "Query_time": {
           "Sum": 0.00029960999999999996,
           "Min": 0.0001001,
-          "Avg": 7.490249999999999e-05,
+          "Avg": 0.00007490249999999999,
           "Max": 0.00082461
         }
       },
       "NumberMetrics": {
         "Errors": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Merge_passes": {
           "Sum": 100,
           "Avg": 25
         },
         "No_good_index_used": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "No_index_used": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Rows_affected": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Rows_examined": {
           "Sum": 16,
@@ -41,13 +45,16 @@
           "Avg": 3
         },
         "Select_full_range_join": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Select_range": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Select_range_check": {
-          "Sum": 1
+          "Sum": 1,
+          "Avg": 0
         },
         "Sort_range": {
           "Sum": 200,
@@ -62,7 +69,8 @@
           "Avg": 100
         },
         "Warnings": {
-          "Sum": 1
+          "Sum": 1,
+          "Avg": 0
         }
       },
       "BoolMetrics": {
