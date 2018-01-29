@@ -526,16 +526,16 @@ func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 	//assert.Equal(t, "01C5BE6B5201254E", class.Id)
 	//assert.Equal(t, "SELECT ? FROM DUAL ", class.Fingerprint)
 	queryTime := class.Metrics.TimeMetrics["Query_time"]
-	if queryTime.Min == 0 {
+	if event.Float64Value(queryTime.Min) == 0 {
 		t.Error("Expected Query_time_min > 0")
 	}
-	if queryTime.Max == 0 {
+	if event.Float64Value(queryTime.Max) == 0 {
 		t.Error("Expected Query_time_max > 0")
 	}
-	if queryTime.Avg == 0 {
+	if event.Float64Value(queryTime.Avg) == 0 {
 		t.Error("Expected Query_time_avg > 0")
 	}
-	if queryTime.Min > queryTime.Max {
+	if event.Float64Value(queryTime.Min) > event.Float64Value(queryTime.Max) {
 		t.Error("Expected Query_time_min >= Query_time_max")
 	}
 	assert.Equal(t, uint64(0), class.Metrics.NumberMetrics["Rows_affected"].Sum)

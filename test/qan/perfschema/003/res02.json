@@ -5,31 +5,36 @@
     "Metrics": {
       "TimeMetrics": {
         "Lock_time": {
-          "Sum": 1.22e-06,
-          "Avg": 6.1e-07
+          "Sum": 0.00000122,
+          "Avg": 6.1e-7
         },
         "Query_time": {
-          "Sum": 4.4799999999999995e-06,
+          "Sum": 0.0000044799999999999995,
           "Min": 0.00010063,
-          "Avg": 2.2399999999999997e-06,
+          "Avg": 0.0000022399999999999997,
           "Max": 0.00082461
         }
       },
       "NumberMetrics": {
         "Errors": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Merge_passes": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "No_good_index_used": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "No_index_used": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Rows_affected": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Rows_examined": {
           "Sum": 11,
@@ -40,25 +45,32 @@
           "Avg": 5
         },
         "Select_full_range_join": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Select_range": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Select_range_check": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Sort_range": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Sort_rows": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Sort_scan": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Warnings": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         }
       },
       "BoolMetrics": {
@@ -86,10 +98,10 @@
       "Metrics": {
         "TimeMetrics": {
           "Lock_time": {
-            "Sum": 1e-06
+            "Sum": 0.000001
           },
           "Query_time": {
-            "Sum": 4e-06,
+            "Sum": 0.000004,
             "Min": 0.00080461,
             "Avg": 0.00081111,
             "Max": 0.00082461
@@ -163,10 +175,10 @@
       "Metrics": {
         "TimeMetrics": {
           "Lock_time": {
-            "Sum": 2.1999999999999998e-07
+            "Sum": 2.1999999999999998e-7
           },
           "Query_time": {
-            "Sum": 4.8e-07,
+            "Sum": 4.8e-7,
             "Min": 0.00010063,
             "Avg": 0.00018998,
             "Max": 0.000202022

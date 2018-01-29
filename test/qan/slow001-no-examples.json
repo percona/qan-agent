@@ -5,7 +5,12 @@
     "Metrics": {
       "TimeMetrics": {
         "Lock_time": {
-          "Sum": 0
+          "Sum": 0,
+          "Min": 0,
+          "Avg": 0,
+          "Med": 0,
+          "P95": 0,
+          "Max": 0
         },
         "Query_time": {
           "Sum": 4,
@@ -18,7 +23,12 @@
       },
       "NumberMetrics": {
         "Rows_examined": {
-          "Sum": 0
+          "Sum": 0,
+          "Min": 0,
+          "Avg": 0,
+          "Med": 0,
+          "P95": 0,
+          "Max": 0
         },
         "Rows_sent": {
           "Sum": 2,
@@ -35,12 +45,17 @@
   },
   "Class": [
     {
-      "Id": "7F7D57ACDD8A346E",
-      "Fingerprint": "select sleep(?) from n",
+      "Id": "3A99CC42AEDCCFCD",
+      "Fingerprint": "select sleep(?) from test.n",
       "Metrics": {
         "TimeMetrics": {
           "Lock_time": {
-            "Sum": 0
+            "Sum": 0,
+            "Min": 0,
+            "Avg": 0,
+            "Med": 0,
+            "P95": 0,
+            "Max": 0
           },
           "Query_time": {
             "Sum": 2,
@@ -53,7 +68,12 @@
         },
         "NumberMetrics": {
           "Rows_examined": {
-            "Sum": 0
+            "Sum": 0,
+            "Min": 0,
+            "Avg": 0,
+            "Med": 0,
+            "P95": 0,
+            "Max": 0
           },
           "Rows_sent": {
             "Sum": 1,
@@ -69,12 +89,17 @@
       "UniqueQueries": 1
     },
     {
-      "Id": "3A99CC42AEDCCFCD",
-      "Fingerprint": "select sleep(?) from test.n",
+      "Id": "7F7D57ACDD8A346E",
+      "Fingerprint": "select sleep(?) from n",
       "Metrics": {
         "TimeMetrics": {
           "Lock_time": {
-            "Sum": 0
+            "Sum": 0,
+            "Min": 0,
+            "Avg": 0,
+            "Med": 0,
+            "P95": 0,
+            "Max": 0
           },
           "Query_time": {
             "Sum": 2,
@@ -87,7 +112,12 @@
         },
         "NumberMetrics": {
           "Rows_examined": {
-            "Sum": 0
+            "Sum": 0,
+            "Min": 0,
+            "Avg": 0,
+            "Med": 0,
+            "P95": 0,
+            "Max": 0
           },
           "Rows_sent": {
             "Sum": 1,
