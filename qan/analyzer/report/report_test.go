@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/percona/go-mysql/event"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/qan/analyzer/mysql/iter"
 	. "github.com/percona/qan-agent/test/rootdir"
@@ -81,7 +82,7 @@ func TestResult001(t *testing.T) {
 	assert.Equal(t, "lrq", report.Class[2].Id)
 	assert.Equal(t, 10, int(report.Class[2].TotalQueries))
 	assert.Equal(t, float64(1+1+0.101001), report.Class[2].Metrics.TimeMetrics["Query_time"].Sum)
-	assert.Equal(t, float64(0.000100), report.Class[2].Metrics.TimeMetrics["Query_time"].Min)
-	assert.Equal(t, float64(1.12), report.Class[2].Metrics.TimeMetrics["Query_time"].Max)
-	assert.Equal(t, float64((1+1+0.101001)/10), report.Class[2].Metrics.TimeMetrics["Query_time"].Avg)
+	assert.Equal(t, event.Float64(0.000100), report.Class[2].Metrics.TimeMetrics["Query_time"].Min)
+	assert.Equal(t, event.Float64(1.12), report.Class[2].Metrics.TimeMetrics["Query_time"].Max)
+	assert.Equal(t, event.Float64((1+1+0.101001)/10), report.Class[2].Metrics.TimeMetrics["Query_time"].Avg)
 }

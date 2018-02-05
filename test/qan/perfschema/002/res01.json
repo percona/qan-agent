@@ -5,10 +5,10 @@
     "Metrics": {
       "TimeMetrics": {
         "Lock_time": {
-          "Sum": 1.22e-06
+          "Sum": 0.00000122
         },
         "Query_time": {
-          "Sum": 4.48e-06,
+          "Sum": 0.00000448,
           "Min": 0.00010063,
           "Avg": 0.000500545,
           "Max": 0.00082461
@@ -83,10 +83,10 @@
       "Metrics": {
         "TimeMetrics": {
           "Lock_time": {
-            "Sum": 1.22e-06
+            "Sum": 0.00000122
           },
           "Query_time": {
-            "Sum": 4.48e-06,
+            "Sum": 0.00000448,
             "Min": 0.00010063,
             "Avg": 0.000500545,
             "Max": 0.00082461

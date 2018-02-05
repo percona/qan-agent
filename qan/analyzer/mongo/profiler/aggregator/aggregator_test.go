@@ -32,6 +32,9 @@ func TestAggregator_Add(t *testing.T) {
 	{
 		doc := proto.SystemProfile{
 			Ts: timeStart,
+			Millis: 1000,
+			DocsExamined: 13,
+			Nreturned: 42,
 		}
 		err := aggregator.Add(doc)
 		require.NoError(t, err)
@@ -55,12 +58,40 @@ func TestAggregator_Add(t *testing.T) {
 				UniqueQueries: 1,
 				Metrics: &event.Metrics{
 					TimeMetrics: map[string]*event.TimeStats{
-						"Query_time": {},
+						"Query_time": {
+							Sum: 1,
+							Med: event.Float64(1),
+							P95: event.Float64(1),
+							Min: event.Float64(1),
+							Avg: event.Float64(1),
+							Max: event.Float64(1),
+						},
 					},
 					NumberMetrics: map[string]*event.NumberStats{
-						"Bytes_sent":    {},
-						"Rows_examined": {},
-						"Rows_sent":     {},
+						"Bytes_sent":    {
+							Sum: 0,
+							Min: event.Uint64(0),
+							Avg: event.Uint64(0),
+							Med: event.Uint64(0),
+							P95: event.Uint64(0),
+							Max: event.Uint64(0),
+						},
+						"Rows_examined": {
+							Sum: 13,
+							Med: event.Uint64(13),
+							P95: event.Uint64(13),
+							Min: event.Uint64(13),
+							Avg: event.Uint64(13),
+							Max: event.Uint64(13),
+						},
+						"Rows_sent":     {
+							Sum: 42,
+							Med: event.Uint64(42),
+							P95: event.Uint64(42),
+							Min: event.Uint64(42),
+							Avg: event.Uint64(42),
+							Max: event.Uint64(42),
+						},
 					},
 					BoolMetrics: map[string]*event.BoolStats{},
 				},
@@ -72,12 +103,40 @@ func TestAggregator_Add(t *testing.T) {
 					UniqueQueries: 1,
 					Metrics: &event.Metrics{
 						TimeMetrics: map[string]*event.TimeStats{
-							"Query_time": {},
+							"Query_time": {
+								Sum: 1,
+								Min: event.Float64(1),
+								Avg: event.Float64(1),
+								Med: event.Float64(1),
+								P95: event.Float64(1),
+								Max: event.Float64(1),
+							},
 						},
 						NumberMetrics: map[string]*event.NumberStats{
-							"Bytes_sent":    {},
-							"Rows_examined": {},
-							"Rows_sent":     {},
+							"Bytes_sent":    {
+								Sum: 0,
+								Min: event.Uint64(0),
+								Avg: event.Uint64(0),
+								Med: event.Uint64(0),
+								P95: event.Uint64(0),
+								Max: event.Uint64(0),
+							},
+							"Rows_examined": {
+								Sum: 13,
+								Min: event.Uint64(13),
+								Avg: event.Uint64(13),
+								Med: event.Uint64(13),
+								P95: event.Uint64(13),
+								Max: event.Uint64(13),
+							},
+							"Rows_sent":     {
+								Sum: 42,
+								Min: event.Uint64(42),
+								Avg: event.Uint64(42),
+								Med: event.Uint64(42),
+								P95: event.Uint64(42),
+								Max: event.Uint64(42),
+							},
 						},
 						BoolMetrics: map[string]*event.BoolStats{},
 					},

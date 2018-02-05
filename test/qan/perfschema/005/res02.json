@@ -17,19 +17,24 @@
       },
       "NumberMetrics": {
         "Errors": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Merge_passes": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "No_good_index_used": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "No_index_used": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Rows_affected": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Rows_examined": {
           "Sum": 0,
@@ -40,25 +45,32 @@
           "Avg": 0
         },
         "Select_full_range_join": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Select_range": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Select_range_check": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Sort_range": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Sort_rows": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Sort_scan": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         },
         "Warnings": {
-          "Sum": 0
+          "Sum": 0,
+          "Avg": 0
         }
       },
       "BoolMetrics": {
