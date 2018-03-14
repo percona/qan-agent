@@ -111,11 +111,16 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:           setConfig.UUID,
 		Interval:       DEFAULT_INTERVAL,
+		ExampleQueries: new(bool),
 		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
-		ExampleQueries: DEFAULT_EXAMPLE_QUERIES,
 		WorkerRunTime:  DEFAULT_WORKER_RUNTIME,
 		ReportLimit:    DEFAULT_REPORT_LIMIT,
 	}
+	// I know this is an ugly hack, but we need runConfig.ExampleQueries to be a pointer since
+	// the default value for a boolean is false, there is no way to tell if it was false in the
+	// config or if the value was missing.
+	// If it was missing (nil) we should take the default=true
+	*runConfig.ExampleQueries = DEFAULT_EXAMPLE_QUERIES
 
 	// Strings
 	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {
@@ -129,6 +134,10 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	}
 	if setConfig.Interval > 0 {
 		runConfig.Interval = uint(setConfig.Interval)
+	}
+
+	if setConfig.ExampleQueries != nil {
+		runConfig.ExampleQueries = setConfig.ExampleQueries
 	}
 
 	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval

@@ -136,7 +136,7 @@ func (m *MongoAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 	// verify config
 	if m.config.Interval == 0 {
 		m.config.Interval = aggregator.DefaultInterval
-		m.config.ExampleQueries = aggregator.DefaultExampleQueries
+		*m.config.ExampleQueries = aggregator.DefaultExampleQueries
 	}
 
 	return map[string]interface{}{

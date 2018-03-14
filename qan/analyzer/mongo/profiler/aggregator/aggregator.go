@@ -27,7 +27,7 @@ func New(timeStart time.Time, config pc.QAN) *Aggregator {
 	// verify config
 	if config.Interval == 0 {
 		config.Interval = DefaultInterval
-		config.ExampleQueries = DefaultExampleQueries
+		*config.ExampleQueries = DefaultExampleQueries
 	}
 
 	aggregator := &Aggregator{
@@ -252,8 +252,8 @@ func (self *Aggregator) createResult() *report.Result {
 	queryStats := queries.CalcQueriesStats(int64(self.config.Interval))
 	classes := []*event.Class{}
 	for _, queryInfo := range queryStats {
-		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, self.config.ExampleQueries)
-		if self.config.ExampleQueries {
+		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, *self.config.ExampleQueries)
+		if *self.config.ExampleQueries {
 			db := ""
 			s := strings.SplitN(queryInfo.Namespace, ".", 2)
 			if len(s) == 2 {

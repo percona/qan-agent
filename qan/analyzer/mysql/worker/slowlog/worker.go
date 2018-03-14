@@ -153,7 +153,7 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 		StartOffset:    interval.StartOffset,
 		EndOffset:      interval.EndOffset,
 		RunTime:        time.Duration(w.config.WorkerRunTime) * time.Second,
-		ExampleQueries: w.config.ExampleQueries,
+		ExampleQueries: *w.config.ExampleQueries,
 	}
 	w.logger.Debug("Setup:", w.job)
 
