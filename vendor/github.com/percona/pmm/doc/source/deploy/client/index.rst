@@ -34,19 +34,16 @@ however Percona provides PMM Client packages for automatic installation
 from software repositories only on the most popular Linux distributions:
 
 * :ref:`Install PMM Client on Debian or Ubuntu <install-client-apt>`
-
 * :ref:`Install PMM Client on Red Hat or CentOS <install-client-yum>`
 
 If you are not able to install from Percona's software repositories or
 running some other Linux distribution,
-try :ref:`install-client-manual`.
+try :ref:`deploy-pmm.client.installing`.
 
 .. toctree::
    :hidden:
 
    apt
    yum
-   manual
    remove
-   upgrade
 

@@ -36,7 +36,7 @@ imports:
 - name: github.com/percona/pmgo
   version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
 - name: github.com/percona/pmm
-  version: 2df56fe394e3829338d509bbda98d9a227677e57
+  version: 2bc3ac742b0944527d3a0949f5f9b8ca4d76117f
   subpackages:
   - proto
   - proto/config
