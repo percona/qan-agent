@@ -123,6 +123,7 @@ func (s *AnalyzerTestSuite) SetUpTest(t *C) {
 	}
 	s.worker = qan_worker.NewQanWorker()
 	// Config needs to be recreated on every test since it can be modified by the test analyzers
+	exampleQueries := true
 	s.config = pc.QAN{
 		UUID:           s.mysqlUUID,
 		CollectFrom:    "slowlog",
@@ -135,6 +136,7 @@ func (s *AnalyzerTestSuite) SetUpTest(t *C) {
 		Stop: []string{
 			"-- stop",
 		},
+		ExampleQueries: &exampleQueries,
 	}
 }
 
