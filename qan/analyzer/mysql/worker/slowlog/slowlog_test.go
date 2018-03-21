@@ -174,7 +174,7 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 		EndOffset:   524,
 	}
 	config := s.config
-	exampleQueries := true
+	exampleQueries := false
 	config.ExampleQueries = &exampleQueries
 	got, err := s.RunWorker(config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
