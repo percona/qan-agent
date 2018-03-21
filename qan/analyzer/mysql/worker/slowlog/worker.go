@@ -153,7 +153,7 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 		StartOffset:    interval.StartOffset,
 		EndOffset:      interval.EndOffset,
 		RunTime:        time.Duration(w.config.WorkerRunTime) * time.Second,
-		ExampleQueries: *w.config.ExampleQueries,
+		ExampleQueries: boolValue(w.config.ExampleQueries),
 	}
 	w.logger.Debug("Setup:", w.job)
 
@@ -450,4 +450,13 @@ func (w *Worker) rotateSlowLog(interval *iter.Interval) error {
 	}
 
 	return nil
+}
+
+// boolValue returns the value of the bool pointer passed in or
+// false if the pointer is nil.
+func boolValue(v *bool) bool {
+	if v != nil {
+		return *v
+	}
+	return false
 }
