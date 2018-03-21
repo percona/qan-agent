@@ -31,10 +31,10 @@ func TestAggregator_Add(t *testing.T) {
 
 	{
 		doc := proto.SystemProfile{
-			Ts: timeStart,
-			Millis: 1000,
+			Ts:           timeStart,
+			Millis:       1000,
 			DocsExamined: 13,
-			Nreturned: 42,
+			Nreturned:    42,
 		}
 		err := aggregator.Add(doc)
 		require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestAggregator_Add(t *testing.T) {
 						},
 					},
 					NumberMetrics: map[string]*event.NumberStats{
-						"Bytes_sent":    {
+						"Bytes_sent": {
 							Sum: 0,
 							Min: event.Uint64(0),
 							Avg: event.Uint64(0),
@@ -84,7 +84,7 @@ func TestAggregator_Add(t *testing.T) {
 							Avg: event.Uint64(13),
 							Max: event.Uint64(13),
 						},
-						"Rows_sent":     {
+						"Rows_sent": {
 							Sum: 42,
 							Med: event.Uint64(42),
 							P95: event.Uint64(42),
@@ -113,7 +113,7 @@ func TestAggregator_Add(t *testing.T) {
 							},
 						},
 						NumberMetrics: map[string]*event.NumberStats{
-							"Bytes_sent":    {
+							"Bytes_sent": {
 								Sum: 0,
 								Min: event.Uint64(0),
 								Avg: event.Uint64(0),
@@ -129,7 +129,7 @@ func TestAggregator_Add(t *testing.T) {
 								P95: event.Uint64(13),
 								Max: event.Uint64(13),
 							},
-							"Rows_sent":     {
+							"Rows_sent": {
 								Sum: 42,
 								Min: event.Uint64(42),
 								Avg: event.Uint64(42),

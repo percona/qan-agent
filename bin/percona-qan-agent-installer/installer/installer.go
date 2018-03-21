@@ -44,9 +44,9 @@ type Installer struct {
 	hostname     string
 	flags        Flags
 	// --
-	os       *proto.Instance
-	agent    *proto.Instance
-	debug    bool
+	os    *proto.Instance
+	agent *proto.Instance
+	debug bool
 }
 
 func newUUID() string {

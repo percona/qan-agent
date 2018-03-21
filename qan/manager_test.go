@@ -170,13 +170,14 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 		// as we only need one of each analizer type and they need to be different instances.
 		mysqlInstance := mysqlInstances[i]
 		// Write a realistic qan.conf config to disk.
+		exampleQueries := true
 		config := pc.QAN{
 			UUID:           mysqlInstance.UUID,
 			CollectFrom:    analyzerType,
 			Interval:       300,
 			WorkerRunTime:  270,
-			ExampleQueries: true, // specify optional args
-			ReportLimit:    200,  // specify optional args
+			ExampleQueries: &exampleQueries, // specify optional args
+			ReportLimit:    200,             // specify optional args
 		}
 		err := pct.Basedir.WriteConfig("qan-"+mysqlInstance.UUID, &config)
 		t.Assert(err, IsNil)
@@ -261,13 +262,14 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 	configs := make([]pc.QAN, 0)
 	for _, mysqlInstance := range mysqlInstances {
 		// Write a realistic qan.conf config to disk.
+		exampleQueries := true
 		config := pc.QAN{
 			UUID:           mysqlInstance.UUID,
 			CollectFrom:    "perfschema",
 			Interval:       300,
 			WorkerRunTime:  270,
-			ExampleQueries: true, // specify optional args
-			ReportLimit:    200,  // specify optional args
+			ExampleQueries: &exampleQueries, // specify optional args
+			ReportLimit:    200,             // specify optional args
 		}
 		err := pct.Basedir.WriteConfig("qan-"+mysqlInstance.UUID, &config)
 		t.Assert(err, IsNil)
@@ -362,9 +364,10 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 	// Set different config in an Analyzer mock
 	// to emulate that config changed after running manager
 	// This tests that manager can return initial setConfig and runningConfig
+	exampleQueries := true
 	pcQANRunningExpected := pcQANSetExpected
 	pcQANRunningExpected.ReportLimit = 10
-	pcQANRunningExpected.ExampleQueries = true
+	pcQANRunningExpected.ExampleQueries = &exampleQueries
 	a.SetConfig(pcQANRunningExpected)
 
 	// Get the manager config which should be just the analyzer config.
@@ -423,6 +426,7 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 	mysqlUUID := "3130000000009999"
 
 	// Create the qan config.
+	exampleQueries := true
 	config := &pc.QAN{
 		UUID: mysqlUUID,
 		Start: []string{
@@ -436,7 +440,7 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 		},
 		Interval:       300,        // 5 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
-		ExampleQueries: true,
+		ExampleQueries: &exampleQueries,
 		WorkerRunTime:  600, // 10 min
 		CollectFrom:    "slowlog",
 	}
@@ -518,6 +522,7 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	mysqlUUID := mysqlInstances[0].UUID
 
 	// Create the qan config.
+	exampleQueries := true
 	config := &pc.QAN{
 		UUID: mysqlUUID,
 		Start: []string{
@@ -531,7 +536,7 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 		},
 		Interval:       300,        // 5 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
-		ExampleQueries: true,
+		ExampleQueries: &exampleQueries,
 		WorkerRunTime:  600, // 10 min
 		CollectFrom:    "slowlog",
 	}

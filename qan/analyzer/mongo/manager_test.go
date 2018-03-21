@@ -76,10 +76,11 @@ func TestRealStartTool(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create the qan config.
+	exampleQueries := true
 	config := &pc.QAN{
 		UUID:           protoInstance.UUID,
 		Interval:       1, // 1 second
-		ExampleQueries: true,
+		ExampleQueries: &exampleQueries,
 	}
 
 	// Send a StartTool cmd with the qan config to start an analyzer.
