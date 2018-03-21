@@ -66,6 +66,8 @@ func TestHandle(t *testing.T) {
 					require.NoError(t, err)
 					assert.Regexp(t, "# Percona Toolkit System Summary Report #", data)
 				}
+				assert.NoError(t, err)
+				assert.Regexp(t, "# Percona Toolkit System Summary Report #", data)
 			},
 		},
 	}
