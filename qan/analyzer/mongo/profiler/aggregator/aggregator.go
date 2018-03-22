@@ -24,10 +24,11 @@ const (
 
 // New returns configured *Aggregator
 func New(timeStart time.Time, config pc.QAN) *Aggregator {
+	defaultExampleQueries := DefaultExampleQueries
 	// verify config
 	if config.Interval == 0 {
 		config.Interval = DefaultInterval
-		config.ExampleQueries = DefaultExampleQueries
+		config.ExampleQueries = &defaultExampleQueries
 	}
 
 	aggregator := &Aggregator{
@@ -251,9 +252,10 @@ func (self *Aggregator) createResult() *report.Result {
 	global := event.NewClass("", "", false)
 	queryStats := queries.CalcQueriesStats(int64(self.config.Interval))
 	classes := []*event.Class{}
+	exampleQueries := boolValue(self.config.ExampleQueries)
 	for _, queryInfo := range queryStats {
-		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, self.config.ExampleQueries)
-		if self.config.ExampleQueries {
+		class := event.NewClass(queryInfo.ID, queryInfo.Fingerprint, exampleQueries)
+		if exampleQueries {
 			db := ""
 			s := strings.SplitN(queryInfo.Namespace, ".", 2)
 			if len(s) == 2 {
@@ -312,4 +314,13 @@ func newEventTimeStatsInMilliseconds(s mongostats.Statistics) *event.TimeStats {
 		P95: event.Float64(s.Pct95 / 1000),
 		Max: event.Float64(s.Max / 1000),
 	}
+}
+
+// boolValue returns the value of the bool pointer passed in or
+// false if the pointer is nil.
+func boolValue(v *bool) bool {
+	if v != nil {
+		return *v
+	}
+	return false
 }

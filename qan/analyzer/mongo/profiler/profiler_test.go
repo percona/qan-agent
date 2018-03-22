@@ -32,10 +32,11 @@ func TestCollectingAndSendingData(t *testing.T) {
 	dataChan := make(chan interface{})
 	spool := mock.NewSpooler(dataChan)
 	// Create the QAN config.
+	exampleQueries := true
 	qanConfig := config.QAN{
 		UUID:           "12345678",
 		Interval:       5, // seconds
-		ExampleQueries: true,
+		ExampleQueries: &exampleQueries,
 	}
 	plugin := New(dialInfo, dialer, logger, spool, qanConfig)
 

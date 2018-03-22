@@ -1,213 +1,558 @@
 .. _using:
 
-====================================================
+================================================================================
 Using the Percona Monitoring and Management Platform
-====================================================
+================================================================================
 
-You can access the PMM web interface using the IP address of the host
-where *PMM Server* is running.
-For example, if *PMM Server* is running on a host with IP 192.168.100.1,
-access the following address with your web browser: ``http://192.168.100.1``.
+You can access the PMM web interface using the IP address of the host where
+|pmm-server| is running.  For example, if |pmm-server| is running on a host with
+IP 192.168.100.1, access the following address with your web browser:
+``http://192.168.100.1``.
 
-The landing page has links to corresponding PMM tools:
+.. seealso::
+
+   Installing |pmm-server|
+      :ref:`deploy-pmm.server.installing`
+
+The |pmm| home page that opens provides an overview of the environment that you
+have set up to monitor. From this page you can access specific monitoring tools,
+or dashboards. Each dashboard features a collection of metrics. These are graphs
+of a certain type that represent one specific aspect showing how metric values
+change over time.
+
+.. figure:: .res/graphics/png/pmm.home-page.png
+
+   The home page is an overview of your system
+
+By default the home page lists most recently used dashboards and helpful links
+to the information that may be useful to understand |pmm| better.
+
+The home page lists all hosts that you have set up for monitoring as well as the
+essential details about their performance such as CPU load, disk performance, or
+network activity.
 
 .. contents::
    :local:
    :depth: 1
 
-These tools provide comprehensive insight
-into the performance of a MySQL host.
-
 .. _using-qan:
 
 Query Analytics
-===============
+================================================================================
 
-The *Query Analytics* tool enables database administrators
-and application developers to analyze MySQL queries over periods of time
-and find performance problems.
-Query Analytics helps you optimize database performance
-by making sure that queries are executed as expected
-and within the shortest time possible.
-In case of problems, you can see which queries may be the cause
-and get detailed metrics for them.
+The |qan| dashboard enables database administrators and application
+developers to analyze database queries over periods of time and find performance
+problems.  |qan| helps you optimize database performance by making
+sure that queries are executed as expected and within the shortest time
+possible.  In case of problems, you can see which queries may be the cause and
+get detailed metrics for them. 
 
-The following image shows the *Query Analytics* app.
+.. figure:: .res/graphics/png/query-analytics.png
+	    
+   |qan| helps analyze database queries over periods of time and find performance
+   problems.
 
-.. image:: images/query-analytics.png
-   :width: 640
+|qan| displays its metrics in both visual and numeric form: the performance
+related characteristics appear as plotted graphics with summaries.
 
-The summary table contains top 10 queries ranked by **%GTT**
-(percent of grand total time),
-which is the percentage of time
-that the MySQL server spent executing a specific query,
-compared to the total time it spent executing all queries
-during the selected period of time.
+Open |qan| from the |pmm| Home Page
+--------------------------------------------------------------------------------
+   
+To start working with |qan|, open the list of dashboards on the |pmm| home
+page. Then, select a host in the |gui.host| field at the top of the page from
+the list of database instances.  where the |pmm-client| is installed.
 
-You can select the period of time at the top,
-by selecting a predefined interval
-(last hour, 3 hours, 6 hours, 12 hours, last day, or 5 days),
-or select a specific inteval using the calendar icon.
+.. suspecting that 'database instance' is not appropriate
 
-If you have multiple MySQL hosts with *PMM Client* installed,
-you can switch between those hosts using the drop-down list at the top.
+.. SCREENSHOT: The Host field
 
-To configure the QAN agent running on a MySQL host with *PMM Client*,
-click the gear icon at the top.
+The list of queries opens below in a summary table. Be default, |qan| shows the
+top *ten* queries ranked by :term:`%GTT` (Grand total time) as a result of
+monitoring your database server for the last hour. Each query displays three
+essential metrics: *Load*, *Count*, and *Latency*.
 
-Query Details
--------------
+To view more queries, click the :guilabel:`Load next 10 queries` button below
+the query summary table.
 
-You can get details for a query if you click it in the summary table.
-The details contain all metrics specific to that particular query,
-such as, bytes sent, lock time, rows sent, and so on.
-You can see when the query was first and last seen,
-get an example of the query, as well as its fingerprint.
+.. figure:: .res/graphics/png/pmm.qan.query-summary-table.default.1.png
 
-The details section enables you to run ``EXPLAIN`` on the selected query
+   The query summary table shows the monitored queries from the selected
+   database.
+
+Filtering Queries
+--------------------------------------------------------------------------------
+
+If you need to limit the list of available queries to only those that you are
+interested in, use the |gui.query-filter| field located above the query summary
+table.
+
+In the |gui.query-filter| field, you can enter a query ID, query abstract, or
+query fingerprint.  The ID is a unique signature of a query and looks like a
+long hexadecimal number. Note that each query in the summary table displays its
+ID in the *ID* column.
+
+The query fingerprint is a simplified form of a query: all specific values are
+replaced with placeholders. You may enter only a fragment of the fingerprint to
+view all queries that contain that fragment in their fingerprints.
+
+The query abstract is the portion of the query fingerprint which contains the
+type of the query, such as *SELECT* or *FIND*, and the attributes from the
+projection (a set of requested columns in case of MySQL database, for example).
+
+When you apply your filter, the query summary table changes to display only the
+queries which match your criterion. Note that the TOTAL row which runs above the
+list of queries in the summary table does not change its values. These are
+always calculated based on all queries run within the selected time or date
+range.
+
+.. figure:: .res/graphics/png/pmm.qan.query-summary-table.1.png
+
+   A list of queries
+
+Selecting Time or Date Range
+--------------------------------------------------------------------------------
+
+The query metrics that appear in *QAN* are computed based on a time period or a
+range of dates. The default value is *the last hour*. To set another range use
+the *range selection tool* located at the top of your |qan| page.
+
+.. figure:: .res/graphics/png/pmm.qan.range-selection.1.png
+
+   |qan| displays query metrics for the time period or date range that you
+   specify.
+
+The tool consists of two parts. The *Quick ranges* offers frequently used time
+ranges.. The date picker sets a range of dates.
+
+Totals of the Query Summary
+--------------------------------------------------------------------------------
+
+The first line of the summary table contains the totals of the *load*, *count*,
+and *latency* for all queries that were run on the selected database server
+during the time period that you've specified.
+
+.. figure:: .res/graphics/png/pmm.qan.query-summary-table.totals.1.png
+	   
+   The totals appear at the top of the query summary table.
+
+The *load* is the amount of time that the database server spent during the
+selected time or date range running all queries.
+
+The *count* is the average number of requests to the server during the specified
+time or date range.
+
+The *latency* is the average amount of time that it took the database server to
+retrieve and return the data.
+
+Queries in the Query Summary Table
+--------------------------------------------------------------------------------
+
+Each row in the query summary table contains information about a single
+query. Each column is query attribute. The *Abstract* attribute is an essential
+part of the fingerprint which informs the type of query, such as INSERT, or
+UPDATE, and the queried tables, or collections. The *ID* attribute is a unique
+hexadecimal number associated with the given query.
+
+The *Load*, *Count*, and *Latency* attributes refer to the essential metrics of
+each query. Their values are plotted graphics and summary values in the numeric
+form. The summary values have two parts. The average value of the metric and its
+percentage with respect to the corresponding total value at the top of the query
+summary table.
+
+Viewing a Specific Value of a Metric
+--------------------------------------------------------------------------------
+
+If you hover the cursor over one of the metrics in a query, you can see a
+concrete value at the point where your cursor is located. Move the cursor along
+the plotted line to watch how the value is changing.
+
+.. figure:: .res/graphics/png/pmm.qan.query-summary-table.1.png
+
+   *Hover the cursor to see a value at the point.*
+
+Zooming into a Query
+--------------------------------------------------------------------------------
+
+Click one of the queries to zoom it in. QAN displays detailed information about
+the query in the :term:`query metrics summary table` below the :term:`query
+summary table`. The detailed information includes the query type specific
+metrics. It also contains details about the database and tables which are used
+in the query.
+
+.. figure:: .res/graphics/png/pmm.qan.query-metrics.1.png
+
+   Select a query from the query summary table to open its metrics.
+
+Query Section
+--------------------------------------------------------------------------------
+   
+In addition to the metrics in the :term:`query metrics summary table`,
+:program:`QAN` displays more information about the query itself. The ``Query``
+section contains the :term:`fingerprint <Query Fingerprint>` and an example of
+the query.
+
+.. figure:: .res/graphics/png/pmm.qan.query.1.png
+
+   The Query section shows the SQL statement for the selected query.
+
+Explain Section
+--------------------------------------------------------------------------------
+
+The ``Explain`` section enables you to run |sql.explain| on the selected query
 directly from the PMM web interface (simply specify the database).
 
-.. image:: images/qan-realtime-explain.png
-   :width: 640
+.. image:: .res/graphics/png/qan-realtime-explain.png
 
-At the bottom, you can run Table Info for the selected query.
-This enables you to get ``SHOW CREATE TABLE``, ``SHOW INDEX``,
-and ``SHOW TABLE STATUS`` for each table used by the query
-directly from the PMM web interface.
+The output appears in two forms: classic and |json|. The classic form presents
+the attributes of the |sql.explain| command as columns of a table. The JSON
+format presents the output of |sql.explain| as a |json| document.
 
-.. image:: images/qan-create-table.png
-   :width: 640
+.. figure:: .res/graphics/png/pmm.qan.explain.1.png
+
+   The two output formats of the |sql.explain| command.
+
+Note that the |sql.explain| command only works with the following statements:
+
+- |sql.select|
+- |sql.delete|
+- |sql.insert|
+- |sql.replace|
+- |sql.update|
+	    
+If you are viewing the details of a query of another type, the
+``Explain`` section will not contain any data.
+
+Table Info Section
+--------------------------------------------------------------------------------
+
+At the bottom, you can run Table Info for the selected query.  This
+enables you to get ``SHOW CREATE TABLE``, ``SHOW INDEX``, and ``SHOW
+TABLE STATUS`` for each table used by the query directly from the PMM
+web interface.
+
+.. image:: .res/graphics/png/qan-create-table.png
+
+Configuring Query Analytics
+--------------------------------------------------------------------------------
+
+The :guilabel:`Settings` button opens a separate page with settings,
+status, and log for the selected database instance.
+
+.. SCREENSHOT: Settings button
+
+.. rubric:: |gui.settings| Tab
+
+The |gui.settings| tab displays the essential configuration settings of
+the database server selected from the |gui.databases| list. From this tab
+you can see which :term:`DSN` is being used as well as the :term:`database
+server version <Version>`.
+
+This tab contains several settings which influence how the monitored data are
+collected. Note that these settings cannot be changed directly in |qan|. You
+need to set the appropriate options by using the tools from the database server
+itself. You can, however, select where the database server mentrics are
+collected from, such as *slow log*, or *performance schema*. For this, change
+the value of the |gui.collect-from| field accordingly.
+
+.. figure:: .res/graphics/png/pmm.qan.settings.1.png
+	   
+   The |gui.settings| tab to view the essential settings of the selected
+   database server.
+
+.. rubric:: |gui.status| Tab
+
+The |gui.status| tab contains detailed information about the current status of
+the monitored database server. |qan| collects this information from the database
+server directly. For example, in case of a |mysql| server, the |sql.show-status|
+command is used.
+
+.. rubric:: |gui.log| Tab
+
+The |gui.log| tab contains the latest version of the monitored log, such
+as |slow-log|. At the top of this tab, you may notice when exactly the snapshot
+was taken.
+
+Viewing Database and Server Summary Information
+--------------------------------------------------------------------------------
+
+The |pmm-system-summary| dashboard shows detailed infromation about the selected
+host (the value of the |gui.host| field) and the database server deployed on
+this host.
+
+The |gui.system-summary| section contains details about the platform while the
+|gui.database-summary| offers detailed statistics about the database server.
+
+.. figure:: .res/graphics/png/pmm.metrics-monitor.system-summary.png
+
+   Accessing information about the system and database
+   
+You can download the current values on this dashboard locally if you click the
+|gui.download-summary| button.
 
 .. _perf-schema:
 
-Performance Schema
-------------------
+|performance-schema|
+--------------------------------------------------------------------------------
 
-The default source of query data for PMM is the slow query log.
-It is available in MySQL 5.1 and later versions.
-Starting from MySQL 5.6 (including Percona Server 5.6 and later),
-you can select to parse query data from the Performance Schema.
-Starting from MySQL 5.6.6, Performance Schema is enabled by default.
+The default source of query data for |pmm| is the |slow-query-log|.  It is
+available in |mysql| 5.1 and later versions.  Starting from |mysql| 5.6
+(including |percona-server| 5.6 and later), you can choose to parse query data
+from the |perf-schema|.  Starting from |mysql| 5.6.6, |perf-schema| is enabled
+by default.
 
-Performance Schema is not as data-rich as the slow query log,
-but it has all the critical data and is generally faster to parse.
-If you are running Percona Server,
-a :ref:`properly configured slow query log <slow-log-settings>`
-will provide the most amount of information with the lowest overhead.
-Otherwise, using :ref:`Performance Schema <perf-schema-settings>`
-will likely provide better results.
+|perf-schema| is not as data-rich as the |slow-query-log|, but it has all the
+critical data and is generally faster to parse.  If you are running |percona-server|,
+a :ref:`properly configured slow query log <slow-log-settings>` will
+provide the most amount of information with the lowest overhead.  Otherwise,
+using :ref:`Performance Schema <perf-schema-settings>` will likely provide
+better results.
 
-**To use Performance Schema:**
+To use |perf-schema|, make sure that the ``performance_schema`` variable is set to ``ON``:
 
-1. Make sure that the ``performance_schema`` variable is set to ``ON``:
+.. include:: .res/code/sql.org
+   :start-after: +show-variables.like.performance-schema+
+   :end-before: #+end-block
 
-   .. code-block:: sql
+If not, add the the following lines to :file:`my.cnf` and restart |mysql|:
 
-      mysql> SHOW VARIABLES LIKE 'performance_schema';
-      +--------------------+-------+
-      | Variable_name      | Value |
-      +--------------------+-------+
-      | performance_schema | ON    |
-      +--------------------+-------+
+.. include:: .res/code/sql.org
+   :start-after: +my-conf.mysql.performance-schema+
+   :end-before: #+end-block
+		
+.. note::
 
-   If not, add the the following lines to :file:`my.cnf` and restart MySQL:
+   |perf-schema| instrumentation is enabled by default
+   in |mysql| 5.6.6 and later versions.
+   It is not available at all in |mysql| versions prior to 5.6.
 
-   .. code-block:: sql
+If the instance is already running, configure the |qan| agent to collect data
+from |perf-schema|.
 
-      [mysql]
-      performance_schema=ON
+1. Open the |qan.name| dashboard.
+#. Click the |gui.settings| button.
+#. Open the |gui.settings| section.
+#. Select |opt.performance-schema| in the |gui.collect-from| drop-down list.
+#. Click |gui.apply| to save changes.
 
-   .. note:: Performance Schema instrumentation is enabled by default
-      in MySQL 5.6.6 and later versions.
-      It is not available at all in MySQL versions prior to 5.6.
+If you are adding a new monitoring instance with the |pmm-admin| tool, use the
+|opt.query-source| *perfschema* option:
 
-2. Configure QAN agent to collect data from Performance Schema:
+|tip.run-this.root|
 
-   If the instance is already running:
+.. include:: .res/code/sh.org
+   :start-after: +pmm-admin.add.mysql.user.password.create-user.query-source+
+   :end-before: #+end-block
+		   
+For more information, run
+|pmm-admin.add|
+|opt.mysql|
+|opt.help|.
 
-   a. Open the **Settings** section in the Query Analytics web UI.
-   b. Select **Performance Schema** in the **Collect from** drop-down list.
-   c. Click **Apply** to save changes.
+|qan| for |mongodb|
+--------------------------------------------------------------------------------
 
-   If you are adding a new monitoring instance with the ``pmm-admin`` tool,
-   use the ``--query-source perfschema`` option.
-   For example:
+|mongodb| is conceptually different from relational database management systems,
+such as |mysql| or |mariadb|. Relational database management systems store data
+in tables that represent single entities. In order to represent complex objects
+you may need to link records from multiple tables. |mongodb|, on the other hand,
+uses the concept of a document where all essential information pertaining to a
+complex object is stored together.
 
-   .. code-block:: bash
+.. figure:: .res/graphics/png/pmm.qan.query-summary-table.mongodb.1.png
 
-      sudo pmm-admin add mysql --user root --password root --create-user --query-source perfschema
+   A list of queries from a |mongodb| host
 
-For more information, run ``pmm-admin add mysql --help``.
+|qan| supports monitoring |mongodb| queries. Although |mongodb| is not a relational
+database management system, you analyze its databases and collections in the
+same interface using the same tools. By using the familiar and intuitive
+interface of :term:`QAN` you can analyze the efficiency of your application
+reading and writing data in the collections of your |mongodb| databases.
+
+.. note:: **Suppored** |mongodb| **versions**
+
+   PMM supports `MongoDB`_ version 3.2 or higher. 
+
+.. figure:: .res/graphics/png/pmm.qan.query-metrics.mongodb.1.png
+
+   Analyze |mongodb| queries using the same tools as relational database
+   management systems.
 
 .. _using-mm:
 
-Metrics Monitor
-===============
+|metrics-monitor|
+================================================================================
 
-The *Metrics Monitor* tool provides a historical view of metrics
-that are critical to a database server.
-Time-based graphs are separated into dashboards by themes:
-some are related to MySQL or MongoDB, others provide general system metrics.
+The |metrics-monitor| tool provides a historical view of metrics that are
+critical to a database server.  Time-based graphs are separated into dashboards
+by themes: some are related to |mysql| or |mongodb|, others provide general
+system metrics.
 
-When you open *Metrics Monitor* for the first time,
-it loads the **Cross Server Graphs** dashboard.
-The credentials used to sign in to Grafana depend on the options
-that you specified when :ref:`starting PMM Server <run-server>`:
+The default |pmm| installation provides more than thirty
+dashboards. To make it easier to reach a specific dashboard, the
+system offers two tools. The |gui.dashboard-dropdown| is a button in
+the header of any |pmm| page. It lists all dashboards
+alphabetically. To locate the required dashboard quickly, start typing
+its name in the provided text box.
 
-* If you did not specify either ``SERVER_USER`` or ``SERVER_PASSWORD``,
-  you will be signed in anonymously.
-  You can change to a different existing Grafana user.
+.. figure:: .res/graphics/png/metrics-monitor.dashboard-dropdown.png
 
-* If you specified both ``SERVER_USER`` and ``SERVER_PASSWORD``,
-  then these credentials will be used to sign in to Grafana.
+   With |gui.dashboard-dropdown|, search the alphabetical list for any
+   dashboard.
 
-* If you specified only ``SERVER_PASSWORD``,
-  a single user (``pmm``) will be used to sign in to all components
-  (including QAN, Prometheus, Grafana, etc.).
-  You will not be able to change to a different Grafana user.
+You can also use a navigation menu which groups dashboards by
+application. Click the required group and then select the dashboard
+that matches your choice.
 
-* If you specified only ``SERVER_USER``,
-  this parameter will be ignored.
+.. table:: Navigation menu groups
 
-.. warning:: Do not include the ``#`` or ``:`` symbols in ``SERVER_USER``.
+   =============  ==============================================================
+   Group          Dashboards for monitoring ...
+   =============  ==============================================================   
+   |qan.name|     |qan| component (see :ref:`using-qan`
+   OS             The operating system status
+   |mysql|        |mysql| and |amazon-aurora|
+   |mongodb|      State of |mongodb| hosts
+   HA             High availability
+   Cloud          |amazon-rds| and |amazon-aurora|
+   Insight        Summary, cross-server and |prometheus|
+   |pmm|          Server settings
+   =============  ==============================================================
+
+.. figure:: .res/graphics/png/metrics-monitor.menu.png
+
+   |mysql| group selected in the navigation menu
+
+.. seealso::
+
+   |percona| support for high availability
+      https://www.percona.com/services/support/mysql-ha-cluster-support
+   List of |metrics-monitor| dashboards
+      See section :ref:`mm-dashboards`
+
+When you open |metrics-monitor| for the first time, it loads the
+|cross-server-graphs| dashboard.  The credentials used to sign in to |grafana|
+depend on the options that you specified when :ref:`starting PMM Server
+<deploy-pmm.server.installing>`:
+
+.. TODO: Consider moving the following steps to the referenced section
+
+* If you do not specify either :term:`SERVER_USER <SERVER_USER (Option)>` or
+  :term:`SERVER_PASSWORD <SERVER_PASSWORD (Option)>`, you will log in
+  as an anonymous user.  You can change to a different existing |grafana| user.
+
+* If you specify both |opt.server-user| and |opt.server-password|,
+  then these credentials will be used to sign in to |grafana|.
+
+* If you specify only |opt.server-password|, a single user (``pmm``) will be
+  used to sign in to all components (including |qan|, |prometheus|, |grafana|,
+  etc.).  You will not be able to change to a different |grafana| user.
+
+* If you specify only |opt.server-user|, this parameter will be ignored.
+
+.. warning::
+
+   The value of the |opt.server-user| parameter may not contain the **#** or
+   **:** symbols.
 
 To access the dashboards, provide default user credentials:
 
 * User: ``admin``
 * Password: ``admin``
 
-On the Home screen, select a dashboard
-from the list of available Percona Dashboards.
-For example, the following image shows the **MySQL Overview** dashboard:
+On the Home screen, select a dashboard from the list of available |percona|
+Dashboards.  For example, the following image shows the |mysql-overview|
+dashboard:
 
-.. image:: images/metrics-monitor.png
-   :width: 640
+.. image:: .res/graphics/png/metrics-monitor.png
 
-.. _orchestrator:
+Each graph has a graph descriptions to display more information about the
+monitored data without cluttering the interface.
 
-Orchestrator
-============
+These are on-demand descriptions in the tooltip format that you can find by
+hovering the mouse pointer over the |gui.more-information| icon at the top left
+corner of a graph. When you move the mouse pointer away from the |gui.more-inf|
+button the description disappears.
 
-.. note:: Orchestrator was included into PMM for experimental purposes.
-   It is a standalone tool, not integrated with PMM
-   other than that you can access it from the landing page.
+.. figure:: .res/graphics/png/pmm.metrics-monitor.description.1.png
 
-Orchestrator is a MySQL replication topology management and visualization tool.
-You can access it using the ``/orchestrator`` URL after *PMM Server* address.
-Alternatively, you can click the **MySQL Replication Topology Manager** button
-on the main *PMM Server* landing page.
+   Graph descriptions provide more information about a graph without claiming
+   any space in the interface.
 
-To use it, create a MySQL user for Orchestrator on all managed instances::
+Enabling dashboards
+--------------------------------------------------------------------------------
 
- GRANT SUPER, PROCESS, REPLICATION SLAVE, RELOAD ON *.* TO 'orc_client_user'@'%' IDENTIFIED BY 'orc_client_password’;
+In |pmm|, you can disable the dashboards that you do not require. They
+will disappear from the |gui.dashboard-dropdown| list. You can enable them back again
+   
+|mysql-myrocks-metrics| Dashboard
+--------------------------------------------------------------------------------
+
+The MyRocks_ storage engine developed by |facebook| based on the |rocksdb|
+storage engine is applicable to systems which primarily interact with the
+database by writing data to it rather than reading from it. |rocksdb| also
+features a good level of compression, higher than that of the |innodb| storage
+engine, which makes it especially valuable when optimizing the usage of hard
+drives.
+
+|pmm| collects statistics on the |myrocks| storage engine for |mysql| in the
+|metrics-monitor| information for this dashboard comes from the
+|inf-schema| tables.
+
+.. figure:: .res/graphics/png/pmm.metrics-monitor.mysql-myrocks-metrics.1.png
+	    
+   The |mysql| |myrocks| metrics dashboard
+
+.. seealso::
+
+   Information schema
+      https://github.com/facebook/mysql-5.6/wiki/MyRocks-Information-Schema
+
+.. _pmm/using.orchestrator:
+
+|orchestrator|
+================================================================================
+
+|orchestrator| is a |mysql| replication topology management and visualization
+tool.  If it is enabled, you can access it using the ``/orchestrator`` URL after
+|pmm-server| address.  Alternatively, you can click the
+|gui.mysql-replication-topology-manager| button on the |pmm-server| landing
+page.
+
+To use it, create a |mysql| user for |orchestrator| on all managed instances:
+
+.. include:: .res/code/sql.org
+   :start-after: +grant.orc-client-user+
+   :end-before: #+end-block
 
 .. note:: The credentials in the previous example are default.
    If you use a different user name or password,
    you have to pass them when
-   :ref:`running PMM Server <run-server>`
-   using the following options::
+   :ref:`running PMM Server <deploy-pmm.server.installing>`
+   using the
+   :term:`ORCHESTRATOR_PASSWORD <ORCHESTRATOR_PASSWORD (Option)>`
+   and
+   :term:`ORCHESTRATOR_USER  <ORCHESTRATOR_USER (Option)>` options.
 
-    -e ORCHESTRATOR_USER=name -e ORCHESTRATOR_PASSWORD=pass
+   .. include:: .res/code/sh.org
+      :start-after: +docker.run.orchestrator-enabled.orchestrator-user.orchestrator-password+
+      :end-before: #+end-block
 
-Then you can use the **Discover** page in the Orchestrator web interface
+Then you can use the |gui.discover| page in the |orchestrator| web interface
 to add the instances to the topology.
+
+.. note:: **Orchestrator is not enabled by default starting with PMM 1.3.0**
+
+   |orchestrator| was included into |pmm| for experimental purposes.  It is a
+   standalone tool, not integrated with |pmm| other than that you can access it
+   from the landing page.
+
+   In version 1.3.0 and later, |orchestrator| is not enabled
+   by default. To enable it, see
+   :ref:`pmm/docker.additional_option` in the
+   :ref:`run-server-docker` section.
+
+.. include:: .res/replace/name.txt
+.. include:: .res/replace/option.txt
+.. include:: .res/replace/program.txt
+.. include:: .res/replace/url.txt
+.. include:: .res/replace/fragment.txt

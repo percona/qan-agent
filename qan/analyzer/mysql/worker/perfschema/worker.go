@@ -324,7 +324,7 @@ func (w *Worker) Status() map[string]string {
 }
 
 func (w *Worker) SetConfig(config pc.QAN) {
-	w.collectExamples = config.ExampleQueries
+	w.collectExamples = *config.ExampleQueries
 	if w.collectExamples {
 		w.ticker = time.NewTicker(time.Millisecond * 1000)
 		go w.getQueryExamples(w.ticker.C)

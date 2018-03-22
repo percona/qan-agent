@@ -1,3 +1,6 @@
 build/
-source/ext/psdom.pyc
 source/percona-theme/
+*.pyc
+*~
+\#*
+\.\#*

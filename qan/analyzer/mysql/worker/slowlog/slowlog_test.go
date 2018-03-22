@@ -81,6 +81,7 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 	s.logger = pct.NewLogger(s.logChan, "qan-worker")
 	s.now = time.Now().UTC()
 	s.mysqlInstance = proto.Instance{UUID: "1", Name: "mysql1"}
+	exampleQueries := true
 	s.config = pc.QAN{
 		UUID: s.mysqlInstance.UUID,
 		Start: []string{
@@ -94,7 +95,7 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 		},
 		Interval:       60,         // 1 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
-		ExampleQueries: true,
+		ExampleQueries: &exampleQueries,
 		WorkerRunTime:  60, // 1 min
 		CollectFrom:    "slowlog",
 	}
@@ -173,7 +174,8 @@ func (s *WorkerTestSuite) TestWorkerSlow001NoExamples(t *C) {
 		EndOffset:   524,
 	}
 	config := s.config
-	config.ExampleQueries = false
+	exampleQueries := false
+	config.ExampleQueries = &exampleQueries
 	got, err := s.RunWorker(config, mock.NewNullMySQL(), i)
 	t.Check(err, IsNil)
 	expect := &report.Result{}
@@ -282,11 +284,12 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	 */
 
 	// See TestStartService() for description of these startup tasks.
+	exampleQueries := true
 	config := pc.QAN{
 		UUID:           s.mysqlInstance.UUID,
 		Interval:       300,
 		MaxSlowLogSize: 1000, // <-- HERE
-		ExampleQueries: false,
+		ExampleQueries: &exampleQueries,
 		WorkerRunTime:  600,
 		Start: []string{
 			"-- start",
@@ -380,11 +383,12 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	}
 
 	// See TestStartService() for description of these startup tasks.
+	exampleQueries := true
 	config := pc.QAN{
 		UUID:           s.mysqlInstance.UUID,
 		Interval:       300,
 		MaxSlowLogSize: 1000,
-		ExampleQueries: false,
+		ExampleQueries: &exampleQueries,
 		WorkerRunTime:  600,
 		Start: []string{
 			"-- start",
@@ -534,11 +538,12 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 	}
 
 	// See TestStartService() for description of these startup tasks.
+	exampleQueries := true
 	config := pc.QAN{
 		UUID:           s.mysqlInstance.UUID,
 		Interval:       300,
 		MaxSlowLogSize: 1000,
-		ExampleQueries: false,
+		ExampleQueries: &exampleQueries,
 		WorkerRunTime:  600,
 		Start: []string{
 			"SET GLOBAL slow_query_log=1",

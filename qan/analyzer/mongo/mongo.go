@@ -133,10 +133,11 @@ func (m *MongoAnalyzer) Stop() error {
 }
 
 func (m *MongoAnalyzer) GetDefaults(uuid string) map[string]interface{} {
+	defaultExampleQueries := aggregator.DefaultExampleQueries
 	// verify config
 	if m.config.Interval == 0 {
 		m.config.Interval = aggregator.DefaultInterval
-		m.config.ExampleQueries = aggregator.DefaultExampleQueries
+		m.config.ExampleQueries = &defaultExampleQueries
 	}
 
 	return map[string]interface{}{
