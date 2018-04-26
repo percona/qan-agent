@@ -564,7 +564,7 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 	// For some reasons MaxSlowLogSize is explicitly marked to not be saved in config file
 	// type QAN struct {
 	//      ...
-	// 	MaxSlowLogSize int64  `json:"-"` // bytes, 0 = DEFAULT_MAX_SLOW_LOG_SIZE. Don't write it to the config
+	// 	MaxSlowLogSize int64  `json:"-"` // bytes, 0 = DefaultMaxSlowLogSize. Don't write it to the config
 	//      ...
 	// }
 	t.Check(gotConfig.MaxSlowLogSize, Equals, int64(0))

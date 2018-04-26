@@ -27,15 +27,15 @@ import (
 )
 
 var (
-	DEFAULT_INTERVAL             uint  = 60         // 1 minute
-	DEFAULT_MAX_SLOW_LOG_SIZE    int64 = 1073741824 // 1G
-	DEFAULT_SLOW_LOGS_ROTATION         = true       // whether to rotate slow logs
-	DEFAULT_REMOVE_OLD_SLOW_LOGS       = true       // whether to remove old slow logs after rotation
-	DEFAULT_SLOW_LOGS_TO_KEEP          = 1          // how many slow logs to keep on filesystem
-	DEFAULT_EXAMPLE_QUERIES            = true
+	DefaultInterval          uint  = 60         // 1 minute
+	DefaultMaxSlowLogSize    int64 = 1073741824 // 1G
+	DefaultSlowLogsRotation        = true       // whether to rotate slow logs
+	DefaultRemoveOldSlowLogs       = true       // whether to remove old slow logs after rotation
+	DefaultSlowLogsToKeep          = 1          // how many slow logs to keep on filesystem
+	DefaultExampleQueries          = true
 	// internal
-	DEFAULT_WORKER_RUNTIME uint = 55
-	DEFAULT_REPORT_LIMIT   uint = 200
+	DefaultWorkerRuntime uint = 55
+	DefaultReportLimit   uint = 200
 )
 
 type MySQLVarType int
@@ -111,32 +111,32 @@ func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interfa
 func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:           setConfig.UUID,
-		Interval:       DEFAULT_INTERVAL,
+		Interval:       DefaultInterval,
 		ExampleQueries: new(bool),
 		// "slowlog" specific options.
-		MaxSlowLogSize:   DEFAULT_MAX_SLOW_LOG_SIZE,
+		MaxSlowLogSize:   DefaultMaxSlowLogSize,
 		SlowLogsRotation: new(bool),
 		SlowLogsToKeep:   new(int),
 		// internal
-		WorkerRunTime: DEFAULT_WORKER_RUNTIME,
-		ReportLimit:   DEFAULT_REPORT_LIMIT,
+		WorkerRunTime: DefaultWorkerRuntime,
+		ReportLimit:   DefaultReportLimit,
 	}
 	// I know this is an ugly hack, but we need runConfig.ExampleQueries to be a pointer since
 	// the default value for a boolean is false, there is no way to tell if it was false in the
 	// config or if the value was missing.
 	// If it was missing (nil) we should take the default=true
-	*runConfig.ExampleQueries = DEFAULT_EXAMPLE_QUERIES
+	*runConfig.ExampleQueries = DefaultExampleQueries
 	if setConfig.ExampleQueries != nil {
 		runConfig.ExampleQueries = setConfig.ExampleQueries
 	}
-	*runConfig.SlowLogsRotation = DEFAULT_SLOW_LOGS_ROTATION
+	*runConfig.SlowLogsRotation = DefaultSlowLogsRotation
 	if setConfig.SlowLogsRotation != nil {
 		runConfig.SlowLogsRotation = setConfig.SlowLogsRotation
 	}
 	if setConfig.SlowLogsToKeep != nil {
 		runConfig.SlowLogsToKeep = setConfig.SlowLogsToKeep
 	}
-	*runConfig.SlowLogsToKeep = DEFAULT_SLOW_LOGS_TO_KEEP
+	*runConfig.SlowLogsToKeep = DefaultSlowLogsToKeep
 
 	// Strings
 	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {

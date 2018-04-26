@@ -439,7 +439,7 @@ func (w *Worker) rotateSlowLog(interval *iter.Interval) error {
 	interval.EndOffset, _ = pct.FileSize(newSlowLogFile) // todo: handle err
 
 	// Purge old slow logs.
-	if !config.DEFAULT_REMOVE_OLD_SLOW_LOGS {
+	if !config.DefaultRemoveOldSlowLogs {
 		return nil
 	}
 	filesFound, err := filepath.Glob(fmt.Sprintf("%s-*", curSlowLog))
