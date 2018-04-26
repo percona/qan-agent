@@ -65,6 +65,7 @@ type Job struct {
 	StartOffset    int64
 	EndOffset      int64
 	ExampleQueries bool
+	SlowLogsToKeep int
 }
 
 func (j *Job) String() string {
@@ -139,14 +140,22 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 	w.logger.Debug("Setup:call")
 	defer w.logger.Debug("Setup:return")
 	w.logger.Debug("Setup:", interval)
-	if interval.EndOffset >= w.config.MaxSlowLogSize {
-		w.logger.Info(fmt.Sprintf("Rotating slow log: %s >= %s",
-			pct.Bytes(uint64(interval.EndOffset)),
-			pct.Bytes(uint64(w.config.MaxSlowLogSize))))
-		if err := w.rotateSlowLog(interval); err != nil {
-			w.logger.Error(err)
+
+	// Check if slow log rotation is enabled.
+	if boolValue(w.config.SlowLogsRotation) {
+		// Check if max slow log size was reached.
+		if interval.EndOffset >= w.config.MaxSlowLogSize {
+			w.logger.Info(fmt.Sprintf("Rotating slow log: %s >= %s",
+				pct.Bytes(uint64(interval.EndOffset)),
+				pct.Bytes(uint64(w.config.MaxSlowLogSize))))
+			// Rotate slow log.
+			if err := w.rotateSlowLog(interval); err != nil {
+				w.logger.Error(err)
+			}
 		}
 	}
+
+	// Create new Job.
 	w.job = &Job{
 		Id:             fmt.Sprintf("%d", interval.Number),
 		SlowLogFile:    interval.Filename,
@@ -154,6 +163,7 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 		EndOffset:      interval.EndOffset,
 		RunTime:        time.Duration(w.config.WorkerRunTime) * time.Second,
 		ExampleQueries: boolValue(w.config.ExampleQueries),
+		SlowLogsToKeep: intValue(w.config.SlowLogsToKeep),
 	}
 	w.logger.Debug("Setup:", w.job)
 
@@ -436,11 +446,11 @@ func (w *Worker) rotateSlowLog(interval *iter.Interval) error {
 	if err != nil {
 		return err
 	}
-	if len(filesFound) <= config.DEFAULT_OLD_SLOW_LOGS_TO_KEEP {
+	if len(filesFound) <= intValue(w.config.SlowLogsToKeep) {
 		return nil
 	}
 	sort.Strings(filesFound)
-	for _, f := range filesFound[:len(filesFound)-config.DEFAULT_OLD_SLOW_LOGS_TO_KEEP] {
+	for _, f := range filesFound[:len(filesFound)-intValue(w.config.SlowLogsToKeep)] {
 		w.status.Update(w.name, "Removing slow log "+f)
 		if err := os.Remove(f); err != nil {
 			w.logger.Warn(err)
@@ -459,4 +469,13 @@ func boolValue(v *bool) bool {
 		return *v
 	}
 	return false
+}
+
+// intValue returns the value of the int pointer passed in or
+// 0 if the pointer is nil.
+func intValue(v *int) int {
+	if v != nil {
+		return *v
+	}
+	return 0
 }

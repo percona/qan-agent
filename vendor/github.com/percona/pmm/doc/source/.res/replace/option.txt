@@ -1,6 +1,7 @@
 .. -*- mode: rst -*-
 .. Options (all using the 'opt.' prefix)
    
+.. |opt.tags|                  replace:: :option:`--tags`
 .. |opt.all|                   replace:: :option:`--all`
 .. |opt.bind-address|          replace:: :option:`--bind-address`
 .. |opt.client-address|        replace:: :option:`--client-address`
@@ -157,6 +158,7 @@
 .. Labels and tags
 
 .. |opt.latest|            replace:: :option:`latest`
+.. |opt.dev-latest|        replace:: :option:`dev-latest`
 .. |opt.pmm-data-backup|   replace:: :option:`pmm-data-backup`
 .. |opt.pmm-data|          replace:: :option:`pmm-data`
 .. |opt.pmm-server-backup| replace:: :option:`pmm-server-backup`

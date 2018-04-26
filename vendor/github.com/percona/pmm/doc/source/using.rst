@@ -55,6 +55,8 @@ get detailed metrics for them.
 |qan| displays its metrics in both visual and numeric form: the performance
 related characteristics appear as plotted graphics with summaries.
 
+.. _using.qan.home-page.open:
+
 Open |qan| from the |pmm| Home Page
 --------------------------------------------------------------------------------
    
@@ -78,6 +80,8 @@ the query summary table.
 
    The query summary table shows the monitored queries from the selected
    database.
+
+.. _using.qan.query.filtering:
 
 Filtering Queries
 --------------------------------------------------------------------------------
@@ -109,6 +113,8 @@ range.
 
    A list of queries
 
+.. _using.qan.time-date-range.selecting:
+
 Selecting Time or Date Range
 --------------------------------------------------------------------------------
 
@@ -123,6 +129,8 @@ the *range selection tool* located at the top of your |qan| page.
 
 The tool consists of two parts. The *Quick ranges* offers frequently used time
 ranges.. The date picker sets a range of dates.
+
+.. _using.qan.query-summary.total:
 
 Totals of the Query Summary
 --------------------------------------------------------------------------------
@@ -144,6 +152,8 @@ time or date range.
 The *latency* is the average amount of time that it took the database server to
 retrieve and return the data.
 
+.. _using.qan.query-summary-table.query:
+
 Queries in the Query Summary Table
 --------------------------------------------------------------------------------
 
@@ -159,6 +169,8 @@ form. The summary values have two parts. The average value of the metric and its
 percentage with respect to the corresponding total value at the top of the query
 summary table.
 
+.. _using.qan.metric.value.viewing:
+
 Viewing a Specific Value of a Metric
 --------------------------------------------------------------------------------
 
@@ -169,6 +181,8 @@ the plotted line to watch how the value is changing.
 .. figure:: .res/graphics/png/pmm.qan.query-summary-table.1.png
 
    *Hover the cursor to see a value at the point.*
+
+.. _using.qan.query.zooming:
 
 Zooming into a Query
 --------------------------------------------------------------------------------
@@ -183,6 +197,8 @@ in the query.
 
    Select a query from the query summary table to open its metrics.
 
+.. _using.qan.query.selecting:
+
 Query Section
 --------------------------------------------------------------------------------
    
@@ -194,6 +210,8 @@ the query.
 .. figure:: .res/graphics/png/pmm.qan.query.1.png
 
    The Query section shows the SQL statement for the selected query.
+
+.. _using.qan.explain-section:
 
 Explain Section
 --------------------------------------------------------------------------------
@@ -222,6 +240,8 @@ Note that the |sql.explain| command only works with the following statements:
 If you are viewing the details of a query of another type, the
 ``Explain`` section will not contain any data.
 
+.. _using.qan.table-info-section:
+
 Table Info Section
 --------------------------------------------------------------------------------
 
@@ -232,13 +252,19 @@ web interface.
 
 .. image:: .res/graphics/png/qan-create-table.png
 
-Configuring Query Analytics
+.. _using.qan.configuring:
+
+Configuring |qan.name|
 --------------------------------------------------------------------------------
 
-The :guilabel:`Settings` button opens a separate page with settings,
-status, and log for the selected database instance.
+All |qan.name| settings are available from the |query-analytics-settings|
+dashboard. To open this dashboard, use the |pmm| menu group.
 
-.. SCREENSHOT: Settings button
+.. figure:: .res/graphics/png/metrics-monitor.menu.pmm.png
+
+   The |pmm| group in the |metrics-monitor| navigation menu
+
+.. _using.qan.configuring.settings-tab:
 
 .. rubric:: |gui.settings| Tab
 
@@ -251,13 +277,32 @@ This tab contains several settings which influence how the monitored data are
 collected. Note that these settings cannot be changed directly in |qan|. You
 need to set the appropriate options by using the tools from the database server
 itself. You can, however, select where the database server mentrics are
-collected from, such as *slow log*, or *performance schema*. For this, change
-the value of the |gui.collect-from| field accordingly.
+collected from, such as |slow-log|, or |perf-schema|. For this, change the value
+of the |gui.collect-from| field accordingly.
 
 .. figure:: .res/graphics/png/pmm.qan.settings.1.png
 	   
    The |gui.settings| tab to view the essential settings of the selected
    database server.
+
+When you choose to collect |mysql| data from |slow-log|, a group of read only
+values becomes available. Note that these settings cannot be set in |pmm|
+directly. These are essential parameters of |mysql| that affect the operation of
+|slow-log|. If you need to change these settings refer to the appropriate sections
+of |mysql| documentation.
+
+.. seealso::
+
+   |percona-server| Documentation:
+
+      `Slow Query Log Rotation and Expiration
+      <https://www.percona.com/doc/percona-server/LATEST/flexibility/slowlog_rotation.html>`_
+
+   |mysql| Documentation:
+
+      `The Slow Query Log
+      <https://dev.mysql.com/doc/refman/5.7/en/slow-query-log.html>`_
+
 
 .. rubric:: |gui.status| Tab
 
@@ -271,6 +316,8 @@ command is used.
 The |gui.log| tab contains the latest version of the monitored log, such
 as |slow-log|. At the top of this tab, you may notice when exactly the snapshot
 was taken.
+
+.. _using.database-server-summary.viewing:
 
 Viewing Database and Server Summary Information
 --------------------------------------------------------------------------------
@@ -348,6 +395,8 @@ For more information, run
 |opt.mysql|
 |opt.help|.
 
+.. _using.qan.mongodb:
+
 |qan| for |mongodb|
 --------------------------------------------------------------------------------
 
@@ -368,7 +417,7 @@ same interface using the same tools. By using the familiar and intuitive
 interface of :term:`QAN` you can analyze the efficiency of your application
 reading and writing data in the collections of your |mongodb| databases.
 
-.. note:: **Suppored** |mongodb| **versions**
+.. note:: **Supported** |mongodb| **versions**
 
    PMM supports `MongoDB`_ version 3.2 or higher. 
 
@@ -403,20 +452,18 @@ You can also use a navigation menu which groups dashboards by
 application. Click the required group and then select the dashboard
 that matches your choice.
 
-.. table:: Navigation menu groups
-
-   =============  ==============================================================
-   Group          Dashboards for monitoring ...
-   =============  ==============================================================   
-   |qan.name|     |qan| component (see :ref:`using-qan`
-   OS             The operating system status
-   |mysql|        |mysql| and |amazon-aurora|
-   |mongodb|      State of |mongodb| hosts
-   HA             High availability
-   Cloud          |amazon-rds| and |amazon-aurora|
-   Insight        Summary, cross-server and |prometheus|
-   |pmm|          Server settings
-   =============  ==============================================================
+=============  ==============================================================
+Group          Dashboards for monitoring ...
+=============  ==============================================================   
+|qan.name|     |qan| component (see :ref:`using-qan`
+OS             The operating system status
+|mysql|        |mysql| and |amazon-aurora|
+|mongodb|      State of |mongodb| hosts
+HA             High availability
+Cloud          |amazon-rds| and |amazon-aurora|
+Insight        Summary, cross-server and |prometheus|
+|pmm|          Server settings
+=============  ==============================================================
 
 .. figure:: .res/graphics/png/metrics-monitor.menu.png
 
@@ -478,12 +525,95 @@ button the description disappears.
    Graph descriptions provide more information about a graph without claiming
    any space in the interface.
 
+.. _using.dashboard.enabling:
+
 Enabling dashboards
 --------------------------------------------------------------------------------
 
-In |pmm|, you can disable the dashboards that you do not require. They
-will disappear from the |gui.dashboard-dropdown| list. You can enable them back again
-   
+In |pmm|, you can disable the dashboards that you do not require. They will
+disappear from the |gui.dashboard-dropdown| list. You can enable them back again
+
+.. _using.annotation.application-event.marking:
+
+Using Annotations to Mark Important Application Events
+--------------------------------------------------------------------------------
+
+Some events in your application may impact your database. Annotations
+visualize these events on each dashboard of |pmm-server|.
+
+.. figure:: .res/graphics/png/pmm-server.mysql-overview.mysql-client-thread-activity.1.png
+
+   An annotation appears as a vertical line which crosses a graph at a
+   specific point. Its text explains which event occurred at that time.
+
+To create a new annotation, run |pmm-admin.annotate| command on
+|pmm-client| passing it text which explains what event the new
+annotation should represent. Use the |opt.tags| option to supply one
+or more tags separated by a comma.
+
+You may toggle displaying annotations on metric graphs by using the
+|gui.pmm-annotations| checkbox.
+
+.. figure:: .res/graphics/png/pmm-server.pmm-annotations.png
+
+   Remove the checkmark from the |gui.pmm-annotations| checkbox to
+   hide annotations from all dashboards.
+
+.. seealso::
+
+   Adding annotations
+
+     :ref:`pmm-admin.annotate`
+
+   |grafana| Documentation:
+
+      - `Annotations <http://docs.grafana.org/reference/annotations/#annotations>`_
+      - `Using annotations in queries <http://docs.grafana.org/reference/annotations/#querying-other-data-sources>`_
+
+.. _using.dashboard.snapshot.creating:
+
+Creating snapshots
+--------------------------------------------------------------------------------
+
+A snapshot is a way to securely share your dashboard with |percona|. When
+created, we strip sensitive data like queries (metrics, template variables, and
+annotations) along with panel links. The shared dashboard will only be available
+for viewing by |percona| engineers. The content on the dashboard will assist
+|percona| engineers in troubleshooting your case.
+
+You can safely leave the defaults set as they are, but for further information:
+
+Snapshot name
+
+   The name |percona| will see when viewing your dashboard.
+
+Expire 
+
+   How long before snapshot should expire, configure lower if
+   required. |percona| automatically purges shared dashboards after 90 days.
+
+Timeout (seconds)
+
+   Duration the dashboard will take to load before the snapshot is generated.
+   Can lead to empty values on some graphs in the snapshot version
+
+First, open the snapshot that you would like to share. Click the
+|gui.share| button at the top of the page and select the
+|gui.snapshot| command. Finally, click the
+|gui.share-with-percona-team| button.
+
+.. figure:: .res/graphics/png/pmm.metrics-monitor.share.snapshot.png
+
+   The |gui.snapshot| tab in the |gui.share| dialog window.
+
+.. rubric:: What to do next
+
+After clicking |gui.share-with-percona-team|, wait for the dashboard to be generated,
+and you will be provided a unique URL that then needs to be communicated to
+|percona| via the ticket.
+
+.. _using.dashboard.mysql-myrocks-metrics:
+
 |mysql-myrocks-metrics| Dashboard
 --------------------------------------------------------------------------------
 

@@ -187,22 +187,15 @@ func (m *MySQLAnalyzer) Stop() error {
 
 func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 	// Configuration
-	collectFrom := m.config.CollectFrom
-	interval := m.config.Interval
-	exampleQueries := m.config.ExampleQueries
-	// For old format of qan config, get Interval and ExampleQueries from running config.
-	if interval == 0 {
-		interval = m.analyzer.Config().Interval
-		exampleQueries = m.analyzer.Config().ExampleQueries
-	}
 	cfg := map[string]interface{}{
-		"CollectFrom":       collectFrom,
-		"Interval":          interval,
-		"MaxSlowLogSize":    config.DEFAULT_MAX_SLOW_LOG_SIZE,
-		"RemoveOldSlowLogs": config.DEFAULT_REMOVE_OLD_SLOW_LOGS,
-		"ExampleQueries":    exampleQueries,
-		"WorkerRunTime":     config.DEFAULT_WORKER_RUNTIME,
-		"ReportLimit":       config.DEFAULT_REPORT_LIMIT,
+		"CollectFrom":      m.config.CollectFrom,
+		"Interval":         m.config.Interval,
+		"MaxSlowLogSize":   config.DEFAULT_MAX_SLOW_LOG_SIZE,
+		"SlowLogsToKeep":   m.config.SlowLogsToKeep,
+		"SlowLogsRotation": m.config.SlowLogsRotation,
+		"ExampleQueries":   m.config.ExampleQueries,
+		"WorkerRunTime":    config.DEFAULT_WORKER_RUNTIME,
+		"ReportLimit":      config.DEFAULT_REPORT_LIMIT,
 	}
 
 	// Info from SHOW GLOBAL STATUS
