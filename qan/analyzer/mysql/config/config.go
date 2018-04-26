@@ -133,10 +133,10 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	if setConfig.SlowLogsRotation != nil {
 		runConfig.SlowLogsRotation = setConfig.SlowLogsRotation
 	}
+	*runConfig.SlowLogsToKeep = DefaultSlowLogsToKeep
 	if setConfig.SlowLogsToKeep != nil {
 		runConfig.SlowLogsToKeep = setConfig.SlowLogsToKeep
 	}
-	*runConfig.SlowLogsToKeep = DefaultSlowLogsToKeep
 
 	// Strings
 	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {
