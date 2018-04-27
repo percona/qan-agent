@@ -286,7 +286,7 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	// See TestStartService() for description of these startup tasks.
 	exampleQueries := true
 	slowLogsRotation := true
-	slowLogsToKeep := 1
+	slowLogsToKeep := 0
 	config := pc.QAN{
 		UUID:             s.mysqlInstance.UUID,
 		Interval:         300,
