@@ -20,7 +20,10 @@ env:
     - MYSQL_IMAGE=mysql:5.5
     - MYSQL_IMAGE=mysql:5.6
     - MYSQL_IMAGE=mysql:5.7
-    - MYSQL_IMAGE=mysql:8.0
+    # github.com/go-sql-driver/mysql doesn't support new default auth plugin in MySQL 8.0.
+    # https://github.com/go-sql-driver/mysql/issues/785
+    # https://github.com/go-sql-driver/mysql/pull/552
+    - MYSQL_IMAGE=mysql:8.0 MYSQL_COMMAND=--default-authentication-plugin=mysql_native_password
     - MYSQL_IMAGE=percona/percona-server:5.6
     - MYSQL_IMAGE=percona/percona-server:5.7
     - MYSQL_IMAGE=percona:5.5
@@ -61,12 +64,7 @@ before_script:
   # run docker containers
   - docker-compose up -d
   # wait for MySQL to become available
-  - |
-    until docker-compose exec mysql mysql -u"${MYSQL_USER}" -e 'SELECT 1' > /dev/null; do
-      >&2 echo "MySQL is unavailable - sleeping"
-      sleep 1
-    done
-    >&2 echo "MySQL is up"
+  - ./with_backoff.sh docker-compose exec mysql mysql -u"${MYSQL_USER}" -e 'SELECT 1'
   # log versions
   - docker --version
   - docker-compose --version
