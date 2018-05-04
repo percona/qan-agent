@@ -18,8 +18,7 @@ this scenario, the |pmm.abbrev| server is set up on a dedicated monitoring host.
 Installing |pmm-server|
 ================================================================================
 
-To install and set up the |pmm-server|, use one of the following
-options:
+To install and set up the |pmm-server|, use one of the following options:
 
 .. -  :ref:`run-server-docker`
 .. -  :ref:`pmm/deploying/server/virtual-appliance`
@@ -49,6 +48,8 @@ In the given example, you would need to direct your browser to
 *http://192.168.100.1*. Since you have not added any monitoring
 services yet, the site will not show any data.
 
+.. _deploy-pmm.table.web-interface.component.access:
+
 .. table:: Accessing the Components of the Web Interface
 
    ==================================== ======================================
@@ -64,62 +65,62 @@ services yet, the site will not show any data.
 You can also check if |pmm-server| is available requesting the /ping
 URL as in the following example:
 
-.. code-block:: bash
+.. include:: ../.res/code/sh.org
+   :start-after: +curl.url-ping+
+   :end-before: #+end-block
 
-   $ curl http://192.168.100.1/ping
-   {'version': '1.8.0'}
-
-
-.. _deploy-pmm.server.plugin:
-
-|pmm| Plugin
---------------------------------------------------------------------------------
-
-|pmm| web interface is implemented on top of |grafana| as a separate
-plugin with all dashboards inside.
-
-.. figure:: ../.res/graphics/png/pmm.menu.png
-
-   To reach the |pmm| plugin use the |grafana| menu.
-
-To reach the plugin, click the |grafana| menu button at the top left
-corner and select |gui.plugins|. Then, select the |gui.apps| tab. 
-
-.. figure:: ../.res/graphics/png/pmm.plugins.apps.png
-
-   The |pmm| plugin on the |gui.apps| tab
-
-.. important::
-
-   The |gui.plugins| menu option may not be available if you have not
-   logged in to |grafana| or you lack the required permissions.
-
-   .. seealso::
-
-      Permissions in |grafana|
-         http://docs.grafana.org/administration/permissions/
-
-Click the |pmm| button to open the plugin settings. The |gui.config|
-tab enables updating and enabling the plugin.
-
-The |gui.dashboards| tab lists all available dashboards. To deactivate any
-dashboard, select the |gui.trash-bin| button.
-
-.. figure:: ../.res/graphics/png/pmm.plugins.dashboards.png
-
-   The |prometheus-exporter-status| dashboard is deactivated
-
-The |gui.import| button appears in its place for you to import this dashboard
-later. If a dashboard is deactivated it is automatically removed from the
-|gui.dashboard-dropdown| and the dashboard navigation menu.
-
-The data associated with the deactivated dashboard are not lost and become
-available when you activate the dashboard again.
-
-.. seealso::
-
-   More about navigating dashboards
-      :ref:`using-mm`
+.. .. _deploy-pmm.server.plugin:
+..
+.. Excluded to apply changes requested in jira@pmm-2247
+.. 
+.. ..|pmm| Plugin
+.. --------------------------------------------------------------------------------
+.. 
+.. ..|pmm| web interface is implemented on top of |grafana| as a separate
+.. plugin with all dashboards inside.
+.. 
+.. .. figure:: ../.res/graphics/png/pmm.menu.png
+.. 
+..    To reach the |pmm| plugin use the |grafana| menu.
+.. 
+.. To reach the plugin, click the |grafana| menu button at the top left
+.. corner and select |gui.plugins|. Then, select the |gui.apps| tab. 
+.. 
+.. .. figure:: ../.res/graphics/png/pmm.plugins.apps.png
+.. 
+..    The |pmm| plugin on the |gui.apps| tab
+.. 
+.. .. important::
+.. 
+..    The |gui.plugins| menu option may not be available if you have not
+..    logged in to |grafana| or you lack the required permissions.
+.. 
+..    .. seealso::
+.. 
+..       Permissions in |grafana|
+..          http://docs.grafana.org/administration/permissions/
+.. 
+.. Click the |pmm| button to open the plugin settings. The |gui.config|
+.. tab enables updating and enabling the plugin.
+.. 
+.. The |gui.dashboards| tab lists all available dashboards. To deactivate any
+.. dashboard, select the |gui.trash-bin| button.
+.. 
+.. .. figure:: ../.res/graphics/png/pmm.plugins.dashboards.png
+.. 
+..    The |prometheus-exporter-status| dashboard is deactivated
+.. 
+.. The |gui.import| button appears in its place for you to import this dashboard
+.. later. If a dashboard is deactivated it is automatically removed from the
+.. ..|gui.dashboard-dropdown| and the dashboard navigation menu.
+.. 
+.. The data associated with the deactivated dashboard are not lost and become
+.. available when you activate the dashboard again.
+.. 
+.. .. seealso::
+.. 
+..    More about navigating dashboards
+.. ..       :ref:`using-mm`
 
 .. _deploy-pmm.client.installing:
 
@@ -173,7 +174,7 @@ specify it after the server's IP address. For example:
 
 .. _deploy-pmm.data-collecting:
 
-Collecting Data from |pmm.abbrev| Clients on |pmm.abbrev| Server
+Collecting Data from |pmm.abbrev| Clients on |pmm-server|
 ========================================================================
 
 To start collecting data on each |pmm.abbrev| client connected to a
@@ -246,8 +247,6 @@ If you are running |pmm-server| as a :ref:`virtual appliance <pmm/deploying/serv
 or using :ref:`Amazon Machine Image <run-server-ami>`, you can use the |gui.check-for-updates-manually|
 button on the Home dashboard (see :term:`PMM Home Page`).
 
-.. TODO: Replace screenshot with Grafana looks
-
 .. figure:: ../.res/graphics/png/pmm.home-page.1.png
 
    Update your server by clicking the |gui.check-for-updates-manually| button on the
@@ -272,7 +271,7 @@ install a newer version <deploy-pmm.client.installing>`.
 
 .. _deploy-pmm.removing:
 
-Removing the |pmm.abbrev| Client and |pmm.abbrev| Server
+Removing the |pmm.abbrev| Client and |pmm-server|
 ================================================================================
 
 Each |pmm.abbrev| client and the |pmm.abbrev| server are removed

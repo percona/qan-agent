@@ -36,6 +36,8 @@ to make your instance ready. For more control, use the ``Manual Launch`` option.
 
    Percona Monitoring and Management is now available from AWS Marketplace
 	    
+.. _run-server-ami.pmm-instance.1-click-launch-option.setting-up:
+
 Setting Up a |pmm| Instance Using the 1-Click Launch Option
 ================================================================================
 
@@ -53,6 +55,8 @@ On the |gui.1-click-launch| tab, select your region in the |gui.region|
 section. By default, the region is the same as the one you chose in the
 |gui.pricing-information| section.
 
+.. _run-server-ami.pmm-instance.1-click-launch-option.vpc.ec2-instance-type:
+
 Setting up a VPC and an EC2 Instance Type
 --------------------------------------------------------------------------------
 
@@ -62,6 +66,8 @@ in the :guilabel:`EC2 Instance Type` section.
 In this demonstration, we select the :option:`vpc-aba20dce` in the
 :guilabel:`VPC Settings` section. Then, we choose :option:`m4.large` as the EC2
 instance type.
+
+.. _figure.run-server-ami.aws-marketplace.pmm.launch-on-ec2.1-click-launch.vpc.ec2-instance-type:
 
 .. figure:: ../../.res/graphics/png/aws-marketplace.pmm.launch-on-ec2.1-click-launch.1.png
 
@@ -82,6 +88,7 @@ Note that the cost estimation is automatically updated based on your choice.
    |aws| Documentation: Availability zones
       https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
    
+.. _run-server-ami.security-group.key-pair:
 
 Limiting Access to the instance: security group and a key pair
 --------------------------------------------------------------------------------
@@ -90,6 +97,8 @@ In the |gui.security-group| section, which acts like a firewall, you may use the
 preselected option :option:`Create new based on seller settings` to create a
 security group with recommended settings. In the :guilabel:`Key Pair` select an
 already set up EC2 key pair to limit access to your instance.
+
+.. _figure.run-server-ami.aws-marketplace.pmm.launch-on-ec2.1-click-launch.key-pair.selecting:
 
 .. figure:: ../../.res/graphics/png/aws-marketplace.pmm.launch-on-ec2.1-click-launch.3.png
 
@@ -100,6 +109,8 @@ already set up EC2 key pair to limit access to your instance.
    It is important that the security group allow communication via the following
    ports: *22*, *80*, and *443*. |pmm| should also be able to access port *3306* on
    the RDS that uses the instance.
+
+.. _figure.run-server-ami.aws-marketplace.pmm-launch-on-ec2.1-click-launch.security-group.selecting:
 
 .. figure:: ../../.res/graphics/png/aws-marketplace.pmm.launch-on-ec2.1-click-launch.2.png
 
@@ -114,12 +125,16 @@ already set up EC2 key pair to limit access to your instance.
    |amazon| Documentation: Importing your own public key to |amazon| EC2
       https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html#how-to-generate-your-own-key-and-import-it-to-aws
       
+.. _run-server-ami.setting.applying:
+
 Applying settings
 --------------------------------------------------------------------------------
 
 Scroll up to the top of the page to view your settings. Then, click the
 :guilabel:`Launch with 1 click` button to continue and adjust your settings in
 the :program:`EC2 console`.
+
+.. _figure.run-server-ami.aws-marketplace.pmm.launch-on-ec2.1-click-launch:
 
 .. figure:: ../../.res/graphics/png/aws-marketplace.pmm.launch-on-ec2.1-click-launch.3.png
 	    
@@ -144,6 +159,8 @@ instances available to you. When a new instance is only created, it has no
 name. Make sure that you give it a name to distinguish from other instances
 managed via the :program:`EC2 console`.
 
+.. _figure.run-server-ami.aws-marketplace.ec2-console.pmm:
+
 .. figure:: ../../.res/graphics/png/aws-marketplace.ec2-console.pmm.1.png
 
    The newly created instance selected.
@@ -154,8 +171,8 @@ Running the instance
 --------------------------------------------------------------------------------
 
 After you add your new instance it will take some time to initialize it. When
-the :guilabel:`Instance State` contains :option:`running` for your instance, you
-can run it.
+the AWS console reports that the instance is now in a running state, you many
+continue with configuration of |pmm-server|.
 
 .. note::
 
@@ -171,24 +188,28 @@ With your instance selected, open its IP address in a web browser. The IP
 address appears in the :guilabel:`IPv4 Public IP` column or as value of the
 :guilabel:`Public IP` field at the top of the :guilabel:`Properties` panel.
 
+.. _figure.run-server-ami.aws-marketplace.pmm.ec2.properties:
+
 .. figure:: ../../.res/graphics/png/aws-marketplace.pmm.ec2.properties.png
 
-   To run the instance, copy and paste its public IP address to the location bar
-   of your brower.
+   The public IP address of the instance
 
 To run the instance, copy and paste its public IP address to the location bar of
-your brower. In the |pmm.name| welcome page that opens, enter the instance ID in
-the :guilabel:`Instance ID` field.
+your browser. In the |pmm.name| welcome page that opens, enter the instance ID.
 
-.. figure:: ../../.res/graphics/png/aws-marketplace.pmm.ec2.dialog.instance-id.1.png
+.. _figure.run-server-ami.installation-wizard.ami.instance-id-verification:
 
-   Enter the instance ID on the welcome page.
+.. figure:: ../../.res/graphics/png/installation-wizard.ami.instance-id-verification.png
 
-You can copy the instance ID in the :guilabel:`Properties` panel of your
+   Entering the instance ID when installing |pmm-server|
+
+You can copy the instance ID from the :guilabel:`Properties` panel of your
 instance, select the :guilabel:`Description` tab back in the :program:`EC2
 console`. Click the :guilabel:`Copy` button next to the :guilabel:`Instance
 ID` field. This button appears as soon as you hover the cursor of your mouse
 over the ID.
+
+.. _figure.run-server-ami.aws-marketplace.pmm.ec2.properties.instance-id:
 
 .. figure:: ../../.res/graphics/png/aws-marketplace.pmm.ec2.properties.instance-id.png
 
@@ -197,32 +218,88 @@ over the ID.
 Paste the instance in the :guilabel:`Instance ID` field of the |pmm.name|
 welcome page and click |gui.submit|.
 
-The next screen offers to create a user and a password that you will later use
-to run your instance. Create a user name, assign a password, and click
-|gui.submit|.
+Click |gui.submit| and enter your user name and password in the dialog window
+that pops up. The |pmm-server| is now ready and the home page opens.
 
-.. figure:: ../../.res/graphics/png/aws-marketplace.pmm.ec2.dialog.user-name.png
+.. _figure.run-server-ami.installation-wizard.ami.account-credentials:
+
+.. figure:: ../../.res/graphics/png/installation-wizard.ami.account-credentials.png
 
    Create credentials for your instance.
 
-The system authentication window then appears for you to use
-your newly created credentials. Enter the user name and password that you have
-just created. Your instance is now ready.
+Click |gui.submit| and enter your user name and password in the dialog window
+that pops up. The |pmm-server| is now ready and the home page opens.
+
+.. _figure.run-server-ami.pmm-server.home-page:
 
 .. figure:: ../../.res/graphics/png/pmm.home-page.png
 
-   Percona Monitoring and Management is now ready
+   |pmm-server| home page
+
+You are creating a username and password that will be used for two purposes:
+
+1. authentication as a user to PMM - this will be the credentials you need in order
+   to log in to PMM.
+#. authentication between PMM Server and PMM Clients - you will
+   re-use these credentials when configuring pmm-client for the first time on a
+   server, for example:
+
+   |tip.run-this.root|
+
+   .. code-block:: sh
+
+      $ pmm-admin config --username= --password= --server=1.2.3.4
 
 .. note:: **Accessing the instance by using an SSH client.**
 
    For instructions about how to access your instances by using an SSH client, see
-   `Connecting to Your Linux Instance Using SSH <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html>`_
+   `Connecting to Your Linux Instance Using SSH 
+   <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html>`_
 	     
    Make sure to replace the user name ``ec2-user`` used in this document with
    ``admin``.
 
+.. _run-server-ami.ebs-volume.resizing:
+
+Resizing the EBS Volume
+--------------------------------------------------------------------------------
+
+Your instance comes with a predefined size which can become a limitation. To
+make more disk space available to your instance, you need to increase the size
+of the EBS volume as needed and then reconfigure your instance to use the new
+size.
+
+The procedure of resizing EBS volumes is described in the |amazon|
+documentation: `Modifying the Size, IOPS, or Type of an EBS Volume on Linux 
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ebs-modify-volume.html>`_.
+
+As soon as the EBS volume is updated, connect to your instance and update it to
+use the new size:
+
+|tip.run-all.root|
+
+1. Detect the type of your filesystem: :code:`mount | grep '/srv'`
+2. In case of *XFS* reboot instance or run the following commands:
+
+   .. include:: ../../.res/code/sh.org
+      :start-after: +pvresize.lvextend.xfs-growfs+
+      :end-before: #+end-block
+
+3. In case of *btrfs*, run the following command:
+
+   .. include:: ../../.res/code/sh.org
+      :start-after: +btrfs.filesystem.resize.max+
+      :end-before: #+end-block
+
+.. seealso::
+
+   |amazon| Documentation: Connecting to Your Linux Instance Using SSH 
+   
+      https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html
+
+
 Next Steps
-==========
+================================================================================
 
 :ref:`Verify that PMM Server is running <deploy-pmm.server.verifying>`
 by connecting to the PMM web interface using the IP address
@@ -234,17 +311,25 @@ on all database hosts that you want to monitor.
 
    AWS Documentation:
 
-   - `Elastic IP Addresses <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html>`_.
-   - `Amazon EC2 Security Groups for Linux Instances <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html>`_.
-   - `Connecting to Your Linux Instance Using SSH <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html>`_ (use ``admin`` as the user name)
+   - `Elastic IP Addresses 
+     <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html>`_
+   - `Amazon EC2 Security Groups for Linux Instances 
+     <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-network-security.html>`_
+   - `Connecting to Your Linux Instance Using SSH 
+     <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/AccessingInstancesLinux.html>`_ 
+     (use ``admin`` as the user name)
+
+.. _run-server-ami.amazon-machine-image:
 
 Running PMM Server Using Amazon Machine Images
-==============================================
+================================================================================
 
-Percona provides public Amazon Machine Images (AMI) with *PMM Server*
+Percona provides public Amazon Machine Images (AMI) with |pmm-server|
 in all regions where Amazon Web Services (AWS) is available.
 You can launch an instance using the web console
 for the corresponding image:
+
+
 
 .. list-table::
    :header-rows: 1
@@ -252,67 +337,77 @@ for the corresponding image:
    * - Region
      - String
      - AMI ID
-   * - US East (N. Virginia)
-     - ``us-east-1``
-     - `ami-9809f5e5 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-9809f5e5>`_
-   * - US East (Ohio)
-     - ``us-east-2``
-     - `ami-167c4a73 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-2#Images:visibility=public-images;imageId=ami-167c4a73>`_
-   * - US West (N. California)
-     - ``us-west-1``
-     - `ami-b5959fd5 <https://console.aws.amazon.com/ec2/v2/home?region=us-west-1#Images:visibility=public-images;imageId=ami-b5959fd5>`_
-   * - US West (Oregon)
-     - ``us-west-2``
-     - `ami-beef7bc6 <https://console.aws.amazon.com/ec2/v2/home?region=us-west-2#Images:visibility=public-images;imageId=ami-beef7bc6>`_
-   * - Canada (Central)
-     - ``ca-central-1``
-     - `ami-0d57d069 <https://console.aws.amazon.com/ec2/v2/home?region=ca-central-1#Images:visibility=public-images;imageId=ami-0d57d069>`_
-   * - EU (Ireland)
-     - ``eu-west-1``
-     - `ami-37692a4e <https://console.aws.amazon.com/ec2/v2/home?region=eu-west-1#Images:visibility=public-images;imageId=ami-37692a4e>`_
-   * - EU (Frankfurt)
-     - ``eu-central-1``
-     - `ami-b10a64de <https://console.aws.amazon.com/ec2/v2/home?region=eu-central-1#Images:visibility=public-images;imageId=ami-b10a64de>`_
-   * - EU (London)
-     - ``eu-west-2``
-     - `ami-54ee0933 <https://console.aws.amazon.com/ec2/v2/home?region=eu-west-2#Images:visibility=public-images;imageId=ami-54ee0933>`_
-   * - EU (Paris)
-     - ``eu-west-3``
-     - `ami-3a56e047 <https://console.aws.amazon.com/ec2/v2/home?region=eu-west-2#Images:visibility=public-images;imageId=ami-3a56e047>`_
-   * - Asia Pacific (Singapore)
-     - ``ap-southeast-1``
-     - `ami-0273277e <https://console.aws.amazon.com/ec2/v2/home?region=ap-southeast-1#Images:visibility=public-images;imageId=ami-0273277e>`_
-   * - Asia Pacific (Sydney)
-     - ``ap-southeast-2``
-     - `ami-6164a503 <https://console.aws.amazon.com/ec2/v2/home?region=ap-southeast-2#Images:visibility=public-images;imageId=ami-6164a503>`_
-   * - Asia Pacific (Seoul)
-     - ``ap-northeast-2``
-     - `ami-5707aa39 <https://console.aws.amazon.com/ec2/v2/home?region=ap-northeast-2#Images:visibility=public-images;imageId=ami-5707aa39>`_
    * - Asia Pacific (Tokyo)
-     - ``ap-northeast-1``
-     - `ami-4fda9729 <https://console.aws.amazon.com/ec2/v2/home?region=ap-northeast-1#Images:visibility=public-images;imageId=ami-4fda9729>`_
-   * - Asia Pacific (Mumbai)
-     - ``ap-south-1``
-     - `ami-8b653be4 <https://console.aws.amazon.com/ec2/v2/home?region=ap-south-1#Images:visibility=public-images;imageId=ami-8b653be4>`_
-   * - South America (São Paulo)
-     - ``sa-east-1``
-     - `ami-391d5755 <https://console.aws.amazon.com/ec2/v2/home?region=sa-east-1#Images:visibility=public-images;imageId=ami-391d5755>`_
-   * - US East (Ohio)
-     - ``us-east-2``
-     - `ami-06083d63 <https://console.aws.amazon.com/ec2/v2/home?region=sa-east-1#Images:visibility=public-images;imageId=ami-06083d63>`_
+     - **ap-northeast-1**
+     - `ami-9f4c56e3 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-9f4c56e3>`_
 
+   * - Asia Pacific (Seoul)
+     - **ap-northeast-2**
+     - `ami-b754fad9 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-b754fad9>`_
+
+   * - Asia Pacific (Mumbai)
+     - **ap-south-1**
+     - `ami-4c321423 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-4c321423>`_
+
+   * - Asia Pacific (Singapore)
+     - **ap-southeast-1**
+     - `ami-4f83a133 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-4f83a133>`_
+
+   * - Asia Pacific (Sydney)
+     - **ap-southeast-2**
+     - `ami-50418a32 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-50418a32>`_
+
+   * - Canada (Central)
+     - **ca-central-1**
+     - `ami-038b0a67 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-038b0a67>`_
+
+   * - EU (Frankfurt)
+     - **eu-central-1**
+     - `ami-d8644033 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-d8644033>`_
+
+   * - EU (Ireland)
+     - **eu-west-1**
+     - `ami-23bc9c5a <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-23bc9c5a>`_
+
+   * - EU (London)
+     - **eu-west-2**
+     - `ami-afe407c8 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-afe407c8>`_
+
+   * - EU (Paris)
+     - **eu-west-3**
+     - `ami-5bdb6a26 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-5bdb6a26>`_
+
+   * - South America (São Paulo)
+     - **sa-east-1**
+     - `ami-26aafa4a <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-26aafa4a>`_
+
+   * - US East (N. Virginia)
+     - **us-east-1**
+     - `ami-48218e37 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-48218e37>`_
+
+   * - US East (Ohio)
+     - **us-east-2**
+     - `ami-35bd8e50 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-35bd8e50>`_
+
+   * - US West (N. California)
+     - **us-west-1**
+     - `ami-f0594490 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-f0594490>`_
+
+   * - US West (Oregon)
+     - **us-west-2**
+     - `ami-2adcb352 <https://console.aws.amazon.com/ec2/v2/home?region=us-east-1#Images:visibility=public-images;imageId=ami-2adcb352>`_
 
 Running from Command Line
 --------------------------------------------------------------------------------
 
-1. Launch the *PMM Server* instance using the ``run-instances`` command
+1. Launch the |pmm-server| instance using the ``run-instances`` command
    for the corresponding region and image.
    For example:
 
    .. code-block:: bash
 
       aws ec2 run-instances \
-        --image-id ami-9809f5e5 \
+        --image-id ami-30ad0f4d \
         --security-group-ids sg-3b6e5e46 \
         --instance-type t2.micro \
         --subnet-id subnet-4765a930 \
@@ -320,7 +415,7 @@ Running from Command Line
         --key-name SSH-KEYNAME
 
    .. note:: Providing the public SSH key is optional.
-      Specify it if you want SSH access to *PMM Server*.
+      Specify it if you want SSH access to |pmm-server|.
 
 #. Set a name for the instance using the ``create-tags`` command.
    For example:
@@ -332,7 +427,7 @@ Running from Command Line
         --region us-east-1 \
         --tags Key=Name,Value=OWNER_NAME-pmm
 
-#. Get the IP address for accessing *PMM Server* from console output
+#. Get the IP address for accessing |pmm-server| from console output
    using the ``get-console-output`` command.
    For example:
 
@@ -347,3 +442,4 @@ Running from Command Line
 .. include:: ../../.res/replace/name.txt
 .. include:: ../../.res/replace/program.txt
 .. include:: ../../.res/replace/option.txt
+.. include:: ../../.res/replace/fragment.txt
