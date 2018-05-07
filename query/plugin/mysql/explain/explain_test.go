@@ -269,9 +269,9 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		expectedJSONQuery.QueryBlock.Table.AttachedCondition = "(`tables`.`TABLE_NAME` = 'tables')"
 	}
 
-	mariaDB103, err := conn.VersionConstraint(">= 10.3")
+	mariaDB102, err := conn.VersionConstraint(">= 10.2")
 	assert.NoError(t, err)
-	if mariaDB103 {
+	if mariaDB102 {
 		expectedJSONQuery.QueryBlock.Table.AttachedCondition = "`tables`.`TABLE_NAME` = 'tables'"
 	}
 
