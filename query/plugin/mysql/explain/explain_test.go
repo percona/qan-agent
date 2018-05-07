@@ -248,10 +248,6 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	gotExplainResult, err := Explain(conn, db, query, true)
 	require.NoError(t, err)
 
-	gotJSONQuery := JsonQuery{}
-	err = json.Unmarshal([]byte(gotExplainResult.JSON), &gotJSONQuery)
-	require.NoError(t, err)
-
 	expectedJSONQuery := JsonQuery{
 		QueryBlock: QueryBlock{
 			SelectID: 1,
@@ -510,10 +506,16 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		}
 
 		// Some values are unpredictable in MySQL 8.
-		expectedJSONQuery.QueryBlock.CostInfo = gotJSONQuery.QueryBlock.CostInfo
-		for i := range expectedJSONQuery.QueryBlock.NestedLoop {
-			expectedJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost = gotJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost
-			expectedJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost = gotJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost
+		{
+			gotJSONQuery := JsonQuery{}
+			err = json.Unmarshal([]byte(gotExplainResult.JSON), &gotJSONQuery)
+			require.NoError(t, err)
+
+			expectedJSONQuery.QueryBlock.CostInfo = gotJSONQuery.QueryBlock.CostInfo
+			for i := range expectedJSONQuery.QueryBlock.NestedLoop {
+				expectedJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost = gotJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost
+				expectedJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost = gotJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost
+			}
 		}
 	}
 
