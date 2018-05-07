@@ -138,7 +138,7 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 	db := ""
 	query := "SELECT 1"
 
-	expectedJsonQuery := JsonQuery{
+	expectedJSONQuery := JsonQuery{
 		QueryBlock: QueryBlock{
 			SelectID: 1,
 		},
@@ -147,13 +147,13 @@ func testExplainWithoutDb(t *testing.T, conn mysql.Connector) {
 	newFormat, err := conn.VersionConstraint(">= 5.7, < 10.1")
 	assert.NoError(t, err)
 	if newFormat {
-		expectedJsonQuery.QueryBlock.Message = "No tables used"
+		expectedJSONQuery.QueryBlock.Message = "No tables used"
 	} else {
-		expectedJsonQuery.QueryBlock.Table = &Table{
+		expectedJSONQuery.QueryBlock.Table = &Table{
 			Message: "No tables used",
 		}
 	}
-	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
+	expectedJSON, err := json.MarshalIndent(&expectedJSONQuery, "", "  ")
 	require.NoError(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
@@ -248,11 +248,11 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	gotExplainResult, err := Explain(conn, db, query, true)
 	require.NoError(t, err)
 
-	gotJsonQuery := JsonQuery{}
-	err = json.Unmarshal([]byte(gotExplainResult.JSON), &gotJsonQuery)
+	gotJSONQuery := JsonQuery{}
+	err = json.Unmarshal([]byte(gotExplainResult.JSON), &gotJSONQuery)
 	require.NoError(t, err)
 
-	expectedJsonQuery := JsonQuery{
+	expectedJSONQuery := JsonQuery{
 		QueryBlock: QueryBlock{
 			SelectID: 1,
 			Table: &Table{
@@ -269,23 +269,23 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	mariaDB101, err := conn.VersionConstraint(">= 10.1")
 	assert.NoError(t, err)
 	if mariaDB101 {
-		expectedJsonQuery.QueryBlock.Table.ScannedDatabases = float64(1)
-		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "(`tables`.`TABLE_NAME` = 'tables')"
+		expectedJSONQuery.QueryBlock.Table.ScannedDatabases = float64(1)
+		expectedJSONQuery.QueryBlock.Table.AttachedCondition = "(`tables`.`TABLE_NAME` = 'tables')"
 	}
 
 	mariaDB103, err := conn.VersionConstraint(">= 10.3")
 	assert.NoError(t, err)
 	if mariaDB103 {
-		expectedJsonQuery.QueryBlock.Table.AttachedCondition = "`tables`.`TABLE_NAME` = 'tables'"
+		expectedJSONQuery.QueryBlock.Table.AttachedCondition = "`tables`.`TABLE_NAME` = 'tables'"
 	}
 
 	mysql57, err := conn.VersionConstraint(">= 5.7, < 8.0")
 	require.NoError(t, err)
 	if mysql57 {
-		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
+		expectedJSONQuery.QueryBlock.CostInfo = &CostInfo{
 			QueryCost: "10.50",
 		}
-		expectedJsonQuery.QueryBlock.Table.UsedColumns = []string{
+		expectedJSONQuery.QueryBlock.Table.UsedColumns = []string{
 			"TABLE_CATALOG",
 			"TABLE_SCHEMA",
 			"TABLE_NAME",
@@ -313,11 +313,11 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	mysql80, err := conn.VersionConstraint(">= 8.0, < 10.0")
 	require.NoError(t, err)
 	if mysql80 {
-		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
+		expectedJSONQuery.QueryBlock.CostInfo = &CostInfo{
 			QueryCost: "9.85",
 		}
-		expectedJsonQuery.QueryBlock.Table = nil
-		expectedJsonQuery.QueryBlock.NestedLoop = NestedLoop{
+		expectedJSONQuery.QueryBlock.Table = nil
+		expectedJSONQuery.QueryBlock.NestedLoop = NestedLoop{
 			{
 				Table: &Table80{
 					AccessType: "index",
@@ -510,14 +510,14 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		}
 
 		// Some values are unpredictable in MySQL 8.
-		expectedJsonQuery.QueryBlock.CostInfo = gotJsonQuery.QueryBlock.CostInfo
-		for i := range expectedJsonQuery.QueryBlock.NestedLoop {
-			expectedJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost = gotJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost
-			expectedJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost = gotJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost
+		expectedJSONQuery.QueryBlock.CostInfo = gotJSONQuery.QueryBlock.CostInfo
+		for i := range expectedJSONQuery.QueryBlock.NestedLoop {
+			expectedJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost = gotJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost
+			expectedJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost = gotJSONQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost
 		}
 	}
 
-	expectedJSON, err := json.MarshalIndent(&expectedJsonQuery, "", "  ")
+	expectedJSON, err := json.MarshalIndent(&expectedJSONQuery, "", "  ")
 	require.NoError(t, err)
 
 	expectedExplainResult := &proto.ExplainResult{
