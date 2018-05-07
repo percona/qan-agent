@@ -307,7 +307,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	require.NoError(t, err)
 	if mysql80 {
 		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
-			QueryCost: "9.64",
+			QueryCost: "9.85",
 		}
 		expectedJsonQuery.QueryBlock.Table = nil
 		expectedJsonQuery.QueryBlock.NestedLoop = &NestedLoop{
@@ -378,8 +378,8 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 					CostInfo: &CostInfo80{
 						DataReadPerJoin: "154K",
 						EvalCost:        "0.50",
-						PrefixCost:      "4.40",
-						ReadCost:        "2.77",
+						PrefixCost:      "4.60",
+						ReadCost:        "2.97",
 					},
 					Filtered:  "100.00",
 					Key:       "schema_id",
@@ -413,7 +413,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 					CostInfo: &CostInfo80{
 						DataReadPerJoin: "2K",
 						EvalCost:        "0.50",
-						PrefixCost:      "6.15",
+						PrefixCost:      "6.35",
 						ReadCost:        "1.25",
 					},
 					Filtered:  "100.00",
@@ -446,7 +446,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 					CostInfo: &CostInfo80{
 						DataReadPerJoin: "34K",
 						EvalCost:        "0.50",
-						PrefixCost:      "7.90",
+						PrefixCost:      "8.10",
 						ReadCost:        "1.25",
 					},
 					Filtered:  "100.00",
@@ -476,7 +476,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 					CostInfo: &CostInfo80{
 						DataReadPerJoin: "1K",
 						EvalCost:        "0.50",
-						PrefixCost:      "9.65",
+						PrefixCost:      "9.85",
 						ReadCost:        "1.25",
 					},
 					Filtered:  "100.00",
