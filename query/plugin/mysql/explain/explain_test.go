@@ -39,11 +39,11 @@ type JsonQuery struct {
 }
 
 type QueryBlock struct {
-	SelectID   int         `json:"select_id"`
-	CostInfo   *CostInfo   `json:"cost_info,omitempty"`
-	Message    string      `json:"message,omitempty"`
-	Table      *Table      `json:"table,omitempty"`
-	NestedLoop *NestedLoop `json:"nested_loop,omitempty"`
+	SelectID   int        `json:"select_id"`
+	CostInfo   *CostInfo  `json:"cost_info,omitempty"`
+	Message    string     `json:"message,omitempty"`
+	Table      *Table     `json:"table,omitempty"`
+	NestedLoop NestedLoop `json:"nested_loop,omitempty"`
 }
 
 type Table struct {
@@ -245,6 +245,13 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 	db := "information_schema"
 	query := "SELECT table_name FROM tables WHERE table_name='tables'"
 
+	gotExplainResult, err := Explain(conn, db, query, true)
+	require.NoError(t, err)
+
+	gotJsonQuery := JsonQuery{}
+	err = json.Unmarshal([]byte(gotExplainResult.JSON), &gotJsonQuery)
+	require.NoError(t, err)
+
 	expectedJsonQuery := JsonQuery{
 		QueryBlock: QueryBlock{
 			SelectID: 1,
@@ -310,7 +317,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 			QueryCost: "9.85",
 		}
 		expectedJsonQuery.QueryBlock.Table = nil
-		expectedJsonQuery.QueryBlock.NestedLoop = &NestedLoop{
+		expectedJsonQuery.QueryBlock.NestedLoop = NestedLoop{
 			{
 				Table: &Table80{
 					AccessType: "index",
@@ -500,6 +507,13 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 					UsingIndex: true,
 				},
 			},
+		}
+
+		// Some values are unpredictable in MySQL 8.
+		expectedJsonQuery.QueryBlock.CostInfo = gotJsonQuery.QueryBlock.CostInfo
+		for i := range expectedJsonQuery.QueryBlock.NestedLoop {
+			expectedJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost = gotJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.PrefixCost
+			expectedJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost = gotJsonQuery.QueryBlock.NestedLoop[i].Table.CostInfo.ReadCost
 		}
 	}
 
@@ -1051,9 +1065,6 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 			},
 		}
 	}
-
-	gotExplainResult, err := Explain(conn, db, query, true)
-	require.NoError(t, err)
 
 	// Check the json first but only if supported...
 	// EXPLAIN in JSON format is introduced since MySQL 5.6.5 and MariaDB 10.1.2
