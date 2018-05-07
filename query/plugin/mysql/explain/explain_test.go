@@ -303,7 +303,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		}
 	}
 
-	mysql80, err := conn.VersionConstraint(">= 8.0, < 10.1")
+	mysql80, err := conn.VersionConstraint(">= 8.0, < 10.0")
 	require.NoError(t, err)
 	if mysql80 {
 		expectedJsonQuery.QueryBlock.CostInfo = &CostInfo{
@@ -573,6 +573,7 @@ func testExplainWithDb(t *testing.T, conn mysql.Connector) {
 		},
 		JSON: string(expectedJSON),
 	}
+
 	if mysql80 {
 		expectedExplainResult = &proto.ExplainResult{
 			Classic: []*proto.ExplainRow{
