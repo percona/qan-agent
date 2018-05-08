@@ -32,7 +32,7 @@ func TestSummary(t *testing.T) {
 	require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
 
 	output, err := Summary(dsn)
-	require.NoError(t, err)
+	require.NoError(t, err, "output: %s", output)
 
 	assert.Regexp(t, "# Percona Toolkit MySQL Summary Report #", output)
 }
