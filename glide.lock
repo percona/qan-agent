@@ -1,5 +1,5 @@
-hash: 5d1ace37c504120742424faf8d39444d62d6dd1a252f218ae72bd37afcf456e3
-updated: 2018-05-09T14:54:18.374291978+02:00
+hash: b2f0334f68294661161f206c45758c23fa81e7962902ff906fca7ca9d6a6534e
+updated: 2018-05-09T15:02:26.251940737+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -40,7 +40,7 @@ imports:
 - name: github.com/percona/pmgo
   version: 497d06e28f910fbe26d5d60f59d36284a6901c6f
 - name: github.com/percona/pmm
-  version: ea154592a8690b95ef8584b9817fc9bfcaf2a88e
+  version: 88b7a3ea548f89aa63c3ec946c5a20db949db715
   subpackages:
   - proto
   - proto/config

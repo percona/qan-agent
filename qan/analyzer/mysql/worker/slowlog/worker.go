@@ -65,7 +65,7 @@ type Job struct {
 	StartOffset    int64
 	EndOffset      int64
 	ExampleQueries bool
-	SlowLogsToKeep int
+	RetainSlowLogs int
 }
 
 func (j *Job) String() string {
@@ -142,7 +142,7 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 	w.logger.Debug("Setup:", interval)
 
 	// Check if slow log rotation is enabled.
-	if boolValue(w.config.SlowLogsRotation) {
+	if boolValue(w.config.SlowLogRotation) {
 		// Check if max slow log size was reached.
 		if interval.EndOffset >= w.config.MaxSlowLogSize {
 			w.logger.Info(fmt.Sprintf("Rotating slow log: %s >= %s",
@@ -163,7 +163,7 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 		EndOffset:      interval.EndOffset,
 		RunTime:        time.Duration(w.config.WorkerRunTime) * time.Second,
 		ExampleQueries: boolValue(w.config.ExampleQueries),
-		SlowLogsToKeep: intValue(w.config.SlowLogsToKeep),
+		RetainSlowLogs: intValue(w.config.RetainSlowLogs),
 	}
 	w.logger.Debug("Setup:", w.job)
 
@@ -446,11 +446,11 @@ func (w *Worker) rotateSlowLog(interval *iter.Interval) error {
 	if err != nil {
 		return err
 	}
-	if len(filesFound) <= intValue(w.config.SlowLogsToKeep) {
+	if len(filesFound) <= intValue(w.config.RetainSlowLogs) {
 		return nil
 	}
 	sort.Strings(filesFound)
-	for _, f := range filesFound[:len(filesFound)-intValue(w.config.SlowLogsToKeep)] {
+	for _, f := range filesFound[:len(filesFound)-intValue(w.config.RetainSlowLogs)] {
 		w.status.Update(w.name, "Removing slow log "+f)
 		if err := os.Remove(f); err != nil {
 			w.logger.Warn(err)

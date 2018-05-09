@@ -29,9 +29,9 @@ import (
 var (
 	DefaultInterval          uint  = 60         // 1 minute
 	DefaultMaxSlowLogSize    int64 = 1073741824 // 1G
-	DefaultSlowLogsRotation        = true       // whether to rotate slow logs
+	DefaultSlowLogRotation         = true       // whether to rotate slow logs
 	DefaultRemoveOldSlowLogs       = true       // whether to remove old slow logs after rotation
-	DefaultSlowLogsToKeep          = 1          // how many slow logs to keep on filesystem
+	DefaultRetainSlowLogs          = 1          // how many slow logs to keep on filesystem
 	DefaultExampleQueries          = true
 	// internal
 	DefaultWorkerRuntime uint = 55
@@ -114,9 +114,9 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 		Interval:       DefaultInterval,
 		ExampleQueries: new(bool),
 		// "slowlog" specific options.
-		MaxSlowLogSize:   DefaultMaxSlowLogSize,
-		SlowLogsRotation: new(bool),
-		SlowLogsToKeep:   new(int),
+		MaxSlowLogSize:  DefaultMaxSlowLogSize,
+		SlowLogRotation: new(bool),
+		RetainSlowLogs:  new(int),
 		// internal
 		WorkerRunTime: DefaultWorkerRuntime,
 		ReportLimit:   DefaultReportLimit,
@@ -129,13 +129,13 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	if setConfig.ExampleQueries != nil {
 		runConfig.ExampleQueries = setConfig.ExampleQueries
 	}
-	*runConfig.SlowLogsRotation = DefaultSlowLogsRotation
-	if setConfig.SlowLogsRotation != nil {
-		runConfig.SlowLogsRotation = setConfig.SlowLogsRotation
+	*runConfig.SlowLogRotation = DefaultSlowLogRotation
+	if setConfig.SlowLogRotation != nil {
+		runConfig.SlowLogRotation = setConfig.SlowLogRotation
 	}
-	*runConfig.SlowLogsToKeep = DefaultSlowLogsToKeep
-	if setConfig.SlowLogsToKeep != nil {
-		runConfig.SlowLogsToKeep = setConfig.SlowLogsToKeep
+	*runConfig.RetainSlowLogs = DefaultRetainSlowLogs
+	if setConfig.RetainSlowLogs != nil {
+		runConfig.RetainSlowLogs = setConfig.RetainSlowLogs
 	}
 
 	// Strings

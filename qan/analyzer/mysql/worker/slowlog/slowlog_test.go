@@ -288,13 +288,13 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 	slowLogsRotation := true
 	slowLogsToKeep := 1
 	config := pc.QAN{
-		UUID:             s.mysqlInstance.UUID,
-		Interval:         300,
-		MaxSlowLogSize:   1000, // <-- HERE
-		ExampleQueries:   &exampleQueries,
-		SlowLogsRotation: &slowLogsRotation,
-		SlowLogsToKeep:   &slowLogsToKeep,
-		WorkerRunTime:    600,
+		UUID:            s.mysqlInstance.UUID,
+		Interval:        300,
+		MaxSlowLogSize:  1000, // <-- HERE
+		ExampleQueries:  &exampleQueries,
+		SlowLogRotation: &slowLogsRotation,
+		RetainSlowLogs:  &slowLogsToKeep,
+		WorkerRunTime:   600,
 		Start: []string{
 			"-- start",
 		},
@@ -391,13 +391,13 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 	slowLogsRotation := true
 	slowLogsToKeep := 1
 	config := pc.QAN{
-		UUID:             s.mysqlInstance.UUID,
-		Interval:         300,
-		MaxSlowLogSize:   1000,
-		ExampleQueries:   &exampleQueries,
-		SlowLogsRotation: &slowLogsRotation,
-		SlowLogsToKeep:   &slowLogsToKeep,
-		WorkerRunTime:    600,
+		UUID:            s.mysqlInstance.UUID,
+		Interval:        300,
+		MaxSlowLogSize:  1000,
+		ExampleQueries:  &exampleQueries,
+		SlowLogRotation: &slowLogsRotation,
+		RetainSlowLogs:  &slowLogsToKeep,
+		WorkerRunTime:   600,
 		Start: []string{
 			"-- start",
 		},
