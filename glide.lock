@@ -1,24 +1,28 @@
-hash: 9058b16a4e08d8212f1932b2e5050815a68a82288f0970b871a3e8a2a2d69d3a
-updated: 2018-02-12T22:19:25.273293+01:00
+hash: 95eab341104f56dc0618edd275da3b3c982ecc95de11245d88a6804d96b93e6d
+updated: 2018-05-04T20:35:43.030609961+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
 - name: github.com/fatih/structs
-  version: 7e5a8eef611ee84dd359503f3969f80df4c50723
+  version: ebf56d35bba727c68ac77f56f2fcf90b181851aa
+- name: github.com/go-ole/go-ole
+  version: a1ec82a652ebc7e784d7df887cfb31061aeabbcc
+  subpackages:
+  - oleutil
 - name: github.com/go-sql-driver/mysql
-  version: 3955978caca48c1658a4bb7a9c6a0f084e326af3
+  version: 3287d94d4c6a48a63e16fffaabf27ab20203af2a
 - name: github.com/google/btree
-  version: 316fb6d3f031ae8f4d457c6c5186b9e3ded70435
+  version: e89373fe6b4a7413d7acd6da1725b83ef713e6e4
 - name: github.com/hashicorp/go-version
-  version: 03c5bf6be031b6dd45afec16b1cf94fc8938bc77
+  version: 23480c0665776210b5fbbac6eaaee40e3e6a96b7
 - name: github.com/Masterminds/semver
-  version: 517734cc7d6470c0d07130e40fd40bdeb9bcd3fd
+  version: 3c560837130448941620d7694991d3ec440aefc0
 - name: github.com/montanaflynn/stats
-  version: 4a163274fa4ca0b524ccee24757d7bec79475aca
+  version: 1bf9dbcd8cbe1fdb75add3785b1d4a9a646269ab
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
 - name: github.com/percona/go-mysql
-  version: 1ceeb729b15317323503606228370db5979fbcc2
+  version: 82ed67a1d0f1779cd60a025c54e0827da0c0838b
   subpackages:
   - dsn
   - event
@@ -34,9 +38,9 @@ imports:
   - src/go/mongolib/stats
   - src/go/mongolib/util
 - name: github.com/percona/pmgo
-  version: 43e01b1a87fe20317bf4329d4ab3cb8d58d50886
+  version: 497d06e28f910fbe26d5d60f59d36284a6901c6f
 - name: github.com/percona/pmm
-  version: 2bc3ac742b0944527d3a0949f5f9b8ca4d76117f
+  version: f190773155b8927dee5c0400a6385bbb83a10f44
   subpackages:
   - proto
   - proto/config
@@ -44,18 +48,40 @@ imports:
   - proto/qan
   - proto/query
 - name: github.com/peterbourgon/diskv
-  version: 5f041e8faa004a95c88a202771f4cc3e991971e6
+  version: 0646ccaebea1ed1539efcab30cae44019090093f
 - name: github.com/pkg/errors
-  version: c605e284fe17294bda444b34710735b29d1a9d90
+  version: 816c9085562cd7ee03e7f8188a1cfd942858cded
+- name: github.com/shirou/gopsutil
+  version: 57f370e13068146efe1cb7129f79e5d51da8a242
+  subpackages:
+  - cpu
+  - host
+  - internal/common
+  - mem
+  - net
+  - process
+- name: github.com/shirou/w32
+  version: bb4de0191aa41b5507caa14b0650cdbddcd9280b
+- name: github.com/StackExchange/wmi
+  version: cdffdb33acae0e14efff2628f9bae377b597840e
 - name: go4.org
-  version: 034d17a462f7b2dcd1a4a73553ec5357ff6e6c6e
+  version: 9599cf28b011184741f249bd9f9330756b506cbc
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
+  version: 640f4622ab692b87c2f3a94265e6f579fe38263d
   subpackages:
   - context
   - websocket
+- name: golang.org/x/sys
+  version: 6f686a352de66814cdd080d970febae7767857a3
+  subpackages:
+  - unix
+  - windows
+- name: google.golang.org/appengine
+  version: 962cbd1200af94a5a35ba8d512e9f91271b4d01a
+  subpackages:
+  - cloudsql
 - name: gopkg.in/mgo.v2
   version: 3f83fa5005286a7fe593b055f0d7771a7dce4655
   subpackages:
@@ -68,19 +94,19 @@ imports:
   version: d5d1b5820637886def9eef33e03a27a9f166942c
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
   subpackages:
   - spew
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: ac112f7d75a0714af1bd86ab17749b31f7809640
+  version: ded0c29b24f96f46cf349e6701b099db601cf8ec
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 890a5c3458b43e6104ff5da8dfa139d013d77544
+  version: c679ae2cc0cb27ec3293fea7e254e47386f05d69
   subpackages:
   - assert
   - require

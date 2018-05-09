@@ -1,6 +1,7 @@
 .. -*- mode: rst -*-
 .. Options (all using the 'opt.' prefix)
    
+.. |opt.tags|                  replace:: :option:`--tags`
 .. |opt.all|                   replace:: :option:`--all`
 .. |opt.bind-address|          replace:: :option:`--bind-address`
 .. |opt.client-address|        replace:: :option:`--client-address`
@@ -74,7 +75,6 @@
 .. |opt.version|               replace:: :option:`--version`
 .. |opt.volumes-from|          replace:: :option:`--volumes-from`
 .. |opt.metrics-memory|        replace:: :option:`--METRICS_MEMORY`
-
 					     
 .. SSL parameters
 
@@ -157,13 +157,17 @@
 .. Labels and tags
 
 .. |opt.latest|            replace:: :option:`latest`
+.. |opt.dev-latest|        replace:: :option:`dev-latest`
 .. |opt.pmm-data-backup|   replace:: :option:`pmm-data-backup`
 .. |opt.pmm-data|          replace:: :option:`pmm-data`
 .. |opt.pmm-server-backup| replace:: :option:`pmm-server-backup`
 .. |opt.pmm-server|        replace:: :option:`pmm-server`
 
-.. MySQL variables
+.. MySQL (Percona Server, MongoDB) variables
 
-.. |opt.questions| replace:: :option:`Questions`
-
-   
+.. |opt.questions|                     replace:: :option:`Questions`
+.. |opt.innodb-monitor-enable|         replace:: :option:`innodb_monitor_enable`
+.. |opt.userstat|                      replace:: :option:`userstat`
+.. |opt.performance-schema-instrument| replace:: :option:`--performance_schema_instrument`
+.. |opt.perf-schema-instrument|        replace:: :option:`--performance_schema_instrument`
+.. |opt.query-response-time-stats|     replace:: :option:`query_response_time_stats`

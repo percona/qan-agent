@@ -21,6 +21,7 @@ import:
   - src/go/mongolib/stats
 - package: github.com/percona/pmgo
 - package: github.com/percona/pmm
+  version: f190773155b8927dee5c0400a6385bbb83a10f44
   subpackages:
   - proto
   - proto/config

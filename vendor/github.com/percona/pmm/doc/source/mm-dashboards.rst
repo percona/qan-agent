@@ -1,10 +1,12 @@
-.. _mm-dashboards:
+.. _pmm.dashboard.list:
 
 ================================================================================
 Metrics Monitor Dashboards
 ================================================================================
 
 This section contains a reference of dashboards available in |metrics-monitor|.
+
+.. _pmm.dashboard.general.list:
 
 General Dashboards
 ================================================================================
@@ -13,8 +15,24 @@ General Dashboards
    :maxdepth: 1
 
    dashboard.home
-   dashboard.summary-dashboard
+   dashboard.pmm-system-summary
+   dashboard.advanced-data-exploration
    dashboard.cross-server-graphs
+   dashboard.summary-dashboard
+   dashboard.trends
+
+.. _pmm.dashboard.prometheus.list:
+
+|prometheus| Dashboards
+================================================================================
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+
+   dashboard.prometheus*
+
+.. _pmm.dashboard.mysql.list:
 
 |mysql| Dashboards
 ================================================================================
@@ -24,6 +42,8 @@ General Dashboards
    :maxdepth: 1
 
    dashboard.mysql-*
+
+.. _pmm.dashboard.mongodb.list:
 
 |mongodb| Dashboards
 ================================================================================
