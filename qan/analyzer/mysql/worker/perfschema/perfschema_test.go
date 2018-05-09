@@ -516,7 +516,7 @@ func testRealWorker(t *testing.T, logger *pct.Logger, dsn string) {
 	}
 	var class *event.Class
 	for _, c := range res.Class {
-		if c.Fingerprint == "SELECT ? FROM DUAL " {
+		if c.Fingerprint == "SELECT ? FROM DUAL" {
 			class = c
 			break
 		}

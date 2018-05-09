@@ -1,5 +1,4 @@
-#!/bin/bash
-TMP_DIR=${TMP_DIR:-/tmp}
+#!/bin/sh
 
 die() {
    echo $1 >&2
@@ -13,20 +12,20 @@ fi
 exit_status=0
 
 for port in "$@"; do
-   if ! [ -d "${TMP_DIR}/$port" ]; then
+   if ! [ -d "/tmp/$port" ]; then
       echo "MySQL test server on port $port does not exist."
       continue
    fi
 
-   if [ -x "${TMP_DIR}/$port/stop" ]; then
-      ${TMP_DIR}/$port/stop
+   if [ -x "/tmp/$port/stop" ]; then
+      /tmp/$port/stop
       exit_status=$((exit_status | $?))
    else
-      echo "${TMP_DIR}/$port is missing files:" >&2
-      ls -la ${TMP_DIR}/$port >&2
+      echo "/tmp/$port is missing files:" >&2
+      ls -la /tmp/$port >&2
    fi
 
-   rm -rf ${TMP_DIR}/$port
+   rm -rf /tmp/$port
    exit_status=$((exit_status | $?))
 done
 

@@ -63,15 +63,11 @@ like(
    qr/at \d{4}/,
    'It has a timestamp',
 );
-
-SKIP: {
-   skip "MySQL 8.0+ doesn't have ALL PRIVILEGES", 1 if ($sandbox_version >= '8.0');
-   like(
-      $output,
-      qr/^REVOKE ALL PRIVILEGES/m,
-      "Revoke statement is correct (bug 821709)"
-   );
-}
+like(
+   $output,
+   qr/^REVOKE ALL PRIVILEGES/m,
+   "Revoke statement is correct (bug 821709)"
+);
 
 $output = output(
    sub { pt_show_grants::main('-F', $cnf, qw(--no-timestamp --drop --flush --revoke --separate)); }
@@ -83,7 +79,7 @@ unlike(
 );
 
 $output = output(
-   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user,mysql.session@localhost,mysql.sys@localhost,sys'); }
+   sub { pt_show_grants::main('-F', $cnf, '--ignore', 'baron,msandbox,root,root@localhost,user'); }
 );
 unlike(
    $output,
@@ -107,7 +103,7 @@ diag(`/tmp/12345/use -u root -e "GRANT SELECT(DateCreated, PckPrice, PaymentStat
 diag(`/tmp/12345/use -u root -e "GRANT SELECT(city_id), INSERT(city) ON sakila.city TO 'sally'\@'%'"`);
 $modes->restore_original_modes();
 
-my $postfix = $sandbox_version >= '8.0' ? '-80' : $sandbox_version < '5.7' ? '' : '-57';
+my $postfix = $sandbox_version < '5.7' ? '' : '-57';
 
 # 11
 ok(

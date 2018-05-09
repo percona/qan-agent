@@ -68,7 +68,7 @@ func TableInfo(c mysql.Connector, tables *proto.TableInfoQuery) (proto.TableInfo
 				if tableInfo.Errors == nil {
 					tableInfo.Errors = []string{}
 				}
-				tableInfo.Errors = append(tableInfo.Errors, fmt.Sprintf("SHOW INDEX FROM %s: %s", t.Table, err))
+				tableInfo.Errors = append(tableInfo.Errors, fmt.Sprintf("SHOW INDEX FROM %s.%s: %s", t.Db, t.Table, err))
 				continue
 			}
 			tableInfo.Index = indexes
@@ -131,44 +131,35 @@ func showIndex(c mysql.Connector, dbTable string) (map[string][]proto.ShowIndexR
 	if err != nil {
 		return nil, err
 	}
-	hasIndexComment := len(columns) == 13 // added in MySQL 5.5
 
 	indexes := map[string][]proto.ShowIndexRow{} // keyed on KeyName
 	prevKeyName := ""
 	for rows.Next() {
 		indexRow := proto.ShowIndexRow{}
-		if hasIndexComment {
-			err = rows.Scan(
-				&indexRow.Table,
-				&indexRow.NonUnique,
-				&indexRow.KeyName,
-				&indexRow.SeqInIndex,
-				&indexRow.ColumnName,
-				&indexRow.Collation,
-				&indexRow.Cardinality,
-				&indexRow.SubPart,
-				&indexRow.Packed,
-				&indexRow.Null,
-				&indexRow.IndexType,
-				&indexRow.Comment,
-				&indexRow.IndexComment,
-			)
-		} else {
-			err = rows.Scan(
-				&indexRow.Table,
-				&indexRow.NonUnique,
-				&indexRow.KeyName,
-				&indexRow.SeqInIndex,
-				&indexRow.ColumnName,
-				&indexRow.Collation,
-				&indexRow.Cardinality,
-				&indexRow.SubPart,
-				&indexRow.Packed,
-				&indexRow.Null,
-				&indexRow.IndexType,
-				&indexRow.Comment,
-			)
+		dest := []interface{}{
+			&indexRow.Table,
+			&indexRow.NonUnique,
+			&indexRow.KeyName,
+			&indexRow.SeqInIndex,
+			&indexRow.ColumnName,
+			&indexRow.Collation,
+			&indexRow.Cardinality,
+			&indexRow.SubPart,
+			&indexRow.Packed,
+			&indexRow.Null,
+			&indexRow.IndexType,
+			&indexRow.Comment,
+			&indexRow.IndexComment,
+			&indexRow.Visible,
 		}
+
+		// Cut dest to number of columns.
+		// Some columns are not available at earlier versions of MySQL.
+		if len(columns) < len(dest) {
+			dest = dest[:len(columns)]
+		}
+
+		err := rows.Scan(dest...)
 		if err != nil {
 			return nil, err
 		}

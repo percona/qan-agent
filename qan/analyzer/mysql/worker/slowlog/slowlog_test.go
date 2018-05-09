@@ -708,6 +708,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 
 	t.Check(res.Global.TotalQueries, Equals, uint(1))
 	t.Check(res.Class, HasLen, 1)
+	t.Check(err, IsNil)
 }
 
 func (s *WorkerTestSuite) TestResult014(t *C) {

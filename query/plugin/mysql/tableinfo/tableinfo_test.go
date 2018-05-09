@@ -58,25 +58,21 @@ func TestTableInfo(t *testing.T) {
 			require.NoError(t, err)
 
 			tableInfo, ok := got[db+"."+table]
-			assert.Equal(t, true, ok)
+			require.True(t, ok)
+			assert.Empty(t, tableInfo.Errors, "TableInfo() returned errors: %v", tableInfo.Errors)
+			require.True(t, strings.HasPrefix(tableInfo.Create, "CREATE TABLE `user` ("))
 
-			t.Logf("%+v\n", tableInfo)
-
-			assert.Equal(t, 0, len(tableInfo.Errors))
-
-			assert.Equal(t, true, strings.HasPrefix(tableInfo.Create, "CREATE TABLE `user` ("))
-
-			assert.NotNil(t, tableInfo.Status)
+			require.NotNil(t, tableInfo.Status)
 			assert.Equal(t, table, tableInfo.Status.Name)
 
 			// Indexes are grouped by name (KeyName), so all the index parts of the
 			// PRIMARY key should be together.
-			assert.NotEmpty(t, tableInfo.Index)
-			index, ok := tableInfo.Index["PRIMARY"]
-			assert.Equal(t, true, ok)
-			assert.Len(t, index, 2)
-			assert.Equal(t, "Host", index[0].ColumnName)
-			assert.Equal(t, "User", index[1].ColumnName)
+			require.NotEmpty(t, tableInfo.Index)
+			primaryIndex, ok := tableInfo.Index["PRIMARY"]
+			require.True(t, ok)
+			require.Len(t, primaryIndex, 2, "tableInfo.Index doesn't have PRIMARY key: %v", tableInfo.Index)
+			assert.Equal(t, "Host", primaryIndex[0].ColumnName)
+			assert.Equal(t, "User", primaryIndex[1].ColumnName)
 		})
 
 		t.Run("status-times", func(t *testing.T) {
@@ -98,19 +94,21 @@ func TestTableInfo(t *testing.T) {
 			require.NoError(t, err)
 
 			tableInfo, ok := got[db+"."+table]
-			assert.Equal(t, true, ok)
+			require.True(t, ok)
+			assert.Empty(t, tableInfo.Errors, "TableInfo() returned errors: %v", tableInfo.Errors)
 
-			t.Logf("%+v\n", tableInfo)
-
-			assert.Equal(t, 0, len(tableInfo.Errors))
-
-			assert.NotNil(t, tableInfo.Status)
+			require.NotNil(t, tableInfo.Status)
 			assert.Equal(t, table, tableInfo.Status.Name)
 
 			var zeroTime time.Time
-			assert.Equal(t, zeroTime, tableInfo.Status.CreateTime.Time)
 			assert.Equal(t, zeroTime, tableInfo.Status.UpdateTime.Time)
 			assert.Equal(t, zeroTime, tableInfo.Status.CheckTime.Time)
+
+			zeroCreateTime, err := conn.VersionConstraint("< 8.0 || > 10.0")
+			require.NoError(t, err)
+			if zeroCreateTime {
+				assert.Equal(t, zeroTime, tableInfo.Status.CreateTime.Time)
+			}
 		})
 	})
 }

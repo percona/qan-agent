@@ -194,6 +194,12 @@ SELECT
 			if err != nil {
 				return // This bubbles up too (see above).
 			}
+
+			// "The Performance Schema could produce DIGEST_TEXT values with a trailing space.
+			// This no longer occurs. (Bug #26908015)"
+			// https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-11.html
+			row.DigestText = strings.TrimSpace(row.DigestText)
+
 			c <- row
 		}
 		if err = rows.Err(); err != nil {

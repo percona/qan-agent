@@ -160,7 +160,7 @@ func testGetDefaultsBoolValues(
 							Set: fmt.Sprintf("SET GLOBAL %s=0", keys[i].db),
 						},
 					})
-					require.Nil(t, err)
+					require.NoError(t, err)
 					got := m.GetDefaults(protoInstance.UUID)
 					assert.Equal(t, false, got[keys[i].json])
 
@@ -171,7 +171,7 @@ func testGetDefaultsBoolValues(
 							Set: fmt.Sprintf("SET GLOBAL %s=1", keys[i].db),
 						},
 					})
-					require.Nil(t, err)
+					require.NoError(t, err)
 					got = m.GetDefaults(protoInstance.UUID)
 					assert.Equal(t, true, got[keys[i].json])
 				} else {

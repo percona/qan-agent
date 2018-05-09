@@ -21,10 +21,6 @@ my $master_dbh = $sb->get_dbh_for('master');
 my $slave1_dbh  = $sb->get_dbh_for('slave1');
 my $slave2_dbh  = $sb->get_dbh_for('slave2');
 
-if ($sandbox_version ge '5.7') {
-   plan skip_all => 'Use SQL_DELAY';
-}
-
 if ( !$master_dbh ) {
    plan skip_all => 'Cannot connect to sandbox master';
 }
@@ -42,12 +38,11 @@ my $output;
 my $cnf = '/tmp/12346/my.sandbox.cnf';
 my $cmd = "$trunk/bin/pt-slave-delay -F $cnf h=127.1";
 
-# 1
 $output = `$cmd --help`;
 like($output, qr/Prompt for a password/, 'It compiles');
 
 # #############################################################################
-# 2 Issue 149: h is required even with S, for slavehost argument
+# Issue 149: h is required even with S, for slavehost argument
 # #############################################################################
 $output = `$trunk/bin/pt-slave-delay --run-time 1s --delay 1s --interval 1s S=/tmp/12346/mysql_sandbox12346.sock 2>&1`;
 unlike($output, qr/Missing DSN part 'h'/, 'Does not require h DSN part');
@@ -62,15 +57,8 @@ diag(`cp /tmp/12346/my.sandbox.cnf /tmp/12346/my.sandbox.cnf-original`);
 diag(`sed -i.bak -e '/log-bin/d' -e '/log_slave_updates/d' /tmp/12346/my.sandbox.cnf`);
 diag(`/tmp/12346/stop >/dev/null`);
 diag(`/tmp/12346/start >/dev/null`);
-diag("Sleeping 3 seconds ...");
-sleep(3);
-$slave2_dbh->do('STOP SLAVE');
-$slave2_dbh->do('RESET SLAVE');
-$slave2_dbh->do('START SLAVE');
 
-# 3
-# $output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 2>&1`;
-$output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 &>/tmp/c`;
+$output = `$trunk/bin/pt-slave-delay --delay 1s h=127.1,P=12346,u=msandbox,p=msandbox h=127.1 2>&1`;
 like(
    $output,
    qr/Binary logging is disabled/,
@@ -82,10 +70,7 @@ diag(`mv /tmp/12346/my.sandbox.cnf-original /tmp/12346/my.sandbox.cnf`);
 diag(`/tmp/12346/start >/dev/null`);
 diag(`/tmp/12346/use -e "set global read_only=1"`);
 
-diag("Sleeping 3 seconds ...");
-sleep(3);
 $slave2_dbh->do('STOP SLAVE');
-$slave2_dbh->do('RESET SLAVE');
 $slave2_dbh->do('START SLAVE');
 
 # #############################################################################
