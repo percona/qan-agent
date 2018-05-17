@@ -27,14 +27,15 @@ import (
 )
 
 var (
-	DEFAULT_INTERVAL              uint  = 60         // 1 minute
-	DEFAULT_MAX_SLOW_LOG_SIZE     int64 = 1073741824 // 1G
-	DEFAULT_REMOVE_OLD_SLOW_LOGS        = true       // whether to remove old slow logs after rotation
-	DEFAULT_OLD_SLOW_LOGS_TO_KEEP       = 1          // how many slow logs to keep on filesystem
-	DEFAULT_EXAMPLE_QUERIES             = true
+	DefaultInterval          uint  = 60         // 1 minute
+	DefaultMaxSlowLogSize    int64 = 1073741824 // 1G
+	DefaultSlowLogRotation         = true       // whether to rotate slow logs
+	DefaultRemoveOldSlowLogs       = true       // whether to remove old slow logs after rotation
+	DefaultRetainSlowLogs          = 1          // how many slow logs to keep on filesystem
+	DefaultExampleQueries          = true
 	// internal
-	DEFAULT_WORKER_RUNTIME uint = 55
-	DEFAULT_REPORT_LIMIT   uint = 200
+	DefaultWorkerRuntime uint = 55
+	DefaultReportLimit   uint = 200
 )
 
 type MySQLVarType int
@@ -110,17 +111,32 @@ func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interfa
 func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	runConfig := pc.QAN{
 		UUID:           setConfig.UUID,
-		Interval:       DEFAULT_INTERVAL,
+		Interval:       DefaultInterval,
 		ExampleQueries: new(bool),
-		MaxSlowLogSize: DEFAULT_MAX_SLOW_LOG_SIZE,
-		WorkerRunTime:  DEFAULT_WORKER_RUNTIME,
-		ReportLimit:    DEFAULT_REPORT_LIMIT,
+		// "slowlog" specific options.
+		MaxSlowLogSize:  DefaultMaxSlowLogSize,
+		SlowLogRotation: new(bool),
+		RetainSlowLogs:  new(int),
+		// internal
+		WorkerRunTime: DefaultWorkerRuntime,
+		ReportLimit:   DefaultReportLimit,
 	}
 	// I know this is an ugly hack, but we need runConfig.ExampleQueries to be a pointer since
 	// the default value for a boolean is false, there is no way to tell if it was false in the
 	// config or if the value was missing.
 	// If it was missing (nil) we should take the default=true
-	*runConfig.ExampleQueries = DEFAULT_EXAMPLE_QUERIES
+	*runConfig.ExampleQueries = DefaultExampleQueries
+	if setConfig.ExampleQueries != nil {
+		runConfig.ExampleQueries = setConfig.ExampleQueries
+	}
+	*runConfig.SlowLogRotation = DefaultSlowLogRotation
+	if setConfig.SlowLogRotation != nil {
+		runConfig.SlowLogRotation = setConfig.SlowLogRotation
+	}
+	*runConfig.RetainSlowLogs = DefaultRetainSlowLogs
+	if setConfig.RetainSlowLogs != nil {
+		runConfig.RetainSlowLogs = setConfig.RetainSlowLogs
+	}
 
 	// Strings
 	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {
@@ -133,11 +149,7 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 		return runConfig, fmt.Errorf("Interval must be > 0 and <= 3600 (1 hour)")
 	}
 	if setConfig.Interval > 0 {
-		runConfig.Interval = uint(setConfig.Interval)
-	}
-
-	if setConfig.ExampleQueries != nil {
-		runConfig.ExampleQueries = setConfig.ExampleQueries
+		runConfig.Interval = setConfig.Interval
 	}
 
 	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval

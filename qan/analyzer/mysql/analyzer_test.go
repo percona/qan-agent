@@ -124,12 +124,14 @@ func (s *AnalyzerTestSuite) SetUpTest(t *C) {
 	s.worker = qan_worker.NewQanWorker()
 	// Config needs to be recreated on every test since it can be modified by the test analyzers
 	exampleQueries := true
+	slowLogRotation := true
 	s.config = pc.QAN{
-		UUID:           s.mysqlUUID,
-		CollectFrom:    "slowlog",
-		Interval:       60,
-		WorkerRunTime:  60,
-		MaxSlowLogSize: MAX_SLOW_LOG_SIZE,
+		UUID:            s.mysqlUUID,
+		CollectFrom:     "slowlog",
+		Interval:        60,
+		WorkerRunTime:   60,
+		MaxSlowLogSize:  MAX_SLOW_LOG_SIZE,
+		SlowLogRotation: &slowLogRotation,
 		Start: []string{
 			"-- start",
 		},

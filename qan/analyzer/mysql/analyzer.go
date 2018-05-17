@@ -165,6 +165,11 @@ func (a *RealAnalyzer) TakeOverPerconaServerRotation() error {
 	a.logger.Debug("TakeOverPerconaServerRotation:call")
 	defer a.logger.Debug("TakeOverPerconaServerRotation:return")
 
+	// If slow log rotation is disabled, don't take over Percona Server slow log rotation.
+	if !boolValue(a.config.SlowLogRotation) {
+		return nil
+	}
+
 	// max_slowlog_size: https://www.percona.com/doc/percona-server/LATEST/flexibility/slowlog_rotation.html#max_slowlog_size
 	maxSlowLogSizeNullInt64, err := a.mysqlConn.GetGlobalVarInteger("max_slowlog_size")
 	if err != nil {
@@ -450,4 +455,13 @@ func (a *RealAnalyzer) runWorker(interval *iter.Interval) {
 	if err := a.spool.Write("qan", report); err != nil {
 		a.logger.Warn("Lost report:", err)
 	}
+}
+
+// boolValue returns the value of the bool pointer passed in or
+// false if the pointer is nil.
+func boolValue(v *bool) bool {
+	if v != nil {
+		return *v
+	}
+	return false
 }

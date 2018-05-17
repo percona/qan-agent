@@ -1,5 +1,5 @@
-hash: 95eab341104f56dc0618edd275da3b3c982ecc95de11245d88a6804d96b93e6d
-updated: 2018-05-04T20:35:43.030609961+02:00
+hash: b2f0334f68294661161f206c45758c23fa81e7962902ff906fca7ca9d6a6534e
+updated: 2018-05-09T15:02:26.251940737+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -40,7 +40,7 @@ imports:
 - name: github.com/percona/pmgo
   version: 497d06e28f910fbe26d5d60f59d36284a6901c6f
 - name: github.com/percona/pmm
-  version: f190773155b8927dee5c0400a6385bbb83a10f44
+  version: 88b7a3ea548f89aa63c3ec946c5a20db949db715
   subpackages:
   - proto
   - proto/config
@@ -69,12 +69,12 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: 640f4622ab692b87c2f3a94265e6f579fe38263d
+  version: f73e4c9ed3b7ebdd5f699a16a880c2b1994e50dd
   subpackages:
   - context
   - websocket
 - name: golang.org/x/sys
-  version: 6f686a352de66814cdd080d970febae7767857a3
+  version: 7db1c3b1a98089d0071c84f646ff5c96aad43682
   subpackages:
   - unix
   - windows

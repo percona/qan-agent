@@ -13,7 +13,6 @@ import:
   - log/slow
   - query
 - package: github.com/percona/percona-toolkit
-  version: b53d67f6ead42c7c0e27b21c4f89b1cd3f349aee
   subpackages:
   - src/go/mongolib/explain
   - src/go/mongolib/fingerprinter
@@ -21,7 +20,7 @@ import:
   - src/go/mongolib/stats
 - package: github.com/percona/pmgo
 - package: github.com/percona/pmm
-  version: f190773155b8927dee5c0400a6385bbb83a10f44
+  version: 88b7a3ea548f89aa63c3ec946c5a20db949db715
   subpackages:
   - proto
   - proto/config
