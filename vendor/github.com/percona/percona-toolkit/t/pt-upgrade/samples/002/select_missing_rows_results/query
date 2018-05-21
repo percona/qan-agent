@@ -1,3 +1,0 @@
-use `test`;
-select * from test.t order by id
-##

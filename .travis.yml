@@ -59,14 +59,13 @@ addons:
       - percona-toolkit
 
 install:
-  - go get -u github.com/Masterminds/glide
-  # remove vendor dir and re-fetch it to check later if it's correct with `git diff --exit-code`
-  - rm -rf vendor/
-  - glide install
+  # ensure that vendor/ is in sync with code and Gopkg.*
+  - curl https://github.com/golang/dep/releases/download/v0.4.1/dep-linux-amd64 -L -o ~/dep && chmod +x ~/dep
+  - rm -fr vendor/
+  - ~/dep ensure -v
+  - git diff --exit-code
 
 before_script:
-  # check if vendor dir is correct
-  - git diff --exit-code
   # run docker containers
   - docker-compose up -d
   # wait for MySQL to become available

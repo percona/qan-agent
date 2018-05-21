@@ -42,7 +42,6 @@ type IOCountersStat struct {
 	WeightedIO       uint64 `json:"weightedIO"`
 	Name             string `json:"name"`
 	SerialNumber     string `json:"serialNumber"`
-	Label            string `json:"label"`
 }
 
 func (d UsageStat) String() string {

@@ -1,2 +1,0 @@
-defined($event->{Info}) && $event->{Info} =~ /select.*foo/
-

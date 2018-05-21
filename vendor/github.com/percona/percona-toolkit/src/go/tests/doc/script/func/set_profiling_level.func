@@ -1,6 +1,0 @@
-#!/bin/sh
-
-set_profiling_level() {
-    mongo --quiet --eval 'db.setProfilingLevel(2)'
-}
-
