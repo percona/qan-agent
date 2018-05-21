@@ -85,7 +85,6 @@ func TestWithRealMySQL(t *testing.T) {
 		UUID:          protoInstance.UUID,
 		CollectFrom:   "slowlog",
 		Interval:      300,
-		WorkerRunTime: 270,
 	}
 	err = pct.Basedir.WriteConfig("qan-"+protoInstance.UUID, &pcQANSetExpected)
 	require.NoError(t, err)
