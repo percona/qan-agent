@@ -1,5 +1,5 @@
-hash: b2f0334f68294661161f206c45758c23fa81e7962902ff906fca7ca9d6a6534e
-updated: 2018-05-09T15:02:26.251940737+02:00
+hash: 76ceb81f4aa54db8f5c14f5ac5d3ad7c60e5b9e800bf11146de7fab9bee095a8
+updated: 2018-05-21T16:54:36.300226276+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -10,7 +10,7 @@ imports:
   subpackages:
   - oleutil
 - name: github.com/go-sql-driver/mysql
-  version: 3287d94d4c6a48a63e16fffaabf27ab20203af2a
+  version: d03e4c28477ccf584ef564f3957b42550d5785f1
 - name: github.com/google/btree
   version: e89373fe6b4a7413d7acd6da1725b83ef713e6e4
 - name: github.com/hashicorp/go-version
@@ -52,7 +52,7 @@ imports:
 - name: github.com/pkg/errors
   version: 816c9085562cd7ee03e7f8188a1cfd942858cded
 - name: github.com/shirou/gopsutil
-  version: 57f370e13068146efe1cb7129f79e5d51da8a242
+  version: cbf4fde1522d05c83ec4370cdc52d5c2ba1f2ed2
   subpackages:
   - cpu
   - host
@@ -69,17 +69,17 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: f73e4c9ed3b7ebdd5f699a16a880c2b1994e50dd
+  version: 57065200b4b034a1c8ad54ff77069408c2218ae6
   subpackages:
   - context
   - websocket
 - name: golang.org/x/sys
-  version: 7db1c3b1a98089d0071c84f646ff5c96aad43682
+  version: 7c87d13f8e835d2fb3a70a2912c811ed0c1d241b
   subpackages:
   - unix
   - windows
 - name: google.golang.org/appengine
-  version: 962cbd1200af94a5a35ba8d512e9f91271b4d01a
+  version: b9aad5d628b283f265adf8d3557faae187a8d015
   subpackages:
   - cloudsql
 - name: gopkg.in/mgo.v2
@@ -100,7 +100,7 @@ testImports:
 - name: github.com/gorilla/context
   version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
 - name: github.com/gorilla/mux
-  version: ded0c29b24f96f46cf349e6701b099db601cf8ec
+  version: c85619274f5d55a67491010f883a91f568b3a9b0
 - name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
