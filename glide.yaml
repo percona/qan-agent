@@ -2,6 +2,7 @@ package: github.com/percona/qan-agent
 import:
 - package: github.com/fatih/structs
 - package: github.com/go-sql-driver/mysql
+  version: 3287d94d4c6a48a63e16fffaabf27ab20203af2a
 - package: github.com/hashicorp/go-version
 - package: github.com/montanaflynn/stats
 - package: github.com/nu7hatch/gouuid
@@ -20,7 +21,7 @@ import:
   - src/go/mongolib/stats
 - package: github.com/percona/pmgo
 - package: github.com/percona/pmm
-  version: 88b7a3ea548f89aa63c3ec946c5a20db949db715
+  version: 9cb15efc1ab783e17a03174254356a7b800cd1bd
   subpackages:
   - proto
   - proto/config

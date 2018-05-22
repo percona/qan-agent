@@ -190,12 +190,11 @@ func (m *MySQLAnalyzer) GetDefaults(uuid string) map[string]interface{} {
 	cfg := map[string]interface{}{
 		"CollectFrom":     m.config.CollectFrom,
 		"Interval":        m.config.Interval,
-		"MaxSlowLogSize":  config.DefaultMaxSlowLogSize,
+		"MaxSlowLogSize":  m.config.MaxSlowLogSize,
 		"RetainSlowLogs":  m.config.RetainSlowLogs,
 		"SlowLogRotation": m.config.SlowLogRotation,
 		"ExampleQueries":  m.config.ExampleQueries,
-		"WorkerRunTime":   config.DefaultWorkerRuntime,
-		"ReportLimit":     config.DefaultReportLimit,
+		"ReportLimit":     m.config.ReportLimit,
 	}
 
 	// Info from SHOW GLOBAL STATUS

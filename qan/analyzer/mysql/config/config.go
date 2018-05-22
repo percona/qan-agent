@@ -19,6 +19,7 @@ package config
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -27,15 +28,7 @@ import (
 )
 
 var (
-	DefaultInterval          uint  = 60         // 1 minute
-	DefaultMaxSlowLogSize    int64 = 1073741824 // 1G
-	DefaultSlowLogRotation         = true       // whether to rotate slow logs
-	DefaultRemoveOldSlowLogs       = true       // whether to remove old slow logs after rotation
-	DefaultRetainSlowLogs          = 1          // how many slow logs to keep on filesystem
-	DefaultExampleQueries          = true
-	// internal
-	DefaultWorkerRuntime uint = 55
-	DefaultReportLimit   uint = 200
+	DefaultRemoveOldSlowLogs = true // whether to remove old slow logs after rotation
 )
 
 type MySQLVarType int
@@ -109,34 +102,23 @@ func ReadInfoFromShowGlobalStatus(conn mysql.Connector) (info map[string]interfa
 }
 
 func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
-	runConfig := pc.QAN{
-		UUID:           setConfig.UUID,
-		Interval:       DefaultInterval,
-		ExampleQueries: new(bool),
-		// "slowlog" specific options.
-		MaxSlowLogSize:  DefaultMaxSlowLogSize,
-		SlowLogRotation: new(bool),
-		RetainSlowLogs:  new(int),
-		// internal
-		WorkerRunTime: DefaultWorkerRuntime,
-		ReportLimit:   DefaultReportLimit,
+	runConfig := pc.NewQAN()
+	fmt.Printf("%+v\n", runConfig)
+
+	// Marshal setConfig and unmarshal it back on default config.
+	// This way we keep defaults if they are not set in setConfig.
+	b, err := json.Marshal(setConfig)
+	if err != nil {
+		return runConfig, err
 	}
-	// I know this is an ugly hack, but we need runConfig.ExampleQueries to be a pointer since
-	// the default value for a boolean is false, there is no way to tell if it was false in the
-	// config or if the value was missing.
-	// If it was missing (nil) we should take the default=true
-	*runConfig.ExampleQueries = DefaultExampleQueries
-	if setConfig.ExampleQueries != nil {
-		runConfig.ExampleQueries = setConfig.ExampleQueries
+	err = json.Unmarshal(b, &runConfig)
+	if err != nil {
+		return runConfig, err
 	}
-	*runConfig.SlowLogRotation = DefaultSlowLogRotation
-	if setConfig.SlowLogRotation != nil {
-		runConfig.SlowLogRotation = setConfig.SlowLogRotation
-	}
-	*runConfig.RetainSlowLogs = DefaultRetainSlowLogs
-	if setConfig.RetainSlowLogs != nil {
-		runConfig.RetainSlowLogs = setConfig.RetainSlowLogs
-	}
+	fmt.Printf("%+v\n", runConfig)
+
+	// Set UUID.
+	runConfig.UUID = setConfig.UUID
 
 	// Strings
 	if setConfig.CollectFrom != "slowlog" && setConfig.CollectFrom != "perfschema" {
@@ -151,8 +133,6 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	if setConfig.Interval > 0 {
 		runConfig.Interval = setConfig.Interval
 	}
-
-	runConfig.WorkerRunTime = uint(float64(runConfig.Interval) * 0.9) // 90% of interval
 
 	return runConfig, nil
 }
