@@ -4,7 +4,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this file,
 // You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// Package mysql provides a MySQL driver for Go's database/sql package.
+// Package mysql provides a MySQL driver for Go's database/sql package
 //
 // The driver should be used via the database/sql package:
 //
@@ -20,13 +20,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"net"
-	"sync"
 )
-
-// watcher interface is used for context support (From Go 1.8)
-type watcher interface {
-	startWatcher()
-}
 
 // MySQLDriver is exported to make the driver directly accessible.
 // In general the driver is used via the database/sql package.
@@ -36,17 +30,12 @@ type MySQLDriver struct{}
 // Custom dial functions must be registered with RegisterDial
 type DialFunc func(addr string) (net.Conn, error)
 
-var (
-	dialsLock sync.RWMutex
-	dials     map[string]DialFunc
-)
+var dials map[string]DialFunc
 
 // RegisterDial registers a custom dial function. It can then be used by the
 // network address mynet(addr), where mynet is the registered new network.
 // addr is passed as a parameter to the dial function.
 func RegisterDial(net string, dial DialFunc) {
-	dialsLock.Lock()
-	defer dialsLock.Unlock()
 	if dials == nil {
 		dials = make(map[string]DialFunc)
 	}
@@ -63,19 +52,16 @@ func (d MySQLDriver) Open(dsn string) (driver.Conn, error) {
 	mc := &mysqlConn{
 		maxAllowedPacket: maxPacketSize,
 		maxWriteSize:     maxPacketSize - 1,
-		closech:          make(chan struct{}),
 	}
 	mc.cfg, err = ParseDSN(dsn)
 	if err != nil {
 		return nil, err
 	}
 	mc.parseTime = mc.cfg.ParseTime
+	mc.strict = mc.cfg.Strict
 
 	// Connect to Server
-	dialsLock.RLock()
-	dial, ok := dials[mc.cfg.Net]
-	dialsLock.RUnlock()
-	if ok {
+	if dial, ok := dials[mc.cfg.Net]; ok {
 		mc.netConn, err = dial(mc.cfg.Addr)
 	} else {
 		nd := net.Dialer{Timeout: mc.cfg.Timeout}
@@ -95,11 +81,6 @@ func (d MySQLDriver) Open(dsn string) (driver.Conn, error) {
 		}
 	}
 
-	// Call startWatcher for context support (From Go 1.8)
-	if s, ok := interface{}(mc).(watcher); ok {
-		s.startWatcher()
-	}
-
 	mc.buf = newBuffer(mc.netConn)
 
 	// Set I/O timeouts
@@ -107,20 +88,20 @@ func (d MySQLDriver) Open(dsn string) (driver.Conn, error) {
 	mc.writeTimeout = mc.cfg.WriteTimeout
 
 	// Reading Handshake Initialization Packet
-	cipher, pluginName, err := mc.readInitPacket()
+	cipher, err := mc.readInitPacket()
 	if err != nil {
 		mc.cleanup()
 		return nil, err
 	}
 
 	// Send Client Authentication Packet
-	if err = mc.writeAuthPacket(cipher, pluginName); err != nil {
+	if err = mc.writeAuthPacket(cipher); err != nil {
 		mc.cleanup()
 		return nil, err
 	}
 
 	// Handle response to auth packet, switch methods if possible
-	if err = handleAuthResult(mc, cipher, pluginName); err != nil {
+	if err = handleAuthResult(mc, cipher); err != nil {
 		// Authentication failed and MySQL has already closed the connection
 		// (https://dev.mysql.com/doc/internals/en/authentication-fails.html).
 		// Do not send COM_QUIT, just cleanup and return the error.
@@ -153,27 +134,7 @@ func (d MySQLDriver) Open(dsn string) (driver.Conn, error) {
 	return mc, nil
 }
 
-func handleAuthResult(mc *mysqlConn, oldCipher []byte, pluginName string) error {
-
-	// handle caching_sha2_password
-	if pluginName == "caching_sha2_password" {
-		auth, err := mc.readCachingSha2PasswordAuthResult()
-		if err != nil {
-			return err
-		}
-		if auth == cachingSha2PasswordPerformFullAuthentication {
-			if mc.cfg.tls != nil || mc.cfg.Net == "unix" {
-				if err = mc.writeClearAuthPacket(); err != nil {
-					return err
-				}
-			} else {
-				if err = mc.writePublicKeyAuthPacket(oldCipher); err != nil {
-					return err
-				}
-			}
-		}
-	}
-
+func handleAuthResult(mc *mysqlConn, oldCipher []byte) error {
 	// Read Result Packet
 	cipher, err := mc.readResultOK()
 	if err == nil {
