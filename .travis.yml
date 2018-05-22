@@ -43,13 +43,6 @@ env:
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.6
 
-matrix:
-  include:
-    - go: master
-      env:
-  allow_failures:
-    - go: master
-
 addons:
   apt:
     sources:
