@@ -73,7 +73,7 @@ before_script:
   - mongo --eval 'db.init.insert({})'
 
 script:
-  - test/runner.sh
+  - go test -v -race ./...
 
 notifications:
   email: false
