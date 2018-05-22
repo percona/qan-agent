@@ -155,7 +155,7 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 		}
 	}
 
-	workerRunTime := time.Duration(uint(float64(w.config.Interval) * 0.9)) * time.Second // 90% of interval
+	workerRunTime := time.Duration(uint(float64(w.config.Interval)*0.9)) * time.Second // 90% of interval
 	// Create new Job.
 	w.job = &Job{
 		Id:             fmt.Sprintf("%d", interval.Number),

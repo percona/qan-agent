@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	DefaultRemoveOldSlowLogs       = true       // whether to remove old slow logs after rotation
+	DefaultRemoveOldSlowLogs = true // whether to remove old slow logs after rotation
 )
 
 type MySQLVarType int
@@ -133,7 +133,6 @@ func ValidateConfig(setConfig pc.QAN) (pc.QAN, error) {
 	if setConfig.Interval > 0 {
 		runConfig.Interval = setConfig.Interval
 	}
-
 
 	return runConfig, nil
 }

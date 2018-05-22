@@ -346,9 +346,9 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	// Write a realistic qan.conf config to disk.
 	pcQANSetExpected := pc.QAN{
-		UUID:          mysqlUUID,
-		CollectFrom:   "slowlog",
-		Interval:      300,
+		UUID:        mysqlUUID,
+		CollectFrom: "slowlog",
+		Interval:    300,
 	}
 	err := pct.Basedir.WriteConfig("qan-"+mysqlUUID, &pcQANSetExpected)
 	t.Assert(err, IsNil)

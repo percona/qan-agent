@@ -82,9 +82,9 @@ func TestWithRealMySQL(t *testing.T) {
 
 	// Write a realistic qan.conf config to disk.
 	pcQANSetExpected := pc.QAN{
-		UUID:          protoInstance.UUID,
-		CollectFrom:   "slowlog",
-		Interval:      300,
+		UUID:        protoInstance.UUID,
+		CollectFrom: "slowlog",
+		Interval:    300,
 	}
 	err = pct.Basedir.WriteConfig("qan-"+protoInstance.UUID, &pcQANSetExpected)
 	require.NoError(t, err)
