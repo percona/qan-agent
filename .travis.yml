@@ -40,13 +40,6 @@ env:
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.4
     - MONGODB_IMAGE=percona/percona-server-mongodb:3.6
 
-matrix:
-  include:
-    - go: master
-      env:
-  allow_failures:
-    - go: master
-
 addons:
   apt:
     sources:
@@ -67,7 +60,7 @@ before_script:
   # run docker containers
   - docker-compose up -d
   # wait for MySQL to become available
-  - ./with_backoff.sh docker-compose exec mysql mysql -u"${MYSQL_USER}" -e 'SELECT 1'
+  - ./with_backoff.sh docker-compose exec mysql mysql --protocol=tcp -u"${MYSQL_USER}" -e 'SELECT 1'
   # log versions
   - docker --version
   - docker-compose --version

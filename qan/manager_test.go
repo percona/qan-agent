@@ -175,7 +175,6 @@ func (s *ManagerTestSuite) TestStartWithConfig(t *C) {
 			UUID:           mysqlInstance.UUID,
 			CollectFrom:    analyzerType,
 			Interval:       300,
-			WorkerRunTime:  270,
 			ExampleQueries: &exampleQueries, // specify optional args
 			ReportLimit:    200,             // specify optional args
 		}
@@ -267,7 +266,6 @@ func (s *ManagerTestSuite) TestStart2RemoteQAN(t *C) {
 			UUID:           mysqlInstance.UUID,
 			CollectFrom:    "perfschema",
 			Interval:       300,
-			WorkerRunTime:  270,
 			ExampleQueries: &exampleQueries, // specify optional args
 			ReportLimit:    200,             // specify optional args
 		}
@@ -348,10 +346,9 @@ func (s *ManagerTestSuite) TestGetConfig(t *C) {
 
 	// Write a realistic qan.conf config to disk.
 	pcQANSetExpected := pc.QAN{
-		UUID:          mysqlUUID,
-		CollectFrom:   "slowlog",
-		Interval:      300,
-		WorkerRunTime: 270,
+		UUID:        mysqlUUID,
+		CollectFrom: "slowlog",
+		Interval:    300,
 	}
 	err := pct.Basedir.WriteConfig("qan-"+mysqlUUID, &pcQANSetExpected)
 	t.Assert(err, IsNil)
@@ -441,7 +438,6 @@ func (s *ManagerTestSuite) TestAddInstance(t *C) {
 		Interval:       300,        // 5 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  600, // 10 min
 		CollectFrom:    "slowlog",
 	}
 
@@ -537,7 +533,6 @@ func (s *ManagerTestSuite) TestStartTool(t *C) {
 		Interval:       300,        // 5 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  600, // 10 min
 		CollectFrom:    "slowlog",
 	}
 

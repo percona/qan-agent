@@ -155,13 +155,14 @@ func (w *Worker) Setup(interval *iter.Interval) error {
 		}
 	}
 
+	workerRunTime := time.Duration(uint(float64(w.config.Interval)*0.9)) * time.Second // 90% of interval
 	// Create new Job.
 	w.job = &Job{
 		Id:             fmt.Sprintf("%d", interval.Number),
 		SlowLogFile:    interval.Filename,
 		StartOffset:    interval.StartOffset,
 		EndOffset:      interval.EndOffset,
-		RunTime:        time.Duration(w.config.WorkerRunTime) * time.Second,
+		RunTime:        workerRunTime,
 		ExampleQueries: boolValue(w.config.ExampleQueries),
 		RetainSlowLogs: intValue(w.config.RetainSlowLogs),
 	}

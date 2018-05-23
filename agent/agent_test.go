@@ -287,7 +287,6 @@ func (s *AgentTestSuite) TestStartStopService(t *C) {
 		Interval:       60,         // seconds
 		MaxSlowLogSize: 1073741824, // 1 GiB
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  120, // seconds
 	}
 
 	// Second, the service config is encoded and encapsulated in a ServiceData:
@@ -385,7 +384,6 @@ func (s *AgentTestSuite) TestStartServiceSlow(t *C) {
 		Interval:       60,         // seconds
 		MaxSlowLogSize: 1073741824, // 1 GiB
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  120, // seconds
 	}
 	qanConfigData, _ := json.Marshal(qanConfig)
 	serviceCmd := &proto.ServiceData{

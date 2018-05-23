@@ -96,7 +96,6 @@ func (s *WorkerTestSuite) SetUpSuite(t *C) {
 		Interval:       60,         // 1 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  60, // 1 min
 		CollectFrom:    "slowlog",
 	}
 	s.nullmysql = mock.NewNullMySQL()
@@ -294,7 +293,6 @@ func (s *WorkerTestSuite) TestRotateAndRemoveSlowLog(t *C) {
 		ExampleQueries:  &exampleQueries,
 		SlowLogRotation: &slowLogsRotation,
 		RetainSlowLogs:  &slowLogsToKeep,
-		WorkerRunTime:   600,
 		Start: []string{
 			"-- start",
 		},
@@ -397,7 +395,6 @@ func (s *WorkerTestSuite) TestRotateSlowLog(t *C) {
 		ExampleQueries:  &exampleQueries,
 		SlowLogRotation: &slowLogsRotation,
 		RetainSlowLogs:  &slowLogsToKeep,
-		WorkerRunTime:   600,
 		Start: []string{
 			"-- start",
 		},
@@ -552,7 +549,6 @@ func (s *WorkerTestSuite) TestRotateRealSlowLog(t *C) {
 		Interval:       300,
 		MaxSlowLogSize: 1000,
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  600,
 		Start: []string{
 			"SET GLOBAL slow_query_log=1",
 			fmt.Sprintf("SET GLOBAL slow_query_log_file='%s'", slowlogFile),
@@ -629,7 +625,6 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 		UUID:           s.mysqlInstance.UUID,
 		Interval:       300,
 		MaxSlowLogSize: 1024 * 1024 * 1024,
-		WorkerRunTime:  60,
 		Start:          []string{},
 		Stop:           []string{},
 		CollectFrom:    "slowlog",
@@ -716,7 +711,6 @@ func (s *WorkerTestSuite) TestResult014(t *C) {
 		UUID:           "1",
 		CollectFrom:    "slowlog",
 		Interval:       60,
-		WorkerRunTime:  60,
 		ReportLimit:    500,
 		MaxSlowLogSize: 1024 * 1024 * 1000,
 	}

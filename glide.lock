@@ -1,5 +1,5 @@
-hash: da8b8c26d6c04b4d8410c01d23cac9e1e7650fe8e405101f44f4768e6486b989
-updated: 2018-05-22T11:46:02.29032137+02:00
+hash: 6f70b744a146411f33bf9d74699a78b7a2ce8fffb32eb5eaf151b34cc78af7ce
+updated: 2018-05-23T14:45:22.515828596+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -69,12 +69,12 @@ imports:
   subpackages:
   - reflectutil
 - name: golang.org/x/net
-  version: 8e0cdda24ed423affc8f35c241e5e9b16180338e
+  version: 9ef9f5bb98a1fdc41f8cf6c250a4404b4085e389
   subpackages:
   - context
   - websocket
 - name: golang.org/x/sys
-  version: 7c87d13f8e835d2fb3a70a2912c811ed0c1d241b
+  version: 88eb85aaee56831ad49eaf7aa80d73de9814cde2
   subpackages:
   - unix
   - windows

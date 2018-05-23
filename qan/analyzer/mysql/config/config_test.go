@@ -15,7 +15,6 @@ func TestValidateConfig(t *testing.T) {
 		Interval:       300,        // 5 min
 		MaxSlowLogSize: 1073741824, // 1 GiB
 		ExampleQueries: &exampleQueries,
-		WorkerRunTime:  600, // 10 min
 		CollectFrom:    "slowlog",
 	}
 	_, err := ValidateConfig(cfg)
