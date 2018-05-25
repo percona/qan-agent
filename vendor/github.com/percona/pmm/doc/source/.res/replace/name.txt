@@ -4,6 +4,7 @@
 
 .. Organizations and Products
 
+.. |jira|                     replace:: *Jira*
 .. |myisam|                   replace:: *MyISAM*
 .. |aria|                     replace:: *Aria*
 .. |aws-iam|                  replace:: *IAM*
@@ -88,6 +89,8 @@
 
 .. Metrics Monitor Dashboards 
 
+.. |mysql-innodb-metrics-advanced|           replace:: *MySQL InnoDB Metrics Advanced*
+.. |pxc-galera-cluster-overview|     replace:: *PXC/Galera Cluster Overview*
 .. |query-analytics-settings|        replace:: *Query Analytics Settings*
 .. |advanced-data-exploration|       replace:: *Advanced Data Exploration*
 .. |adv-data-expl|                   replace:: *Advanced Data Exploration*
@@ -116,7 +119,7 @@
 
 .. |gui.explain|                            replace:: :guilabel:`Explain`
 .. |gui.pmm-annotations|                    replace:: :guilabel:`PMM Annotations`
-.. |gui.count|                              replace:: :guilabel:`Count`
+.. |gui.count|                              replace:: *Count*
 .. |gui.1-click-launch|                     replace:: :guilabel:`1-Click Launch`
 .. |gui.add-permissions|                    replace:: :guilabel:`Add permissions`
 .. |gui.add-rds-aurora-instance|            replace:: :guilabel:`Add an AWS RDS MySQL or Aurora MySQL Instance`
@@ -189,6 +192,7 @@
 
 .. Files and directories
 
+.. |my.cnf|              replace:: :file:`my.cnf`
 .. |dhparam.pem|         replace:: :file:`dhparam.pem`
 .. |ca-certs.pem|        replace:: :file:`ca-certs.pem`
 .. |certificate.crt|     replace:: :file:`certificate.crt`

@@ -7,6 +7,7 @@
 package unix_test
 
 import (
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -88,5 +89,31 @@ func TestXattr(t *testing.T) {
 	err = unix.Removexattr(f, xattrName)
 	if err != nil {
 		t.Fatalf("Removexattr: %v", err)
+	}
+
+	n := "nonexistent"
+	err = unix.Lsetxattr(n, xattrName, []byte(xattrDataSet), 0)
+	if err != unix.ENOENT {
+		t.Errorf("Lsetxattr: expected %v on non-existent file, got %v", unix.ENOENT, err)
+	}
+
+	_, err = unix.Lgetxattr(n, xattrName, nil)
+	if err != unix.ENOENT {
+		t.Errorf("Lgetxattr: %v", err)
+	}
+
+	s := "symlink1"
+	err = os.Symlink(n, s)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = unix.Lsetxattr(s, xattrName, []byte(xattrDataSet), 0)
+	if err != nil {
+		// Linux and Android doen't support xattrs on symlinks according
+		// to xattr(7), so just test that we get the proper error.
+		if (runtime.GOOS != "linux" && runtime.GOOS != "android") || err != unix.EPERM {
+			t.Fatalf("Lsetxattr: %v", err)
+		}
 	}
 }

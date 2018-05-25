@@ -369,9 +369,28 @@ Use the |opt.mysql-queries| alias to enable |mysql| query analytics.
 This creates the ``pmm-mysql-queries-0`` service
 that is able to collect |qan| data for multiple remote |mysql| server instances.
 
-.. note:: It should be able to detect the local |pmm-client| name,
-   but you can also specify it explicitly as an argument.
+The |pmm-admin.add| command is able to detect the local |pmm-client|
+name, but you can also specify it explicitly as an argument.
 
+.. important::
+
+   If you connect |mysql| Server version 8.0, make sure it is started
+   with the |opt.default-authentication-plugin| set to the value
+   **mysql_native_password**.
+
+   You may alter your PMM user and pass the authentication plugin as a parameter:
+
+   .. include:: .res/code/sql.org
+      :start-after: +alter.user.identified.with.by+
+      :end-before: #+end-block
+   
+   .. seealso::
+
+      |mysql| Documentation: Authentication Plugins
+         https://dev.mysql.com/doc/refman/8.0/en/authentication-plugins.html
+      |mysql| Documentation: Native Pluggable Authentication
+         https://dev.mysql.com/doc/refman/8.0/en/native-pluggable-authentication.html
+	 
 .. _pmm-admin.add-mysql-queries.options:
 
 .. rubric:: OPTIONS
@@ -393,6 +412,20 @@ The following options can be used with the |opt.mysql-queries| alias:
 |opt.disable-queryexamples|
   Disable collection of query examples.
 
+|opt.slow-log-rotation|
+
+  Do not manage |slow-log| files by using |pmm|. Set this option to *false* if
+  you intend to manage |slow-log| files by using a third party tool.  The
+  default value is *true*
+
+  .. seealso::
+
+     |percona| Database Performance Blog: Rotating MySQL Slow Logs Safely
+        https://www.percona.com/blog/2013/04/18/rotating-mysql-slow-logs-safely/
+
+     |percona| Database Performance Blog: Log Rotate and the (Deleted) MySQL Log File Mystery
+        https://www.percona.com/blog/2014/11/12/log-rotate-and-the-deleted-mysql-log-file-mystery/
+
 |opt.force|
   Force to create or update the dedicated |mysql| user.
 
@@ -411,6 +444,10 @@ The following options can be used with the |opt.mysql-queries| alias:
   * ``auto``: Select automatically (default).
   * ``slowlog``: Use the slow query log.
   * ``perfschema``: Use Performance Schema.
+
+|opt.retain-slow-logs|
+   Specify the maximum number of files of the |slow-log| to keep automatically.
+   The default value is 1 file.
 
 |opt.socket|
   Specify the |mysql| instance socket file.
