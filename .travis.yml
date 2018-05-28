@@ -68,6 +68,8 @@ before_script:
   - docker-compose exec mongo mongo --version
   # we need at least one document in test db
   - mongo --eval 'db.init.insert({})'
+  # show logs from all components
+  - docker-compose logs
 
 script:
   - test/runner.sh
