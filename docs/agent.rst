@@ -141,8 +141,6 @@ Stop                (varies)    List of MySQL queries to execute to un-configure
 
 Interval            60          How often to collect and aggregate data
 
-WorkerRunTime       55          Max runtime for each worker per interval
-
 MaxSlowLogSize      1073741824  Rotate slow log when it becomes this large (bytes)
 
 RemoveOldSlowLogs   true        Remove slow log after rotating if true

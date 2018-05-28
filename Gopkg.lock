@@ -41,10 +41,9 @@
   version = "v1.2.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/go-sql-driver/mysql"
   packages = ["."]
-  revision = "d03e4c28477ccf584ef564f3957b42550d5785f1"
+  revision = "3287d94d4c6a48a63e16fffaabf27ab20203af2a"
 
 [[projects]]
   branch = "master"
@@ -122,7 +121,7 @@
     "proto/qan",
     "proto/query"
   ]
-  revision = "ccbe6c9f56d2476b252fe4f0628e5ed5a8b73e7a"
+  revision = "14e9a156f922df9c0b8e058b9fcede6c8d1f257b"
 
 [[projects]]
   branch = "master"
@@ -235,6 +234,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "847a3c67abbe1955994cf7ebe0deed9915c45d5a6d720bf0d9dc0756ae7bee60"
+  inputs-digest = "cc15454285bd3dd078bf30bcc6e76197ea08753a5de77118b4bbac1355f756d3"
   solver-name = "gps-cdcl"
   solver-version = 1

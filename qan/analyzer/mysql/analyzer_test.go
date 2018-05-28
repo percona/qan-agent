@@ -129,7 +129,6 @@ func (s *AnalyzerTestSuite) SetUpTest(t *C) {
 		UUID:            s.mysqlUUID,
 		CollectFrom:     "slowlog",
 		Interval:        60,
-		WorkerRunTime:   60,
 		MaxSlowLogSize:  MAX_SLOW_LOG_SIZE,
 		SlowLogRotation: &slowLogRotation,
 		Start: []string{
