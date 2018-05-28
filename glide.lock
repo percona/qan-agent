@@ -1,5 +1,5 @@
-hash: 76ceb81f4aa54db8f5c14f5ac5d3ad7c60e5b9e800bf11146de7fab9bee095a8
-updated: 2018-05-27T23:02:29.376519587+02:00
+hash: 0cc8361bbd2230166cb67ef4e85dac859abfc5ccca3c3aa7f896c9818193fabc
+updated: 2018-05-28T11:07:20.114708217+02:00
 imports:
 - name: github.com/bradfitz/slice
   version: d9036e2120b5ddfa53f3ebccd618c4af275f47da
@@ -10,7 +10,7 @@ imports:
   subpackages:
   - oleutil
 - name: github.com/go-sql-driver/mysql
-  version: 64db0f7ebe171b596aa9b26f39a79f7413a3b617
+  version: 8985303ae989fc33c26bb4d8d5169cbe3b9eb4e9
 - name: github.com/google/btree
   version: e89373fe6b4a7413d7acd6da1725b83ef713e6e4
 - name: github.com/hashicorp/go-version

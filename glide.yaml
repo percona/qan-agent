@@ -2,6 +2,7 @@ package: github.com/percona/qan-agent
 import:
 - package: github.com/fatih/structs
 - package: github.com/go-sql-driver/mysql
+  version: 8985303ae989fc33c26bb4d8d5169cbe3b9eb4e9
 - package: github.com/hashicorp/go-version
 - package: github.com/montanaflynn/stats
 - package: github.com/nu7hatch/gouuid
