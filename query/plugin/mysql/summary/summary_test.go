@@ -21,11 +21,32 @@ import (
 	"os"
 	"testing"
 
+	"github.com/percona/qan-agent/mysql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSummary(t *testing.T) {
+	// PMM-2569
+	// https://github.com/percona/qan-agent/pull/90
+	// https://github.com/percona/percona-toolkit/pull/337
+	{
+		dsn := os.Getenv("PCT_TEST_MYSQL_DSN")
+		require.NotEmpty(t, dsn, "PCT_TEST_MYSQL_DSN is not set")
+		mysqlConn := mysql.NewConnection(dsn)
+		err := mysqlConn.Connect()
+		require.NoError(t, err)
+		defer mysqlConn.Close()
+
+		ok, err := mysqlConn.VersionConstraint("< 8.0 || >= 10.0")
+		require.NoError(t, err)
+		if !ok {
+			t.Skip(
+				"pt-mysql-summary runs host mysql client which doesn't work with MySQL 8.",
+			)
+		}
+	}
+
 	t.Parallel()
 
 	dsn := os.Getenv("PCT_TEST_MYSQL_DSN")

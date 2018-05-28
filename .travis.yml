@@ -16,6 +16,10 @@ env:
     - MYSQL_HOST="127.0.0.1"
     - MYSQL_PORT="3406"
     - PCT_TEST_MYSQL_DSN="${MYSQL_USER}@tcp(${MYSQL_HOST}:${MYSQL_PORT})/?parseTime=true"
+    # For pt-mysql-summary to run MySQL client binary from docker.
+    # https://github.com/percona/percona-toolkit/blob/b79a6c621b948fadc6b1192a5ecacb394a6b24f6/bin/pt-mysql-summary#L848
+    #- CMD_MYSQL="docker-compose exec mysql mysql"
+    #- CMD_MYSQLDUMP="docker-compose exec mysql mysqldump"
   matrix:
     - MYSQL_IMAGE=mysql:5.5
     - MYSQL_IMAGE=mysql:5.6
