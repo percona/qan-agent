@@ -1,0 +1,9 @@
+[[constraint]]
+  name = "github.com/go-sql-driver/mysql"
+  revision = "3287d94d4c6a48a63e16fffaabf27ab20203af2a"
+
+[prune]
+  non-go = true
+  go-tests = true
+# Removing unused sub-packages sounds like a great idea until you need one.
+#  unused-packages = true
