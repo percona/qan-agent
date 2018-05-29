@@ -1,1 +1,0 @@
-select col from db.tbl? where id in(?+)

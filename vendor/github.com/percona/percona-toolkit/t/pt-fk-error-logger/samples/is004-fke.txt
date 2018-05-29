@@ -1,2 +1,0 @@
-Cannot DISCARD table `test/t1`
-because it is referenced by `test/t2`

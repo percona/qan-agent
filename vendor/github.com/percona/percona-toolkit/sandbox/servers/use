@@ -1,7 +1,0 @@
-#!/bin/sh
-
-BASEDIR="PERCONA_TOOLKIT_SANDBOX"
-
-$BASEDIR/bin/mysql --defaults-file=/tmp/PORT/my.sandbox.cnf "$@"
-
-exit
