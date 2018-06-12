@@ -1,6 +1,7 @@
+# PMM-2569: Version 1.4.0 introduces support for new auth methods in MySQL 8.
 [[constraint]]
   name = "github.com/go-sql-driver/mysql"
-  revision = "3287d94d4c6a48a63e16fffaabf27ab20203af2a"
+  version = "^1.4.0"
 
 [prune]
   non-go = true
