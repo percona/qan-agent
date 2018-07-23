@@ -92,7 +92,7 @@
     "log/slow",
     "query"
   ]
-  revision = "82ed67a1d0f1779cd60a025c54e0827da0c0838b"
+  revision = "251dbc2e6a0c734cba315e66bf694b4b0b011e0c"
 
 [[projects]]
   name = "github.com/percona/percona-toolkit"
