@@ -659,7 +659,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 	// Send first event. This is aggregated.
 	e := &log.Event{
 		Offset: 0,
-		Ts:     "071015 21:45:10",
+		Ts:     time.Date(2017, 10, 15, 21, 45, 10, 0, time.UTC),
 		Query:  "select 1 from t",
 		Db:     "db1",
 		TimeMetrics: map[string]float64{
@@ -681,7 +681,7 @@ func (s *WorkerTestSuite) TestStop(t *C) {
 	// Send 2nd event which is not aggregated because a stop ^ is pending.
 	e = &log.Event{
 		Offset: 100,
-		Ts:     "071015 21:50:10",
+		Ts:     time.Date(2017, 10, 15, 21, 50, 10, 0, time.UTC),
 		Query:  "select 2 from u",
 		Db:     "db2",
 		TimeMetrics: map[string]float64{

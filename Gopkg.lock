@@ -83,7 +83,6 @@
   revision = "179d4d0c4d8d407a32af483c2354df1d2c91e6c3"
 
 [[projects]]
-  branch = "master"
   name = "github.com/percona/go-mysql"
   packages = [
     "dsn",
@@ -92,7 +91,7 @@
     "log/slow",
     "query"
   ]
-  revision = "82ed67a1d0f1779cd60a025c54e0827da0c0838b"
+  revision = "8863d30f944bc83d6d7b1d5c4b3cfa2d69d84cf3"
 
 [[projects]]
   name = "github.com/percona/percona-toolkit"
