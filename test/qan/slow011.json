@@ -376,7 +376,9 @@
       "Example": {
         "QueryTime": 0.000237,
         "Db": "maindb",
-        "Query": "SELECT foo FROM bar WHERE id=2"
+        "Query": "SELECT foo FROM bar WHERE id=2",
+        "Size": 30,
+        "Ts": "2013-11-28 01:05:31"
       }
     },
     {
@@ -568,7 +570,8 @@
       "Example": {
         "QueryTime": 0.000165,
         "Db": "maindb",
-        "Query": "INSERT INTO foo VALUES (NULL, 3)"
+        "Query": "INSERT INTO foo VALUES (NULL, 3)",
+        "Size": 32
       }
     }
   ],
