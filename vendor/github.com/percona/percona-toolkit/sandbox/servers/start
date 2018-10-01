@@ -1,0 +1,92 @@
+#!/bin/sh
+
+start_ts=$(date +%s)
+
+PIDFILE="TMP_DIR/PORT/data/mysql_sandboxPORT.pid"
+SOCKETFILE="TMP_DIR/PORT/mysql_sandboxPORT.sock"
+BASEDIR="PERCONA_TOOLKIT_SANDBOX"
+
+sandbox_is_alive() {
+   # First, all these files must exist.
+   [ -f $PIDFILE -a  -S $SOCKETFILE ] || return 1
+
+   # And that PID file must have a PID.
+   local pid=$(cat TMP_DIR/PORT/data/mysql_sandboxPORT.pid 2>/dev/null)
+   [ "$pid" ] || return 1
+
+   # Second, MySQL is truly alive when it respond to a ping.
+   # It's not enough that the mysqld process is running because
+   # InnoDB can take time to create ibdata1, etc.  So MySQL is
+   # only alive when it responds to queries.
+   $BASEDIR/bin/mysqladmin --defaults-file="TMP_DIR/PORT/my.sandbox.cnf" ping >/dev/null 2>&1
+   [ $? -eq 0 ] || return 1
+   echo "return 0"
+
+   return 0
+}
+
+_seq() {
+   local i="$1"
+   awk "BEGIN { for(i=1; i<=$i; i++) print i; }"
+}
+
+# #############################################################################
+# Script starts here
+# #############################################################################
+
+# If there's a PID or socket file, MySQL may already be alive.
+if [ -f "$PIDFILE" -o -S "$SOCKETFILE" ]; then
+   if sandbox_is_alive; then
+      echo "MySQL test server on port PORT is running."
+      exit 0
+   fi
+
+   # Sandbox exists but is not running.  Clear it and then start it.
+   TMP_DIR/PORT/stop >/dev/null 2>&1
+fi
+
+echo -n "Starting MySQL test server on port PORT... "
+
+# Start MySQL.
+cwd=$PWD
+cd $BASEDIR
+
+encryption_plugins=""
+plugins_dir_cmd=""
+
+plugins_cmd=""
+keyring_cmd=""
+
+if [ -e "${BASEDIR}/lib/mysql/plugin/keyring_file.so" ]; then
+     encryption_plugins="${BASEDIR}/lib/mysql/plugin/keyring_file.so"
+fi
+
+if [ ! -z "$encryption_plugins" ]; then
+    plugins_cmd="--early-plugin-load=${encryption_plugins}"
+    keyring_cmd="--keyring_file_data=/tmp/PORT/data/keyring"
+    plugins_dir_cmd="--plugin-dir=${BASEDIR}/lib/mysql/plugin/"
+fi
+
+init_file="/tmp/PORT/mysql-init"
+if [ -e $init_file ]; then
+    $BASEDIR/bin/mysqld --defaults-file=/tmp/PORT/my.sandbox.cnf -u root --init-file $init_file $plugins_cmd $plugins_dir_cmd $keyring_cmd &
+else
+    $BASEDIR/bin/mysqld --defaults-file=/tmp/PORT/my.sandbox.cnf $plugins_cmd $plugins_dir_cmd $keyring_cmd > /dev/null 2>&1 &
+fi
+cd $PWD
+
+# Wait for MySQL to actually be up, i.e. to respond to queries.
+for i in $(_seq 60); do
+   if sandbox_is_alive; then
+      end_ts=$(date +%s)
+      t=$((end_ts - start_ts))
+      echo "OK (${t}s)"
+      exit 0
+   fi
+   sleep 1
+done
+
+end_ts=$(date +%s)
+t=$((end_ts - start_ts))
+echo "FAILED (${t}s)"
+exit 1

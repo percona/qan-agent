@@ -1,0 +1,26 @@
+# ############################################################################
+
+=pod
+
+=head1 OPTIONS
+
+=over
+
+=item --foo
+
+Basic foo.
+
+=item --[no]bar
+
+New negatable bar.
+
+=back
+
+=head1 ENVIRONMENT
+
+The environment variable C<PTDEBUG> enables verbose debugging output in all of the
+Maatkit tools:
+
+   PTDEBUG=1 mk-....
+
+=cut
