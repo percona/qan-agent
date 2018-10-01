@@ -1,0 +1,202 @@
+#!/usr/bin/env bash
+
+# ############################################################################
+# Standard startup, find the branch's root directory
+# ############################################################################
+
+EXIT_STATUS=0
+
+die() {
+   echo $1  >&2
+   exit 1
+}
+
+warn() {
+   echo $1 >&2
+   EXIT_STATUS=$((EXIT_STATUS | 1))
+}
+
+cwd="$PWD"
+if [ -n "$PERCONA_TOOLKIT_BRANCH" ]; then
+   BRANCH=$PERCONA_TOOLKIT_BRANCH
+else
+   while [ ! -f Makefile.PL ] && [ $(pwd) != "/" ]; do
+      cd ..
+   done
+   if [ ! -f Makefile.PL ]; then
+      die "Cannot find the root directory of the Percona Toolkit branch"
+   fi
+   BRANCH=`pwd`
+fi
+cd "$cwd"
+
+# ############################################################################
+# Global variables
+# ############################################################################
+
+# None
+
+# ############################################################################
+# Subroutines
+# ############################################################################
+
+pkgs_in_tool() {
+   local tool=$1
+   if [ "$tool_lang" = "perl" ]; then
+      pkgs=$(grep '^package [A-Za-z:]*;' $tool | cut -d' ' -f2 | cut -d';' -f1)
+   else
+      pkgs=$(grep '^# [a-z_]* package' $tool | awk '{print $2}')
+   fi
+}
+
+replace_pkg_in_tool() {
+   local tool_file=$1
+   local tmp_file="$tool_file.tmp"
+
+   local pkg_start_line=$(grep -n "^# $pkg package" $tool_file | cut -d':' -f1)
+   if [ -z "$pkg_start_line" ]; then
+      warn "$tool does not use $pkg"
+      return 1
+   fi
+   pkg_start_line=$((pkg_start_line - 1))
+
+   local pkg_end_line=$(grep -n "^# End $pkg package" $tool_file | cut -d':' -f1)
+   if [ -z "$pkg_end_line" ]; then
+      warn "Cannot find 'End $pkg' in $tool"
+      return 1
+   fi
+   pkg_end_line=$((pkg_end_line + 1))
+
+   head -n $pkg_start_line $tool_file > $tmp_file
+
+   if [ "$tool_lang" = "perl" ]; then
+      echo "# $pkg package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/$pkg_file_base.pm
+#   t/lib/$pkg_file_base.t
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+{" >> $tmp_file
+   else
+      echo "# $pkg package
+# This package is a copy without comments from the original.  The original
+# with comments and its test file can be found in the Bazaar repository at,
+#   lib/bash/$pkg.sh
+#   t/lib/bash/$pkg.sh
+# See https://launchpad.net/percona-toolkit for more information.
+# ###########################################################################
+" >> $tmp_file
+   fi
+
+   $BRANCH/util/extract-package $pkg $pkg_file | grep -v '^ *#' >> $tmp_file
+
+   if [ "$tool_lang" = "perl" -a $pkg != "HTTP::Micro" ]; then
+      echo "}" >> $tmp_file
+   fi
+
+echo "# ###########################################################################
+# End $pkg package" >> $tmp_file
+
+   tail -n +$pkg_end_line  $tool_file >> $tmp_file
+ 
+   mv $tmp_file $tool_file
+} 
+
+update_tool_header() {
+   local tool_file=$1
+
+   local start_line=$(grep -m 1 -n "^# ###" $tool_file | cut -d':' -f1)
+   if [ -z "$start_line" ]; then
+      warn "$tool_file does not have a package header line"
+      return 1
+   fi
+   start_line=$((start_line - 1))
+
+   tail -n +$start_line $tool_file > $tool_file-code
+   $BRANCH/util/tool-header $tool_file > $tool_file-header
+   if [ $? -ne 0 ]; then
+      warn "Failed to update tool header for $tool_file"
+      return 1
+   fi
+   cat $tool_file-header $tool_file-code > $tool_file
+   [ $? -eq 0 ] && rm $tool_file-header $tool_file-code
+}
+
+# ############################################################################
+# Script starts here
+# ############################################################################
+
+tool_file=$1
+
+if [ -z "$tool_file" ]; then
+   die "Usage: $0 TOOL [MODULES]"
+fi
+
+if [ ! -f $tool_file ]; then
+   die "$tool_file does not exist"
+fi
+
+if [ -n "$(head -n 1 $tool_file | grep perl)" ]; then
+   tool_lang="perl"
+else
+   tool_lang="bash"
+fi
+
+tool=$(basename $tool_file)
+tmp_tool_file="/tmp/$tool.tmp";
+cp $tool_file $tmp_tool_file
+
+shift
+pkgs="$@"
+if [ -z "$pkgs" ]; then
+   pkgs_in_tool $tool_file
+fi
+
+echo "Updating modules in $tool..."
+pkgs_updated=0
+for pkg in $pkgs; do
+   if [ "$pkg" == "main" ]; then
+      continue
+   fi
+
+   if [ "$tool_lang" = "perl" ]; then
+      # Perl :: package separators translate to directory slashes.
+      pkg_file="$BRANCH/lib/$pkg.pm"
+      pkg_file=${pkg_file//"::"/"/"}
+      pkg_file_base=${pkg//"::"/"/"}
+   else
+      pkg_file="$BRANCH/lib/bash/$pkg.sh"
+   fi
+
+   if [ ! -f $pkg_file ]; then
+      warn "$pkg_file does not exist"
+      continue
+   fi
+
+   replace_pkg_in_tool $tmp_tool_file
+   if [ $? -eq 0 ]; then
+      echo "Updated $pkg"
+      pkgs_updated=$((pkgs_updated+1))
+   fi
+done
+
+if [ $pkgs_updated -gt 0 ]; then
+   if [ "$tool_lang" = "perl" ]; then
+      update_tool_header $tmp_tool_file
+      if [ $? -ne 0 ]; then
+         warn "Failed to update tool header"
+      fi
+   fi
+   if [ $EXIT_STATUS -eq 0 ]; then
+      cp $tmp_tool_file $tool_file
+      EXIT_STATUS=$((EXIT_STATUS | $?))
+      if [ $? -ne 0 ]; then
+         warn "Failed to copy $tmp_tool_file to $tool_file"
+      fi
+   fi
+fi
+
+[ -f "$tmp_tool_file" ] && rm $tmp_tool_file
+
+exit $EXIT_STATUS
