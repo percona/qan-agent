@@ -216,15 +216,16 @@ type Worker struct {
 	mysqlConn mysql.Connector
 	getRows   GetDigestRowsFunc
 	// --
-	name            string
-	status          *pct.Status
-	digests         *Digests
-	iter            *iter.Interval
-	lastErr         error
-	lastRowCnt      uint
-	lastFetchTime   time.Time
-	lastPrepTime    float64
-	collectExamples bool
+	name                  string
+	status                *pct.Status
+	digests               *Digests
+	iter                  *iter.Interval
+	lastErr               error
+	lastRowCnt            uint
+	lastFetchTime         time.Time
+	lastPrepTime          float64
+	collectExamples       bool
+	isCollectExamplesRuns bool
 	//
 	ticker        *time.Ticker
 	isRunning     bool
@@ -331,7 +332,8 @@ func (w *Worker) Status() map[string]string {
 
 func (w *Worker) SetConfig(config pc.QAN) {
 	w.collectExamples = *config.ExampleQueries
-	if w.collectExamples {
+	if w.collectExamples && !w.isCollectExamplesRuns {
+		w.isCollectExamplesRuns = true
 		w.ticker = time.NewTicker(time.Millisecond * 1000)
 		go w.getQueryExamples(w.ticker.C)
 	}
