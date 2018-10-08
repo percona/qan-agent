@@ -216,21 +216,20 @@ type Worker struct {
 	mysqlConn mysql.Connector
 	getRows   GetDigestRowsFunc
 	// --
-	name                  string
-	status                *pct.Status
-	digests               *Digests
-	iter                  *iter.Interval
-	lastErr               error
-	lastRowCnt            uint
-	lastFetchTime         time.Time
-	lastPrepTime          float64
-	collectExamples       bool
-	isCollectExamplesRuns bool
+	name            string
+	status          *pct.Status
+	digests         *Digests
+	iter            *iter.Interval
+	lastErr         error
+	lastRowCnt      uint
+	lastFetchTime   time.Time
+	lastPrepTime    float64
+	collectExamples bool
 	//
-	ticker        *time.Ticker
-	isRunning     bool
-	lock          sync.Mutex
-	queryExamples map[string]perfSchemaExample
+	collectExamplesTicker *time.Ticker
+	isRunning             bool
+	lock                  sync.Mutex
+	queryExamples         map[string]perfSchemaExample
 }
 
 func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestRowsFunc) *Worker {
@@ -320,8 +319,8 @@ func (w *Worker) Cleanup() error {
 }
 
 func (w *Worker) Stop() error {
-	if w.ticker != nil {
-		w.ticker.Stop()
+	if w.collectExamplesTicker != nil {
+		w.collectExamplesTicker.Stop()
 	}
 	return nil
 }
@@ -332,10 +331,9 @@ func (w *Worker) Status() map[string]string {
 
 func (w *Worker) SetConfig(config pc.QAN) {
 	w.collectExamples = *config.ExampleQueries
-	if w.collectExamples && !w.isCollectExamplesRuns {
-		w.isCollectExamplesRuns = true
-		w.ticker = time.NewTicker(time.Millisecond * 1000)
-		go w.getQueryExamples(w.ticker.C)
+	if w.collectExamples && w.collectExamplesTicker == nil {
+		w.collectExamplesTicker = time.NewTicker(time.Millisecond * 1000)
+		go w.getQueryExamples(w.collectExamplesTicker.C)
 	}
 }
 
