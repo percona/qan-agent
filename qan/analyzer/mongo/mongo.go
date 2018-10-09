@@ -8,6 +8,7 @@ import (
 	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
+
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/qan/analyzer"

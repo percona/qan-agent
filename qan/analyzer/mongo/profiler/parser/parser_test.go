@@ -8,9 +8,10 @@ import (
 	pm "github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 )
 
 func TestNew(t *testing.T) {

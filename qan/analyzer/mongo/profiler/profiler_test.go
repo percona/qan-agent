@@ -8,11 +8,12 @@ import (
 	"github.com/percona/pmm/proto"
 	"github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/test/profiling"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCollectingAndSendingData(t *testing.T) {

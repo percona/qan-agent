@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/qan-agent/instance"
@@ -17,35 +16,14 @@ import (
 	"github.com/percona/qan-agent/test"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/test/profiling"
-	"github.com/percona/qan-agent/test/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2"
 )
 
 func TestRealStartTool(t *testing.T) {
-	dialer := pmgo.NewDialer()
-	dialInfo, _ := pmgo.ParseURL("")
-
-	session, err := dialer.DialWithInfo(dialInfo)
-	require.NoError(t, err)
-	defer session.Close()
-	session.SetMode(mgo.Eventual, true)
-	bi, err := session.BuildInfo()
-	require.NoError(t, err)
-	atLeast34, err := version.Constraint(">= 3.4", bi.Version)
-	require.NoError(t, err)
-
-	dbNames := []string{
-		"local",
-		"test",
-	}
-	if atLeast34 {
-		dbNames = append(dbNames, "admin")
-	}
-
 	// reset profiling
-	err = profiling.New("").ResetAll()
+	p := profiling.New("")
+	err := p.ResetAll()
 	require.NoError(t, err)
 
 	logChan := make(chan proto.LogEntry)
@@ -118,6 +96,9 @@ func TestRealStartTool(t *testing.T) {
 		pluginName + "-aggregator-interval-end":   shouldExist,
 		pluginName + "-servers":                   shouldExist,
 	}
+	dbNames, err := p.DatabaseNames()
+	require.NoError(t, err)
+	require.NotEmpty(t, dbNames)
 	for _, dbName := range dbNames {
 		t := map[string]string{
 			"%s-collector-profile-%s":                  "Profiling enabled for all queries (ratelimit: 1)",

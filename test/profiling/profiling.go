@@ -19,7 +19,6 @@ package profiling
 
 import (
 	"fmt"
-
 	"github.com/percona/pmgo"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -146,6 +145,11 @@ func (p *Profiling) RunDB(f runDB) error {
 		}
 		return nil
 	})
+}
+
+// DatabaseNames returns the names of non-empty databases present in the cluster.
+func (p *Profiling) DatabaseNames() ([]string, error) {
+	return p.session.DatabaseNames()
 }
 
 func profile(db pmgo.DatabaseManager, v int) error {

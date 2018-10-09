@@ -7,9 +7,10 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
-	"github.com/percona/qan-agent/test/profiling"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/percona/qan-agent/test/profiling"
 )
 
 func TestNew(t *testing.T) {

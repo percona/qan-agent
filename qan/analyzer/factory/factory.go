@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/percona/pmm/proto"
+
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/instance"
 	"github.com/percona/qan-agent/mrms"
