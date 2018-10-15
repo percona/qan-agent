@@ -90,7 +90,8 @@
       "Example": {
         "QueryTime": 2,
         "Db": "sakila",
-        "Query": "select sleep(2) from test.n"
+        "Query": "select sleep(2) from test.n",
+        "Size": 27
       }
     }
   ],
