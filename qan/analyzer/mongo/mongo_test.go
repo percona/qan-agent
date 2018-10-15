@@ -5,40 +5,18 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/percona/pmgo"
 	"github.com/percona/pmm/proto"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
 	"github.com/percona/qan-agent/test/profiling"
-	"github.com/percona/qan-agent/test/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/mgo.v2"
 )
 
 func TestMongo_StartStopStatus(t *testing.T) {
-	dialer := pmgo.NewDialer()
-	dialInfo, _ := pmgo.ParseURL("")
-
-	session, err := dialer.DialWithInfo(dialInfo)
-	require.NoError(t, err)
-	defer session.Close()
-	session.SetMode(mgo.Eventual, true)
-	bi, err := session.BuildInfo()
-	require.NoError(t, err)
-	hasAdminDB, err := version.Constraint(">= 3.4", bi.Version)
-	require.NoError(t, err)
-
-	dbNames := []string{
-		"local",
-		"test",
-	}
-	if hasAdminDB {
-		dbNames = append(dbNames, "admin")
-	}
-
 	// Disable profiling as we only want to test if factory works.
-	err = profiling.New("").DisableAll()
+	p := profiling.New("")
+	err := p.DisableAll()
 	require.NoError(t, err)
 
 	dataChan := make(chan interface{})
@@ -72,6 +50,9 @@ func TestMongo_StartStopStatus(t *testing.T) {
 		pluginName + "-aggregator-interval-end":   shouldExist,
 		pluginName + "-servers":                   shouldExist,
 	}
+	dbNames, err := p.DatabaseNames()
+	require.NoError(t, err)
+	require.NotEmpty(t, dbNames)
 	for _, dbName := range dbNames {
 		t := map[string]string{
 			"%s-collector-profile-%s":                  "Profiling disabled. Please enable profiling for this database or whole MongoDB server (https://docs.mongodb.com/manual/tutorial/manage-the-database-profiler/).",

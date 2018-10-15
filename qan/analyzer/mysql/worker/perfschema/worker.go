@@ -225,11 +225,12 @@ type Worker struct {
 	lastFetchTime   time.Time
 	lastPrepTime    float64
 	collectExamples bool
+
 	//
-	ticker        *time.Ticker
-	isRunning     bool
-	lock          sync.Mutex
-	queryExamples map[string]perfSchemaExample
+	lock                  sync.Mutex
+	isRunning             bool
+	collectExamplesTicker *time.Ticker
+	queryExamples         map[string]perfSchemaExample
 }
 
 func NewWorker(logger *pct.Logger, mysqlConn mysql.Connector, getRows GetDigestRowsFunc) *Worker {
@@ -319,8 +320,11 @@ func (w *Worker) Cleanup() error {
 }
 
 func (w *Worker) Stop() error {
-	if w.ticker != nil {
-		w.ticker.Stop()
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	if w.collectExamplesTicker != nil {
+		w.collectExamplesTicker.Stop()
+		w.collectExamplesTicker = nil
 	}
 	return nil
 }
@@ -330,10 +334,12 @@ func (w *Worker) Status() map[string]string {
 }
 
 func (w *Worker) SetConfig(config pc.QAN) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
 	w.collectExamples = *config.ExampleQueries
-	if w.collectExamples {
-		w.ticker = time.NewTicker(time.Millisecond * 1000)
-		go w.getQueryExamples(w.ticker.C)
+	if w.collectExamples && w.collectExamplesTicker == nil {
+		w.collectExamplesTicker = time.NewTicker(time.Millisecond * 1000)
+		go w.getQueryExamples(w.collectExamplesTicker.C)
 	}
 }
 

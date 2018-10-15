@@ -7,8 +7,9 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	"github.com/percona/pmgo"
-	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 	"gopkg.in/mgo.v2/bson"
+
+	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 )
 
 const (

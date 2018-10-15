@@ -12,6 +12,7 @@ import (
 	mongostats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
 	pc "github.com/percona/pmm/proto/config"
 	"github.com/percona/pmm/proto/qan"
+
 	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 	"github.com/percona/qan-agent/qan/analyzer/report"
 )

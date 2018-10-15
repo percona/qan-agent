@@ -5,6 +5,7 @@ import (
 
 	"github.com/percona/percona-toolkit/src/go/mongolib/proto"
 	mstats "github.com/percona/percona-toolkit/src/go/mongolib/stats"
+
 	"github.com/percona/qan-agent/qan/analyzer/mongo/profiler/aggregator"
 	"github.com/percona/qan-agent/qan/analyzer/mongo/status"
 )

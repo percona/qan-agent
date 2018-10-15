@@ -6,10 +6,11 @@ import (
 
 	"github.com/percona/pmm/proto"
 	"github.com/percona/pmm/proto/qan"
+	"github.com/stretchr/testify/require"
+
 	"github.com/percona/qan-agent/data"
 	"github.com/percona/qan-agent/pct"
 	"github.com/percona/qan-agent/test/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
