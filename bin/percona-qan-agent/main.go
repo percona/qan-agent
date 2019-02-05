@@ -94,25 +94,25 @@ func main() {
 	}
 
 	if err := pct.Basedir.Init(flagBasedir); err != nil {
-		fmt.Printf("Error initializing basedir %s: %s", flagBasedir, err)
+		fmt.Printf("Error initializing basedir %s: %s\n", flagBasedir, err)
 		os.Exit(1)
 	}
 
 	// Read agent.conf to get API hostname and agent UUID.
 	agentConfigFile := pct.Basedir.ConfigFile("agent")
 	if !pct.FileExists(agentConfigFile) {
-		fmt.Printf("Agent config file %s does not exist", agentConfigFile)
+		fmt.Printf("Agent config file %s does not exist\n", agentConfigFile)
 		os.Exit(1)
 	}
 
 	bytes, err := agent.LoadConfig()
 	if err != nil {
-		fmt.Printf("Error reading agent config file %s: %s", agentConfigFile, err)
+		fmt.Printf("Error reading agent config file %s: %s\n", agentConfigFile, err)
 		os.Exit(1)
 	}
 	agentConfig := &pc.Agent{}
 	if err := json.Unmarshal(bytes, agentConfig); err != nil {
-		fmt.Printf("Error decoding agent config file %s: %s", agentConfigFile, err)
+		fmt.Printf("Error decoding agent config file %s: %s\n", agentConfigFile, err)
 		os.Exit(1)
 	}
 
@@ -130,10 +130,10 @@ func main() {
 		code, err := pct.Ping(apiURL)
 		d := time.Now().Sub(t0)
 		if err != nil || code != 200 {
-			fmt.Printf("Ping FAIL (%d %d %s)", d, code, err)
+			fmt.Printf("Ping FAIL (%d %d %s)\n", d, code, err)
 			os.Exit(1)
 		}
-		fmt.Printf("Ping OK (%s)", d)
+		fmt.Printf("Ping OK (%s)\n", d)
 		return
 	}
 
