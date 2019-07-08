@@ -143,6 +143,7 @@ func (m *MySQLAnalyzer) Start() error {
 		m.clock,
 		m.spool,
 	)
+	m.restartChan = restartChan
 
 	return m.analyzer.Start()
 }
