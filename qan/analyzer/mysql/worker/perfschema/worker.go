@@ -367,7 +367,16 @@ func (w *Worker) getQueryExamples(ticker <-chan time.Time) {
 			continue
 		}
 
-		query := "SELECT DIGEST, CURRENT_SCHEMA, SQL_TEXT FROM performance_schema.events_statements_history"
+		what := "SQL_TEXT"
+		from := "events_statements_history"
+		requiredVersion := "8.0.0"
+		ok, err := w.mysqlConn.AtLeastVersion(requiredVersion)
+		if ok {
+			what = "QUERY_SAMPLE_TEXT"
+			from = "events_statements_summary_by_digest"
+		}
+
+		query := fmt.Sprintf("SELECT DIGEST, CURRENT_SCHEMA, %s FROM performance_schema.%s", what, from)
 		rows, err := w.mysqlConn.DB().Query(query)
 		if err != nil {
 			return
